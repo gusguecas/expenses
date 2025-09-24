@@ -1,0 +1,28 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "expenses-app",
+  "compatibility_date": "2025-09-24",
+  "pages_build_output_dir": "./dist",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  // D1 Database for expenses data (multiempresa/multiusuario)
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "expenses-app-production",
+      "database_id": "" // Will be populated after successful creation
+    }
+  ],
+  // R2 Bucket for attachments (tickets, invoices, logos)
+  "r2_buckets": [
+    {
+      "binding": "ATTACHMENTS",
+      "bucket_name": "expenses-app-attachments"
+    }
+  ],
+  // Environment variables
+  "vars": {
+    "ENVIRONMENT": "development"
+  }
+}
