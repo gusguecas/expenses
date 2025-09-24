@@ -469,6 +469,16 @@ app.get('/api/dashboard/metrics', async (c) => {
       params.push(query.company_id);
     }
     
+    if (query.user_id) {
+      whereClause += ' AND e.user_id = ?';
+      params.push(query.user_id);
+    }
+    
+    if (query.status) {
+      whereClause += ' AND e.status = ?';
+      params.push(query.status);
+    }
+    
     if (query.currency) {
       whereClause += ' AND e.currency = ?';
       params.push(query.currency);
@@ -528,6 +538,8 @@ app.get('/api/dashboard/metrics', async (c) => {
       recent_expenses: recentExpenses.results || [],
       filters_applied: {
         company_id: query.company_id,
+        user_id: query.user_id,
+        status: query.status,
         currency: query.currency,
         date_from: query.date_from,
         date_to: query.date_to,
@@ -2463,9 +2475,14 @@ app.get('/', (c) => {
                     <p className="text-xs text-tertiary">Evolución temporal de gastos y promedios móviles</p>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2 text-xs text-tertiary">
-                  <div className="w-2 h-2 bg-sapphire rounded-full animate-pulse"></div>
-                  <span>Tiempo real</span>
+                <div className="flex items-center space-x-3">
+                  <select id="analytics-user-filter" className="form-input-premium text-sm bg-glass border-0 min-w-[140px]">
+                    <option value="">Todos los Usuarios</option>
+                  </select>
+                  <div className="flex items-center space-x-2 text-xs text-tertiary">
+                    <div className="w-2 h-2 bg-sapphire rounded-full animate-pulse"></div>
+                    <span>Tiempo real</span>
+                  </div>
                 </div>
               </div>
               
@@ -2495,10 +2512,20 @@ app.get('/', (c) => {
                     <p className="text-xs text-tertiary">Distribución de estados de gastos por volumen</p>
                   </div>
                 </div>
-                <button className="btn-premium btn-emerald text-xs" onclick="refreshStatusMetrics()">
-                  <i className="fas fa-sync-alt mr-1"></i>
-                  Actualizar
-                </button>
+                <div className="flex items-center space-x-3">
+                  <select id="analytics-status-filter" className="form-input-premium text-sm bg-glass border-0 min-w-[140px]">
+                    <option value="">Todos los Estados</option>
+                    <option value="pending">⏳ Pendientes</option>
+                    <option value="approved">✅ Aprobados</option>
+                    <option value="rejected">❌ Rechazados</option>
+                    <option value="reimbursed">💰 Reembolsados</option>
+                    <option value="invoiced">📄 Facturados</option>
+                  </select>
+                  <button className="btn-premium btn-emerald text-xs" onclick="refreshStatusMetrics()">
+                    <i className="fas fa-sync-alt mr-1"></i>
+                    Actualizar
+                  </button>
+                </div>
               </div>
               
               <div id="status-chart" className="h-64 rounded-lg bg-glass p-4"></div>
