@@ -905,6 +905,7 @@ class ExpensesApp {
   setupAnalyticsFilters() {
     // Fill filter dropdowns
     this.fillAnalyticsCompanyFilter();
+    this.fillAnalyticsCompanyFilterMain();
     this.fillAnalyticsUserFilter();
     
     // Setup event listeners for analytics filters
@@ -922,6 +923,20 @@ class ExpensesApp {
       }).join('');
       
       companyFilter.innerHTML = existingOptions + companyOptions;
+    }
+  }
+
+  fillAnalyticsCompanyFilterMain() {
+    const companyFilterMain = document.getElementById('analytics-company-filter-main');
+    if (companyFilterMain && this.companies.length > 0) {
+      // Keep the "All Companies" option and add company options
+      const existingOptions = companyFilterMain.innerHTML;
+      const companyOptions = this.companies.map(company => {
+        const flag = company.country === 'MX' ? '🇲🇽' : '🇪🇸';
+        return `<option value="${company.id}">${flag} ${company.name}</option>`;
+      }).join('');
+      
+      companyFilterMain.innerHTML = existingOptions + companyOptions;
     }
   }
 
@@ -3061,51 +3076,41 @@ function handlePeriodChange() {
 
 // Analytics filters functionality
 function initializeAnalyticsFilters() {
-  // Period selector
+  // Period selector (legacy)
   handlePeriodChange();
   
-  // Company filter
-  const companyFilter = document.getElementById('analytics-company-filter');
-  if (companyFilter) {
-    companyFilter.addEventListener('change', async (e) => {
-      await updateAnalyticsFilters();
-    });
-  }
+  // All analytics filters
+  const filterIds = [
+    'analytics-user-filter',
+    'analytics-status-filter', 
+    'analytics-company-filter',
+    'analytics-company-filter-main',
+    'analytics-currency-filter',
+    'analytics-currency-filter-main',
+    'analytics-period-filter-main'
+  ];
   
-  // User filter
-  const userFilter = document.getElementById('analytics-user-filter');
-  if (userFilter) {
-    userFilter.addEventListener('change', async (e) => {
-      await updateAnalyticsFilters();
-    });
-  }
-  
-  // Status filter
-  const statusFilter = document.getElementById('analytics-status-filter');
-  if (statusFilter) {
-    statusFilter.addEventListener('change', async (e) => {
-      await updateAnalyticsFilters();
-    });
-  }
-  
-  // Currency filter
-  const currencyFilter = document.getElementById('analytics-currency-filter');
-  if (currencyFilter) {
-    currencyFilter.addEventListener('change', async (e) => {
-      await updateAnalyticsFilters();
-    });
-  }
+  filterIds.forEach(id => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.addEventListener('change', async (e) => {
+        await updateAnalyticsFilters();
+      });
+    }
+  });
 }
 
 async function updateAnalyticsFilters() {
   const filters = {};
   
-  // Get period
-  const period = document.getElementById('period-selector')?.value;
+  // Get period (try main first, then legacy)
+  const period = document.getElementById('analytics-period-filter-main')?.value || 
+                  document.getElementById('period-selector')?.value;
   if (period) filters.period = period;
   
-  // Get company filter
-  const company = document.getElementById('analytics-company-filter')?.value;
+  // Get company filter (try main first, then legacy)
+  const company = document.getElementById('analytics-company-filter-main')?.value ||
+                  document.getElementById('analytics-company-filter')?.value;
   if (company) filters.company_id = company;
   
   // Get user filter
@@ -3116,8 +3121,9 @@ async function updateAnalyticsFilters() {
   const status = document.getElementById('analytics-status-filter')?.value;
   if (status) filters.status = status;
   
-  // Get currency filter
-  const currency = document.getElementById('analytics-currency-filter')?.value;
+  // Get currency filter (try main first, then legacy)
+  const currency = document.getElementById('analytics-currency-filter-main')?.value ||
+                   document.getElementById('analytics-currency-filter')?.value;
   if (currency) filters.currency = currency;
   
   // Show loading
@@ -3161,6 +3167,35 @@ function refreshStatusMetrics() {
   if (window.expensesApp) {
     showChartsLoading(); 
     window.expensesApp.loadDashboardMetrics();
+  }
+}
+
+// Clear all analytics filters
+function clearAllAnalyticsFilters() {
+  // Reset all filter dropdowns
+  const filterIds = [
+    'analytics-user-filter',
+    'analytics-status-filter', 
+    'analytics-company-filter',
+    'analytics-company-filter-main',
+    'analytics-currency-filter',
+    'analytics-currency-filter-main',
+    'analytics-period-filter-main',
+    'period-selector'
+  ];
+  
+  filterIds.forEach(id => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.value = '';
+    }
+  });
+  
+  // Reload dashboard with no filters
+  if (window.expensesApp) {
+    showChartsLoading();
+    window.expensesApp.loadDashboardMetrics();
+    window.expensesApp.showSuccess('Filtros eliminados - Mostrando todos los datos');
   }
 }
 

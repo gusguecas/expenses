@@ -494,6 +494,16 @@ app.get('/api/dashboard/metrics', async (c) => {
       params.push(query.date_to);
     }
     
+    if (query.user_id) {
+      whereClause += ' AND e.user_id = ?';
+      params.push(query.user_id);
+    }
+    
+    if (query.status) {
+      whereClause += ' AND e.status = ?';
+      params.push(query.status);
+    }
+    
     // Total expenses by status (with filters)
     const statusMetrics = await env.DB.prepare(`
       SELECT status, COUNT(*) as count, SUM(amount_mxn) as total_mxn
@@ -2376,6 +2386,76 @@ app.get('/', (c) => {
             </div>
           </div>
           
+          {/* Analytics Filters Panel */}
+          <div className="mb-8 animate-slide-up" style="animation-delay: 0.65s">
+            <div className="glass-panel p-6">
+              <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 rounded-lg bg-glass">
+                    <i className="fas fa-filter text-sapphire text-xl"></i>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-primary">Filtros Avanzados de Analytics</h3>
+                    <p className="text-xs text-tertiary">Personaliza tu análisis con filtros multidimensionales</p>
+                  </div>
+                </div>
+                <button onclick="clearAllAnalyticsFilters()" className="btn-premium btn-ruby text-sm">
+                  <i className="fas fa-eraser mr-2"></i>
+                  Limpiar Filtros
+                </button>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-secondary mb-2">👤 Usuario Responsable</label>
+                  <select id="analytics-user-filter" className="form-input-premium text-sm bg-glass border-0 w-full">
+                    <option value="">Todos los Usuarios</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-secondary mb-2">📊 Estado del Gasto</label>
+                  <select id="analytics-status-filter" className="form-input-premium text-sm bg-glass border-0 w-full">
+                    <option value="">Todos los Estados</option>
+                    <option value="pending">⏳ Pendiente</option>
+                    <option value="approved">✅ Aprobado</option>
+                    <option value="rejected">❌ Rechazado</option>
+                    <option value="reimbursed">💰 Reembolsado</option>
+                    <option value="invoiced">📄 Facturado</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-secondary mb-2">🏢 Empresa</label>
+                  <select id="analytics-company-filter-main" className="form-input-premium text-sm bg-glass border-0 w-full">
+                    <option value="">Todas las Empresas</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-secondary mb-2">💰 Moneda</label>
+                  <select id="analytics-currency-filter-main" className="form-input-premium text-sm bg-glass border-0 w-full">
+                    <option value="">Todas las Monedas</option>
+                    <option value="MXN">🇲🇽 MXN (Peso)</option>
+                    <option value="USD">🇺🇸 USD (Dólar)</option>
+                    <option value="EUR">🇪🇺 EUR (Euro)</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-secondary mb-2">📅 Período</label>
+                  <select id="analytics-period-filter-main" className="form-input-premium text-sm bg-glass border-0 w-full">
+                    <option value="">Todo el Tiempo</option>
+                    <option value="week">Esta Semana</option>
+                    <option value="month">Este Mes</option>
+                    <option value="quarter">Trimestre</option>
+                    <option value="year">Este Año</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Premium Analytics Section */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12 animate-slide-up" style="animation-delay: 0.7s">
             
