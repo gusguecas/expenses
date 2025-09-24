@@ -460,47 +460,85 @@ app.get('/api/dashboard/metrics', async (c) => {
   const query = c.req.query();
   
   try {
-    // Total expenses by status
+    // Build WHERE clause for filters
+    let whereClause = 'WHERE 1=1';
+    const params = [];
+    
+    if (query.company_id) {
+      whereClause += ' AND e.company_id = ?';
+      params.push(query.company_id);
+    }
+    
+    if (query.currency) {
+      whereClause += ' AND e.currency = ?';
+      params.push(query.currency);
+    }
+    
+    if (query.date_from) {
+      whereClause += ' AND e.expense_date >= ?';
+      params.push(query.date_from);
+    }
+    
+    if (query.date_to) {
+      whereClause += ' AND e.expense_date <= ?';
+      params.push(query.date_to);
+    }
+    
+    // Total expenses by status (with filters)
     const statusMetrics = await env.DB.prepare(`
       SELECT status, COUNT(*) as count, SUM(amount_mxn) as total_mxn
-      FROM expenses
+      FROM expenses e
+      ${whereClause}
       GROUP BY status
-    `).all();
+    `).bind(...params).all();
     
-    // Expenses by company
+    // Expenses by company (with filters)
     const companyMetrics = await env.DB.prepare(`
       SELECT c.name as company, c.country, COUNT(*) as count, SUM(e.amount_mxn) as total_mxn
       FROM expenses e
       JOIN companies c ON e.company_id = c.id
+      ${whereClause}
       GROUP BY c.id, c.name, c.country
       ORDER BY total_mxn DESC
-    `).all();
+    `).bind(...params).all();
     
-    // Expenses by currency
+    // Expenses by currency (with filters)
     const currencyMetrics = await env.DB.prepare(`
       SELECT currency, COUNT(*) as count, SUM(amount) as total_original, SUM(amount_mxn) as total_mxn
-      FROM expenses
+      FROM expenses e
+      ${whereClause}
       GROUP BY currency
-    `).all();
+    `).bind(...params).all();
     
-    // Recent expenses
+    // Recent expenses (with filters, limited to 10)
     const recentExpenses = await env.DB.prepare(`
       SELECT e.*, c.name as company_name, u.name as user_name
       FROM expenses e
       JOIN companies c ON e.company_id = c.id
       JOIN users u ON e.user_id = u.id
+      ${whereClause}
       ORDER BY e.created_at DESC
       LIMIT 10
-    `).all();
+    `).bind(...params).all();
     
     return c.json({
-      status_metrics: statusMetrics.results,
-      company_metrics: companyMetrics.results,
-      currency_metrics: currencyMetrics.results,
-      recent_expenses: recentExpenses.results
+      status_metrics: statusMetrics.results || [],
+      company_metrics: companyMetrics.results || [],
+      currency_metrics: currencyMetrics.results || [],
+      recent_expenses: recentExpenses.results || [],
+      filters_applied: {
+        company_id: query.company_id,
+        currency: query.currency,
+        date_from: query.date_from,
+        date_to: query.date_to,
+        period: query.period
+      }
     });
   } catch (error) {
-    return c.json({ error: 'Failed to fetch dashboard metrics' }, 500);
+    return c.json({ 
+      error: 'Failed to fetch dashboard metrics', 
+      details: error.message 
+    }, 500);
   }
 })
 
@@ -2341,11 +2379,16 @@ app.get('/', (c) => {
                     <p className="text-xs text-tertiary">Análisis comparativo de gastos</p>
                   </div>
                 </div>
-                <select id="period-selector" className="form-input-premium text-sm bg-glass border-0 min-w-[120px]">
-                  <option value="month">Este Mes</option>
-                  <option value="quarter">Trimestre</option>
-                  <option value="year">Este Año</option>
-                </select>
+                <div className="flex items-center space-x-3">
+                  <select id="analytics-company-filter" className="form-input-premium text-sm bg-glass border-0 min-w-[140px]">
+                    <option value="">Todas las Empresas</option>
+                  </select>
+                  <select id="period-selector" className="form-input-premium text-sm bg-glass border-0 min-w-[120px]">
+                    <option value="month">Este Mes</option>
+                    <option value="quarter">Trimestre</option>
+                    <option value="year">Este Año</option>
+                  </select>
+                </div>
               </div>
               
               <div id="company-chart" className="h-64 rounded-lg bg-glass p-4"></div>
@@ -2371,9 +2414,17 @@ app.get('/', (c) => {
                     <p className="text-xs text-tertiary">Distribución por divisa en tiempo real</p>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2 text-xs text-tertiary">
-                  <div className="w-2 h-2 bg-gold rounded-full animate-pulse"></div>
-                  <span>Tasas live</span>
+                <div className="flex items-center space-x-3">
+                  <select id="analytics-currency-filter" className="form-input-premium text-sm bg-glass border-0 min-w-[120px]">
+                    <option value="">Todas las Monedas</option>
+                    <option value="MXN">🇲🇽 MXN</option>
+                    <option value="USD">🇺🇸 USD</option>
+                    <option value="EUR">🇪🇺 EUR</option>
+                  </select>
+                  <div className="flex items-center space-x-2 text-xs text-tertiary">
+                    <div className="w-2 h-2 bg-gold rounded-full animate-pulse"></div>
+                    <span>Tasas live</span>
+                  </div>
                 </div>
               </div>
               

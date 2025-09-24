@@ -37,6 +37,7 @@ class ExpensesApp {
         // Load dashboard metrics if on dashboard page and authenticated
         if (this.isDashboardPage()) {
           await this.loadDashboardMetrics();
+          this.setupAnalyticsFilters();
         }
         
         // Load expenses if on expenses page
@@ -750,6 +751,122 @@ class ExpensesApp {
       
     } catch (error) {
       console.error('Failed to load dashboard metrics:', error);
+    }
+  }
+
+  async loadDashboardMetricsWithFilters(filters = {}) {
+    try {
+      // Build query parameters
+      const queryParams = new URLSearchParams();
+      
+      if (filters.period) {
+        queryParams.append('period', filters.period);
+      }
+      
+      if (filters.company_id) {
+        queryParams.append('company_id', filters.company_id);
+      }
+      
+      if (filters.currency) {
+        queryParams.append('currency', filters.currency);
+      }
+      
+      // Add date range based on period
+      if (filters.period) {
+        const dateRange = this.getDateRangeForPeriod(filters.period);
+        if (dateRange.from) queryParams.append('date_from', dateRange.from);
+        if (dateRange.to) queryParams.append('date_to', dateRange.to);
+      }
+      
+      const queryString = queryParams.toString();
+      const endpoint = queryString ? `/dashboard/metrics?${queryString}` : '/dashboard/metrics';
+      
+      const response = await this.apiCall(endpoint);
+      
+      // Update metric cards with filtered data
+      let totalAmount = 0;
+      let pendingCount = 0;
+      
+      response.status_metrics.forEach(metric => {
+        totalAmount += parseFloat(metric.total_mxn || 0);
+        if (metric.status === 'pending') {
+          pendingCount = metric.count;
+        }
+      });
+      
+      this.updateMetricCard('total-expenses', this.formatCurrency(totalAmount));
+      this.updateMetricCard('pending-expenses', pendingCount);
+      
+      // Update companies mosaic with filtered data
+      this.renderCompaniesMosaic(response.company_metrics);
+      
+      // Reinitialize charts with filtered data
+      await this.initializePremiumCharts(response);
+      
+      // Update activity sections
+      this.renderRecentActivity(response.recent_expenses);
+      this.renderPendingActions(response.status_metrics);
+      this.renderRecentExpenses(response.recent_expenses);
+      
+      // Show success message
+      const periodText = this.getPeriodDisplayText(filters.period);
+      this.showSuccess(`Analytics actualizadas para ${periodText}`);
+      
+    } catch (error) {
+      console.error('Failed to load filtered dashboard metrics:', error);
+      this.showError('Error al cargar métricas filtradas');
+    }
+  }
+
+  getDateRangeForPeriod(period) {
+    const today = new Date();
+    const ranges = {
+      month: {
+        from: new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0],
+        to: new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0]
+      },
+      quarter: {
+        from: new Date(today.getFullYear(), Math.floor(today.getMonth() / 3) * 3, 1).toISOString().split('T')[0],
+        to: new Date(today.getFullYear(), Math.floor(today.getMonth() / 3) * 3 + 3, 0).toISOString().split('T')[0]
+      },
+      year: {
+        from: new Date(today.getFullYear(), 0, 1).toISOString().split('T')[0],
+        to: new Date(today.getFullYear(), 11, 31).toISOString().split('T')[0]
+      }
+    };
+    
+    return ranges[period] || { from: null, to: null };
+  }
+
+  getPeriodDisplayText(period) {
+    const texts = {
+      month: 'este mes',
+      quarter: 'este trimestre', 
+      year: 'este año'
+    };
+    
+    return texts[period] || 'el período seleccionado';
+  }
+
+  setupAnalyticsFilters() {
+    // Fill company filter dropdown
+    this.fillAnalyticsCompanyFilter();
+    
+    // Setup event listeners for analytics filters
+    initializeAnalyticsFilters();
+  }
+
+  fillAnalyticsCompanyFilter() {
+    const companyFilter = document.getElementById('analytics-company-filter');
+    if (companyFilter && this.companies.length > 0) {
+      // Keep the "All Companies" option and add company options
+      const existingOptions = companyFilter.innerHTML;
+      const companyOptions = this.companies.map(company => {
+        const flag = company.country === 'MX' ? '🇲🇽' : '🇪🇸';
+        return `<option value="${company.id}">${flag} ${company.name}</option>`;
+      }).join('');
+      
+      companyFilter.innerHTML = existingOptions + companyOptions;
     }
   }
 
@@ -2840,15 +2957,107 @@ function handleCurrencyChange() {
   }
 }
 
-// Period selector handler
+// Period selector handler  
 function handlePeriodChange() {
   const selector = document.getElementById('period-selector');
   if (selector) {
-    selector.addEventListener('change', (e) => {
-      // Update charts period
-      window.expensesApp.currentPeriod = e.target.value;
-      window.expensesApp.loadDashboardMetrics();
+    selector.addEventListener('change', async (e) => {
+      // Update charts period with loading indicator
+      const period = e.target.value;
+      window.expensesApp.currentPeriod = period;
+      
+      // Show loading state on charts
+      showChartsLoading();
+      
+      try {
+        // Reload dashboard with new period
+        await window.expensesApp.loadDashboardMetricsWithFilters({ period });
+      } catch (error) {
+        console.error('Error updating charts with period filter:', error);
+        window.expensesApp.showMessage('Error al actualizar gráficas', 'error');
+      }
     });
+  }
+}
+
+// Analytics filters functionality
+function initializeAnalyticsFilters() {
+  // Period selector
+  handlePeriodChange();
+  
+  // Company filter (if exists in analytics)
+  const companyFilter = document.getElementById('analytics-company-filter');
+  if (companyFilter) {
+    companyFilter.addEventListener('change', async (e) => {
+      await updateAnalyticsFilters();
+    });
+  }
+  
+  // Currency filter (if exists in analytics) 
+  const currencyFilter = document.getElementById('analytics-currency-filter');
+  if (currencyFilter) {
+    currencyFilter.addEventListener('change', async (e) => {
+      await updateAnalyticsFilters();
+    });
+  }
+}
+
+async function updateAnalyticsFilters() {
+  const filters = {};
+  
+  // Get period
+  const period = document.getElementById('period-selector')?.value;
+  if (period) filters.period = period;
+  
+  // Get company filter
+  const company = document.getElementById('analytics-company-filter')?.value;
+  if (company) filters.company_id = company;
+  
+  // Get currency filter
+  const currency = document.getElementById('analytics-currency-filter')?.value;
+  if (currency) filters.currency = currency;
+  
+  // Show loading
+  showChartsLoading();
+  
+  try {
+    await window.expensesApp.loadDashboardMetricsWithFilters(filters);
+  } catch (error) {
+    console.error('Error updating analytics filters:', error);
+    window.expensesApp.showMessage('Error al aplicar filtros', 'error');
+  }
+}
+
+function showChartsLoading() {
+  const chartContainers = ['company-chart', 'currency-chart', 'trend-chart', 'status-chart'];
+  
+  chartContainers.forEach(id => {
+    const container = document.getElementById(id);
+    if (container) {
+      container.innerHTML = `
+        <div class="flex items-center justify-center h-full">
+          <div class="text-center">
+            <i class="fas fa-spinner fa-spin text-2xl text-gold mb-2"></i>
+            <p class="text-sm text-tertiary">Actualizando gráficas...</p>
+          </div>
+        </div>
+      `;
+    }
+  });
+}
+
+// Refresh specific charts
+function refreshCompanyChart() {
+  if (window.expensesApp) {
+    showChartsLoading();
+    window.expensesApp.loadDashboardMetrics();
+  }
+}
+
+function refreshStatusMetrics() {
+  if (window.expensesApp) {
+    showChartsLoading(); 
+    window.expensesApp.loadDashboardMetrics();
   }
 }
 
@@ -2865,6 +3074,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // Setup dashboard event handlers
   handleCurrencyChange();
   handlePeriodChange();
+  
+  // Initialize analytics filters after a small delay
+  setTimeout(() => {
+    if (window.expensesApp && window.expensesApp.isDashboardPage()) {
+      initializeAnalyticsFilters();
+    }
+  }, 500);
 });
 
 // ===== AUTHENTICATION GLOBAL FUNCTIONS =====
