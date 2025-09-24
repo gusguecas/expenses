@@ -706,6 +706,29 @@ class ExpensesApp {
     }
   }
 
+  closeExpenseForm() {
+    const modal = document.getElementById('expense-modal');
+    if (modal) {
+      modal.classList.add('hidden');
+      document.body.style.overflow = 'auto';
+    }
+    // Reset form after closing
+    this.resetExpenseForm();
+  }
+
+  showExpenseForm() {
+    const modal = document.getElementById('expense-modal');
+    if (modal) {
+      // Reset and populate form
+      this.resetExpenseForm();
+      this.populateExpenseForm();
+      
+      // Show modal
+      modal.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+    }
+  }
+
   populateExpenseForm() {
     // Populate companies
     const companySelect = document.getElementById('form-company');
@@ -1557,23 +1580,14 @@ function clearFilters() {
 }
 
 function showExpenseForm() {
-  const modal = document.getElementById('expense-modal');
-  if (modal) {
-    // Reset and populate form
-    window.expensesApp.resetExpenseForm();
-    window.expensesApp.populateExpenseForm();
-    
-    // Show modal
-    modal.classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
+  if (window.expensesApp) {
+    window.expensesApp.showExpenseForm();
   }
 }
 
 function closeExpenseForm() {
-  const modal = document.getElementById('expense-modal');
-  if (modal) {
-    modal.classList.add('hidden');
-    document.body.style.overflow = 'auto';
+  if (window.expensesApp) {
+    window.expensesApp.closeExpenseForm();
   }
 }
 
