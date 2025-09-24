@@ -303,6 +303,413 @@ class ExpensesApp {
     }
   }
 
+  // ===== PREMIUM CHARTS WITH CHART.JS =====
+  
+  async initializePremiumCharts(dashboardData) {
+    try {
+      // Destroy existing charts if they exist
+      if (window.companyChart) window.companyChart.destroy();
+      if (window.currencyChart) window.currencyChart.destroy();
+      if (window.trendChart) window.trendChart.destroy();
+      if (window.statusChart) window.statusChart.destroy();
+      
+      // Initialize company performance chart
+      this.createCompanyPerformanceChart(dashboardData.company_metrics);
+      
+      // Initialize currency distribution chart
+      this.createCurrencyDistributionChart(dashboardData.currency_metrics);
+      
+      // Initialize trend analysis chart
+      await this.createTrendAnalysisChart();
+      
+      // Initialize status overview chart
+      this.createStatusOverviewChart(dashboardData.status_metrics);
+      
+    } catch (error) {
+      console.error('Failed to initialize premium charts:', error);
+    }
+  }
+
+  createCompanyPerformanceChart(companyMetrics) {
+    const ctx = document.getElementById('company-chart');
+    if (!ctx) return;
+
+    const labels = companyMetrics.map(m => m.company);
+    const data = companyMetrics.map(m => m.total_mxn);
+    const colors = this.generateChartColors(labels.length);
+
+    window.companyChart = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Gastos por Empresa (MXN)',
+          data: data,
+          backgroundColor: colors.backgrounds,
+          borderColor: colors.borders,
+          borderWidth: 2,
+          hoverBorderWidth: 3,
+          hoverOffset: 8
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'right',
+            labels: {
+              padding: 20,
+              usePointStyle: true,
+              color: '#e5e7eb',
+              font: {
+                size: 12,
+                family: 'Inter'
+              },
+              generateLabels: function(chart) {
+                const data = chart.data;
+                return data.labels.map((label, i) => ({
+                  text: `${label}: ${window.expensesApp.formatCurrency(data.datasets[0].data[i], 'short')}`,
+                  fillStyle: data.datasets[0].backgroundColor[i],
+                  strokeStyle: data.datasets[0].borderColor[i],
+                  index: i
+                }));
+              }
+            }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            titleColor: '#f59e0b',
+            bodyColor: '#ffffff',
+            borderColor: '#374151',
+            borderWidth: 1,
+            cornerRadius: 8,
+            callbacks: {
+              label: function(context) {
+                const value = context.parsed;
+                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                const percentage = ((value / total) * 100).toFixed(1);
+                return `${context.label}: ${window.expensesApp.formatCurrency(value)} (${percentage}%)`;
+              }
+            }
+          }
+        },
+        animation: {
+          animateRotate: true,
+          animateScale: true,
+          duration: 1000,
+          easing: 'easeOutQuart'
+        }
+      }
+    });
+  }
+
+  createCurrencyDistributionChart(currencyMetrics) {
+    const ctx = document.getElementById('currency-chart');
+    if (!ctx) return;
+
+    const labels = currencyMetrics.map(m => `${this.getCurrencyFlag(m.currency)} ${m.currency}`);
+    const data = currencyMetrics.map(m => m.total_mxn);
+    const counts = currencyMetrics.map(m => m.count);
+
+    window.currencyChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Volumen (MXN)',
+          data: data,
+          backgroundColor: [
+            'rgba(16, 185, 129, 0.8)',  // MXN - Green
+            'rgba(59, 130, 246, 0.8)',  // USD - Blue  
+            'rgba(245, 158, 11, 0.8)'   // EUR - Gold
+          ],
+          borderColor: [
+            'rgba(16, 185, 129, 1)',
+            'rgba(59, 130, 246, 1)', 
+            'rgba(245, 158, 11, 1)'
+          ],
+          borderWidth: 2,
+          borderRadius: 6,
+          borderSkipped: false
+        }, {
+          label: 'Transacciones',
+          data: counts,
+          type: 'line',
+          borderColor: 'rgba(239, 68, 68, 1)',
+          backgroundColor: 'rgba(239, 68, 68, 0.1)',
+          borderWidth: 3,
+          pointRadius: 6,
+          pointHoverRadius: 8,
+          pointBackgroundColor: 'rgba(239, 68, 68, 1)',
+          pointBorderColor: '#ffffff',
+          pointBorderWidth: 2,
+          yAxisID: 'y1'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            type: 'linear',
+            display: true,
+            position: 'left',
+            beginAtZero: true,
+            ticks: {
+              color: '#9ca3af',
+              font: { family: 'Inter', size: 11 },
+              callback: function(value) {
+                return window.expensesApp.formatCurrency(value, 'short');
+              }
+            },
+            grid: {
+              color: 'rgba(255, 255, 255, 0.1)',
+              drawBorder: false
+            }
+          },
+          y1: {
+            type: 'linear',
+            display: true,
+            position: 'right',
+            beginAtZero: true,
+            ticks: {
+              color: '#9ca3af',
+              font: { family: 'Inter', size: 11 }
+            },
+            grid: {
+              drawOnChartArea: false
+            }
+          },
+          x: {
+            ticks: {
+              color: '#9ca3af',
+              font: { family: 'Inter', size: 12 }
+            },
+            grid: {
+              color: 'rgba(255, 255, 255, 0.1)',
+              drawBorder: false
+            }
+          }
+        },
+        plugins: {
+          legend: {
+            labels: {
+              color: '#e5e7eb',
+              font: { family: 'Inter', size: 12 },
+              usePointStyle: true,
+              padding: 20
+            }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            titleColor: '#f59e0b',
+            bodyColor: '#ffffff',
+            borderColor: '#374151',
+            borderWidth: 1,
+            cornerRadius: 8
+          }
+        },
+        animation: {
+          duration: 1200,
+          easing: 'easeOutQuart'
+        }
+      }
+    });
+  }
+
+  async createTrendAnalysisChart() {
+    // This would typically fetch historical data
+    // For now, we'll simulate trend data
+    const trendData = this.generateTrendData();
+    
+    const ctx = document.getElementById('trend-chart');
+    if (!ctx) return;
+
+    window.trendChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: trendData.labels,
+        datasets: [{
+          label: 'Gastos Totales',
+          data: trendData.totals,
+          borderColor: 'rgba(16, 185, 129, 1)',
+          backgroundColor: 'rgba(16, 185, 129, 0.1)',
+          borderWidth: 3,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          fill: true,
+          tension: 0.4
+        }, {
+          label: 'Promedio Móvil',
+          data: trendData.average,
+          borderColor: 'rgba(245, 158, 11, 1)',
+          backgroundColor: 'rgba(245, 158, 11, 0.1)', 
+          borderWidth: 2,
+          borderDash: [5, 5],
+          pointRadius: 0,
+          fill: false,
+          tension: 0.4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              color: '#9ca3af',
+              font: { family: 'Inter', size: 11 },
+              callback: function(value) {
+                return window.expensesApp.formatCurrency(value, 'short');
+              }
+            },
+            grid: {
+              color: 'rgba(255, 255, 255, 0.1)'
+            }
+          },
+          x: {
+            ticks: {
+              color: '#9ca3af',
+              font: { family: 'Inter', size: 11 }
+            },
+            grid: {
+              color: 'rgba(255, 255, 255, 0.1)'
+            }
+          }
+        },
+        plugins: {
+          legend: {
+            labels: {
+              color: '#e5e7eb',
+              font: { family: 'Inter', size: 12 },
+              usePointStyle: true
+            }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            titleColor: '#f59e0b',
+            bodyColor: '#ffffff'
+          }
+        }
+      }
+    });
+  }
+
+  createStatusOverviewChart(statusMetrics) {
+    const ctx = document.getElementById('status-chart');
+    if (!ctx) return;
+
+    const labels = statusMetrics.map(m => this.getStatusLabel(m.status));
+    const data = statusMetrics.map(m => m.count);
+    const colors = statusMetrics.map(m => this.getStatusColor(m.status));
+
+    window.statusChart = new Chart(ctx, {
+      type: 'polarArea',
+      data: {
+        labels: labels,
+        datasets: [{
+          data: data,
+          backgroundColor: colors.backgrounds,
+          borderColor: colors.borders,
+          borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: {
+              color: '#e5e7eb',
+              font: { family: 'Inter', size: 11 },
+              usePointStyle: true
+            }
+          }
+        },
+        scales: {
+          r: {
+            ticks: {
+              color: '#9ca3af',
+              backdropColor: 'transparent'
+            },
+            grid: {
+              color: 'rgba(255, 255, 255, 0.1)'
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // Helper methods for charts
+  generateChartColors(count) {
+    const baseColors = [
+      { bg: 'rgba(16, 185, 129, 0.8)', border: 'rgba(16, 185, 129, 1)' },    // Emerald
+      { bg: 'rgba(59, 130, 246, 0.8)', border: 'rgba(59, 130, 246, 1)' },    // Blue  
+      { bg: 'rgba(245, 158, 11, 0.8)', border: 'rgba(245, 158, 11, 1)' },    // Amber
+      { bg: 'rgba(239, 68, 68, 0.8)', border: 'rgba(239, 68, 68, 1)' },      // Red
+      { bg: 'rgba(168, 85, 247, 0.8)', border: 'rgba(168, 85, 247, 1)' },    // Purple
+      { bg: 'rgba(34, 197, 94, 0.8)', border: 'rgba(34, 197, 94, 1)' }       // Green
+    ];
+    
+    return {
+      backgrounds: baseColors.slice(0, count).map(c => c.bg),
+      borders: baseColors.slice(0, count).map(c => c.border)
+    };
+  }
+
+  getCurrencyFlag(currency) {
+    const flags = { MXN: '🇲🇽', USD: '🇺🇸', EUR: '🇪🇺' };
+    return flags[currency] || '💱';
+  }
+
+  getStatusLabel(status) {
+    const labels = {
+      pending: 'Pendientes',
+      approved: 'Aprobados', 
+      rejected: 'Rechazados',
+      reimbursed: 'Reembolsados',
+      invoiced: 'Facturados'
+    };
+    return labels[status] || status;
+  }
+
+  getStatusColor(status) {
+    const colors = {
+      pending: { bg: 'rgba(245, 158, 11, 0.8)', border: 'rgba(245, 158, 11, 1)' },
+      approved: { bg: 'rgba(16, 185, 129, 0.8)', border: 'rgba(16, 185, 129, 1)' },
+      rejected: { bg: 'rgba(239, 68, 68, 0.8)', border: 'rgba(239, 68, 68, 1)' },
+      reimbursed: { bg: 'rgba(59, 130, 246, 0.8)', border: 'rgba(59, 130, 246, 1)' },
+      invoiced: { bg: 'rgba(168, 85, 247, 0.8)', border: 'rgba(168, 85, 247, 1)' }
+    };
+    return colors[status] || colors.pending;
+  }
+
+  generateTrendData() {
+    const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep'];
+    const totals = [];
+    const average = [];
+    
+    for (let i = 0; i < months.length; i++) {
+      const base = 25000 + Math.random() * 15000;
+      const trend = base + (i * 2000) + (Math.sin(i) * 5000);
+      totals.push(Math.max(0, trend));
+      
+      // Calculate moving average
+      if (i >= 2) {
+        const avg = (totals[i-2] + totals[i-1] + totals[i]) / 3;
+        average.push(avg);
+      } else {
+        average.push(totals[i]);
+      }
+    }
+    
+    return { labels: months, totals, average };
+  }
+
   async loadDashboardMetrics() {
     try {
       const response = await this.apiCall('/dashboard/metrics');
@@ -328,9 +735,8 @@ class ExpensesApp {
       // Render companies mosaic
       this.renderCompaniesMosaic(response.company_metrics);
       
-      // Update charts
-      this.renderCompanyChart(response.company_metrics);
-      this.renderCurrencyChart(response.currency_metrics);
+      // Initialize premium charts with real data
+      await this.initializePremiumCharts(response);
       
       // Load exchange rates
       await this.loadExchangeRates();

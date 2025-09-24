@@ -1469,8 +1469,9 @@ function getMappedValue(row, mapping) {
 // Helper function to generate PDF HTML content
 function generateReportHtml(expenses, company, format, filters) {
   const today = new Date().toLocaleDateString('es-MX');
-  const companyName = company?.name || 'Consolidado';
+  const companyName = company?.name || 'Consolidado Multiempresa';
   const flag = company?.country === 'MX' ? '🇲🇽' : company?.country === 'ES' ? '🇪🇸' : '🌍';
+  const logoInitials = companyName.substring(0, 2).toUpperCase();
   
   let html = `
     <!DOCTYPE html>
@@ -1478,45 +1479,368 @@ function generateReportHtml(expenses, company, format, filters) {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Reporte de Gastos - ${companyName}</title>
+        <title>Reporte Ejecutivo - ${companyName}</title>
         <style>
-            body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
-            .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
-            .logo { width: 80px; height: 80px; margin: 0 auto 10px; background: #3B82F6; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; font-weight: bold; }
-            .company-info { margin: 10px 0; }
-            .filters { background: #F3F4F6; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
-            .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 30px; }
-            .summary-card { background: #F9FAFB; padding: 15px; border-radius: 5px; text-align: center; border: 1px solid #E5E7EB; }
-            .summary-number { font-size: 24px; font-weight: bold; color: #1F2937; }
-            .summary-label { font-size: 12px; color: #6B7280; margin-top: 5px; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-            th, td { padding: 10px; text-align: left; border-bottom: 1px solid #E5E7EB; }
-            th { background: #F9FAFB; font-weight: bold; }
-            .currency-mxn { color: #059669; }
-            .currency-usd { color: #3B82F6; }
-            .currency-eur { color: #8B5CF6; }
-            .status-pending { background: #FEF3C7; color: #92400E; padding: 2px 6px; border-radius: 12px; font-size: 11px; }
-            .status-approved { background: #D1FAE5; color: #065F46; padding: 2px 6px; border-radius: 12px; font-size: 11px; }
-            .status-rejected { background: #FEE2E2; color: #991B1B; padding: 2px 6px; border-radius: 12px; font-size: 11px; }
-            .status-reimbursed { background: #DBEAFE; color: #1E40AF; padding: 2px 6px; border-radius: 12px; font-size: 11px; }
-            .footer { text-align: center; margin-top: 40px; font-size: 12px; color: #6B7280; border-top: 1px solid #E5E7EB; padding-top: 20px; }
-            @media print { body { margin: 0; } }
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+            
+            * { box-sizing: border-box; }
+            
+            body { 
+                font-family: 'Inter', system-ui, -apple-system, sans-serif; 
+                margin: 0; 
+                padding: 0; 
+                background: linear-gradient(135deg, #0a0b0d 0%, #12141a 50%, #1a1d25 100%);
+                color: #e5e7eb;
+                line-height: 1.6;
+            }
+            
+            .container {
+                max-width: 1200px;
+                margin: 0 auto;
+                padding: 40px;
+                background: rgba(255, 255, 255, 0.95);
+                color: #1f2937;
+                min-height: 100vh;
+            }
+            
+            .header { 
+                position: relative;
+                text-align: center; 
+                background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+                color: white;
+                padding: 50px 40px;
+                border-radius: 20px;
+                margin-bottom: 40px;
+                box-shadow: 0 20px 40px rgba(245, 158, 11, 0.3);
+            }
+            
+            .header::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="20" cy="20" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="60" cy="60" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="80" cy="20" r="1" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+                border-radius: 20px;
+                pointer-events: none;
+            }
+            
+            .logo-container {
+                position: relative;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin-bottom: 30px;
+            }
+            
+            .logo { 
+                width: 120px; 
+                height: 120px; 
+                margin: 0 auto;
+                background: linear-gradient(135deg, rgba(255, 255, 255, 0.25), rgba(255, 255, 255, 0.1));
+                backdrop-filter: blur(10px);
+                border: 2px solid rgba(255, 255, 255, 0.3);
+                border-radius: 30px;
+                display: flex; 
+                align-items: center; 
+                justify-content: center; 
+                color: white; 
+                font-size: 36px; 
+                font-weight: 700;
+                text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+                box-shadow: 0 15px 30px rgba(0,0,0,0.3);
+                position: relative;
+                overflow: hidden;
+            }
+            
+            .logo::before {
+                content: '';
+                position: absolute;
+                top: -50%;
+                left: -50%;
+                width: 200%;
+                height: 200%;
+                background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+                animation: logoShine 3s infinite;
+            }
+            
+            @keyframes logoShine {
+                0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+                50% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+                100% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+            }
+            
+            .company-title {
+                position: relative;
+                z-index: 1;
+            }
+            
+            .company-title h1 { 
+                font-size: 48px; 
+                font-weight: 700; 
+                margin: 0 0 10px 0;
+                text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+                letter-spacing: -1px;
+            }
+            
+            .company-title h2 { 
+                font-size: 24px; 
+                font-weight: 500; 
+                margin: 0 0 20px 0;
+                opacity: 0.9;
+                letter-spacing: 0.5px;
+            }
+            
+            .company-info { 
+                font-size: 16px; 
+                font-weight: 500;
+                opacity: 0.8;
+                border-top: 1px solid rgba(255,255,255,0.2);
+                padding-top: 20px;
+                margin-top: 20px;
+            }
+            
+            .filters { 
+                background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(59, 130, 246, 0.1));
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(59, 130, 246, 0.2);
+                padding: 30px; 
+                border-radius: 20px; 
+                margin-bottom: 40px;
+                box-shadow: 0 10px 30px rgba(59, 130, 246, 0.1);
+            }
+            
+            .filters h3 {
+                color: #1e40af;
+                font-size: 20px;
+                font-weight: 600;
+                margin: 0 0 20px 0;
+            }
+            
+            .filters p {
+                margin: 8px 0;
+                font-weight: 500;
+            }
+            
+            .summary { 
+                display: grid; 
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
+                gap: 25px; 
+                margin-bottom: 40px; 
+            }
+            
+            .summary-card { 
+                background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(255,255,255,0.8));
+                backdrop-filter: blur(20px);
+                padding: 30px; 
+                border-radius: 20px; 
+                text-align: center; 
+                border: 1px solid rgba(156, 163, 175, 0.2);
+                box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+                transition: transform 0.3s ease, box-shadow 0.3s ease;
+                position: relative;
+                overflow: hidden;
+            }
+            
+            .summary-card::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 4px;
+                background: linear-gradient(90deg, #f59e0b, #d97706, #059669);
+            }
+            
+            .summary-number { 
+                font-size: 36px; 
+                font-weight: 700; 
+                color: #1f2937;
+                margin-bottom: 8px;
+                font-family: 'Inter', monospace;
+            }
+            
+            .summary-label { 
+                font-size: 14px; 
+                color: #6b7280; 
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .table-container {
+                background: rgba(255,255,255,0.95);
+                border-radius: 20px;
+                padding: 0;
+                box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+                overflow: hidden;
+                margin-bottom: 40px;
+            }
+            
+            table { 
+                width: 100%; 
+                border-collapse: collapse;
+            }
+            
+            th { 
+                background: linear-gradient(135deg, #1f2937, #374151); 
+                color: white;
+                font-weight: 600; 
+                padding: 20px 15px;
+                text-align: left;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            td { 
+                padding: 18px 15px; 
+                border-bottom: 1px solid #f3f4f6;
+                font-weight: 500;
+                font-size: 14px;
+            }
+            
+            tr:nth-child(even) {
+                background: rgba(249, 250, 251, 0.5);
+            }
+            
+            tr:hover {
+                background: rgba(59, 130, 246, 0.05);
+            }
+            
+            .currency-mxn { color: #059669; font-weight: 600; }
+            .currency-usd { color: #3b82f6; font-weight: 600; }
+            .currency-eur { color: #8b5cf6; font-weight: 600; }
+            
+            .status-pending { 
+                background: linear-gradient(135deg, #fef3c7, #fde68a); 
+                color: #92400e; 
+                padding: 6px 12px; 
+                border-radius: 20px; 
+                font-size: 12px; 
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.3px;
+            }
+            
+            .status-approved { 
+                background: linear-gradient(135deg, #d1fae5, #a7f3d0); 
+                color: #065f46; 
+                padding: 6px 12px; 
+                border-radius: 20px; 
+                font-size: 12px; 
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.3px;
+            }
+            
+            .status-rejected { 
+                background: linear-gradient(135deg, #fee2e2, #fca5a5); 
+                color: #991b1b; 
+                padding: 6px 12px; 
+                border-radius: 20px; 
+                font-size: 12px; 
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.3px;
+            }
+            
+            .status-reimbursed { 
+                background: linear-gradient(135deg, #dbeafe, #93c5fd); 
+                color: #1e40af; 
+                padding: 6px 12px; 
+                border-radius: 20px; 
+                font-size: 12px; 
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.3px;
+            }
+            
+            .footer { 
+                text-align: center; 
+                margin-top: 60px; 
+                padding: 40px;
+                background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+                border-radius: 20px;
+                border-top: 4px solid #f59e0b;
+            }
+            
+            .footer h3 {
+                color: #1f2937;
+                font-size: 20px;
+                font-weight: 700;
+                margin-bottom: 15px;
+            }
+            
+            .footer p {
+                font-size: 14px; 
+                color: #6b7280; 
+                margin: 8px 0;
+                font-weight: 500;
+            }
+            
+            .model-4d {
+                display: flex;
+                justify-content: center;
+                gap: 30px;
+                margin: 25px 0;
+                flex-wrap: wrap;
+            }
+            
+            .model-item {
+                text-align: center;
+                padding: 15px;
+                background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(217, 119, 6, 0.1));
+                border-radius: 15px;
+                border: 1px solid rgba(245, 158, 11, 0.2);
+                min-width: 120px;
+            }
+            
+            .model-item h4 {
+                color: #f59e0b;
+                font-size: 18px;
+                font-weight: 700;
+                margin: 0 0 5px 0;
+            }
+            
+            .model-item p {
+                color: #6b7280;
+                font-size: 12px;
+                margin: 0;
+                font-weight: 600;
+            }
+            
+            @media print { 
+                body { margin: 0; background: white; } 
+                .container { box-shadow: none; }
+                .header { box-shadow: none; }
+            }
         </style>
     </head>
     <body>
-        <div class="header">
-            <div class="logo">${companyName.substring(0, 2).toUpperCase()}</div>
-            <h1>${flag} ${companyName}</h1>
-            <h2>Reporte de Gastos y Viáticos</h2>
-            <p class="company-info">Sistema Lyra Expenses • Modelo 4-D</p>
-        </div>
-        
-        <div class="filters">
-            <h3>Filtros Aplicados:</h3>
-            <p><strong>Período:</strong> ${filters.date_from || 'Inicio'} - ${filters.date_to || 'Actual'}</p>
-            ${filters.status ? `<p><strong>Estado:</strong> ${filters.status}</p>` : ''}
-            ${filters.currency ? `<p><strong>Moneda:</strong> ${filters.currency}</p>` : ''}
-            <p><strong>Fecha de generación:</strong> ${today}</p>
+        <div class="container">
+            <div class="header">
+                <div class="logo-container">
+                    <div class="logo">${logoInitials}</div>
+                </div>
+                <div class="company-title">
+                    <h1>${flag} ${companyName}</h1>
+                    <h2>Reporte Ejecutivo de Gastos y Viáticos</h2>
+                    <p class="company-info">
+                        Sistema Lyra Expenses • Análisis Inteligente de Gestión Financiera<br>
+                        Generado el ${today} • Formato Premium
+                    </p>
+                </div>
+            </div>
+            
+            <div class="filters">
+                <h3>📊 Parámetros del Análisis</h3>
+                <p><strong>Período de Análisis:</strong> ${filters.date_from || 'Desde el inicio'} - ${filters.date_to || 'Hasta la fecha actual'}</p>
+                ${filters.status ? `<p><strong>Estado de Gastos:</strong> ${filters.status.toUpperCase()}</p>` : ''}
+                ${filters.currency ? `<p><strong>Moneda Base:</strong> ${filters.currency}</p>` : ''}
+                <p><strong>Fecha de Generación:</strong> ${today} • <strong>Formato:</strong> ${format.toUpperCase()}</p>
+            </div>
         </div>
   `;
   
@@ -1530,42 +1854,40 @@ function generateReportHtml(expenses, company, format, filters) {
   }, {});
   
   html += `
-    <div class="summary">
-        <div class="summary-card">
-            <div class="summary-number">${totalCount}</div>
-            <div class="summary-label">Total Gastos</div>
-        </div>
-        <div class="summary-card">
-            <div class="summary-number">$${totalAmount.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</div>
-            <div class="summary-label">Total MXN</div>
-        </div>
-        <div class="summary-card">
-            <div class="summary-number">${pendingCount}</div>
-            <div class="summary-label">Pendientes</div>
-        </div>
-        <div class="summary-card">
-            <div class="summary-number">${Object.keys(currencyBreakdown).length}</div>
-            <div class="summary-label">Monedas</div>
-        </div>
-    </div>
-  `;
-  
-  // Expenses table
-  html += `
-    <table>
-        <thead>
-            <tr>
-                <th>Fecha</th>
-                <th>Descripción</th>
-                <th>Usuario</th>
-                <th>Tipo</th>
-                <th>Monto Original</th>
-                <th>Monto MXN</th>
-                <th>Estado</th>
-                <th>Método Pago</th>
-            </tr>
-        </thead>
-        <tbody>
+            <div class="summary">
+                <div class="summary-card">
+                    <div class="summary-number">${totalCount}</div>
+                    <div class="summary-label">Total de Transacciones</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-number">$${totalAmount.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</div>
+                    <div class="summary-label">Volumen Total (MXN)</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-number">${pendingCount}</div>
+                    <div class="summary-label">Gastos Pendientes</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-number">${Object.keys(currencyBreakdown).length}</div>
+                    <div class="summary-label">Monedas Operativas</div>
+                </div>
+            </div>
+            
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Descripción</th>
+                            <th>Usuario Responsable</th>
+                            <th>Categoría</th>
+                            <th>Monto Original</th>
+                            <th>Equivalente MXN</th>
+                            <th>Status</th>
+                            <th>Método de Pago</th>
+                        </tr>
+                    </thead>
+                    <tbody>
   `;
   
   expenses.forEach(expense => {
@@ -1586,12 +1908,41 @@ function generateReportHtml(expenses, company, format, filters) {
   html += `
         </tbody>
     </table>
-    
-    <div class="footer">
-        <p>Lyra Expenses - Sistema de Gestión de Gastos y Viáticos</p>
-        <p>Modelo 4-D: Dinero • Decisión • Dirección • Disciplina</p>
-        <p>Generado el ${today} • Total de registros: ${totalCount}</p>
-    </div>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="footer">
+                <h3>🚀 Sistema Lyra Expenses</h3>
+                <p><strong>Plataforma Inteligente de Gestión Financiera Empresarial</strong></p>
+                
+                <div class="model-4d">
+                    <div class="model-item">
+                        <h4>Dinero</h4>
+                        <p>Control Total</p>
+                    </div>
+                    <div class="model-item">
+                        <h4>Decisión</h4>
+                        <p>Análisis Inteligente</p>
+                    </div>
+                    <div class="model-item">
+                        <h4>Dirección</h4>
+                        <p>Estrategia Ejecutiva</p>
+                    </div>
+                    <div class="model-item">
+                        <h4>Disciplina</h4>
+                        <p>Proceso Optimizado</p>
+                    </div>
+                </div>
+                
+                <p><strong>Métricas del Reporte:</strong> ${totalCount} transacciones analizadas • ${Object.keys(currencyBreakdown).length} divisas operativas</p>
+                <p><strong>Generado:</strong> ${today} • <strong>Modelo:</strong> ${format.toUpperCase()} • <strong>Sistema:</strong> v2.1 Premium</p>
+                <p style="margin-top: 20px; font-size: 12px; opacity: 0.7;">
+                    Este reporte ha sido generado automáticamente por el sistema Lyra Expenses.<br>
+                    Todos los datos están actualizados en tiempo real y han sido validados por nuestros algoritmos de control financiero.
+                </p>
+            </div>
+        </div>
     </body>
     </html>
   `;
@@ -2041,6 +2392,83 @@ app.get('/', (c) => {
                   </span>
                 </div>
                 <span>Conversión automática</span>
+              </div>
+            </div>
+            
+          </div>
+
+          {/* Advanced Analytics Section - Trend Analysis & Status Overview */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12 animate-slide-up" style="animation-delay: 0.8s">
+            
+            {/* Trend Analysis Chart */}
+            <div className="glass-panel p-8">
+              <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 rounded-lg bg-glass">
+                    <i className="fas fa-chart-line text-sapphire text-xl"></i>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-primary">Análisis de Tendencias</h3>
+                    <p className="text-xs text-tertiary">Evolución temporal de gastos y promedios móviles</p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2 text-xs text-tertiary">
+                  <div className="w-2 h-2 bg-sapphire rounded-full animate-pulse"></div>
+                  <span>Tiempo real</span>
+                </div>
+              </div>
+              
+              <div id="trend-chart" className="h-64 rounded-lg bg-glass p-4"></div>
+              
+              <div className="mt-4 flex items-center justify-between text-xs text-tertiary">
+                <span className="flex items-center">
+                  <div className="w-2 h-2 bg-emerald rounded-full mr-2"></div>
+                  Gastos totales
+                </span>
+                <span className="flex items-center">
+                  <div className="w-2 h-2 bg-gold rounded-full mr-2"></div>
+                  Promedio móvil
+                </span>
+              </div>
+            </div>
+            
+            {/* Status Overview Chart */}
+            <div className="glass-panel p-8">
+              <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 rounded-lg bg-glass">
+                    <i className="fas fa-chart-radar text-emerald text-xl"></i>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-primary">Status Overview</h3>
+                    <p className="text-xs text-tertiary">Distribución de estados de gastos por volumen</p>
+                  </div>
+                </div>
+                <button className="btn-premium btn-emerald text-xs" onclick="refreshStatusMetrics()">
+                  <i className="fas fa-sync-alt mr-1"></i>
+                  Actualizar
+                </button>
+              </div>
+              
+              <div id="status-chart" className="h-64 rounded-lg bg-glass p-4"></div>
+              
+              <div className="mt-4 grid grid-cols-2 gap-4 text-xs text-tertiary">
+                <div className="flex items-center">
+                  <div className="w-2 h-2 bg-yellow-500 rounded-full mr-2"></div>
+                  <span>Pendientes</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                  <span>Aprobados</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
+                  <span>Reembolsados</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-2 h-2 bg-red-500 rounded-full mr-2"></div>
+                  <span>Rechazados</span>
+                </div>
               </div>
             </div>
             
