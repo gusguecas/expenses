@@ -383,6 +383,38 @@
   }
 }
 
+/* Exchange Rates Widget Styles */
+.exchange-rate-card {
+  transition: all 0.3s ease;
+}
+
+.exchange-rate-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.exchange-rate-value {
+  font-variant-numeric: tabular-nums;
+}
+
+.rate-positive {
+  color: #059669;
+}
+
+.rate-negative {
+  color: #dc2626;
+}
+
+.rate-update-animation {
+  animation: pulseGlow 0.5s ease-in-out;
+}
+
+@keyframes pulseGlow {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.05); opacity: 0.8; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
 /* Progressive Web App (PWA) styles */
 .pwa-install-prompt {
   position: fixed;

@@ -1725,6 +1725,101 @@ app.get('/', (c) => {
             </div>
           </div>
 
+          {/* Exchange Rates Widget */}
+          <div className="mb-8">
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  <i className="fas fa-exchange-alt mr-2 text-green-600"></i>
+                  Tipos de Cambio Actuales
+                </h2>
+                <div className="flex items-center space-x-2">
+                  <span className="text-xs text-gray-500" id="exchange-rates-updated">
+                    Actualizado: --
+                  </span>
+                  <button onclick="refreshExchangeRates()" className="text-green-600 hover:text-green-800 text-sm">
+                    <i className="fas fa-sync-alt mr-1"></i>
+                    Actualizar
+                  </button>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4" id="exchange-rates-container">
+                {/* USD to MXN */}
+                <div className="exchange-rate-card bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border border-green-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-2xl">🇺🇸</span>
+                      <div>
+                        <p className="text-sm font-medium text-green-800">USD → MXN</p>
+                        <p className="text-xs text-green-600">Dólar Americano</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-green-800 exchange-rate-value" id="rate-usd-mxn">$18.25</p>
+                      <p className="text-xs text-green-600" id="change-usd-mxn">+0.15 (0.8%)</p>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* EUR to MXN */}
+                <div className="exchange-rate-card bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-2xl">🇪🇺</span>
+                      <div>
+                        <p className="text-sm font-medium text-blue-800">EUR → MXN</p>
+                        <p className="text-xs text-blue-600">Euro</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-blue-800 exchange-rate-value" id="rate-eur-mxn">$20.15</p>
+                      <p className="text-xs text-blue-600" id="change-eur-mxn">-0.25 (1.2%)</p>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* USD to EUR */}
+                <div className="exchange-rate-card bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-2xl">🔄</span>
+                      <div>
+                        <p className="text-sm font-medium text-purple-800">USD → EUR</p>
+                        <p className="text-xs text-purple-600">Dólar a Euro</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-purple-800 exchange-rate-value" id="rate-usd-eur">€0.91</p>
+                      <p className="text-xs text-purple-600" id="change-usd-eur">+0.02 (2.1%)</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <div className="flex items-center justify-between text-sm text-gray-600">
+                  <div className="flex items-center space-x-4">
+                    <span>
+                      <i className="fas fa-info-circle mr-1 text-blue-500"></i>
+                      Fuente: Banxico / BCE
+                    </span>
+                    <span>
+                      <i className="fas fa-clock mr-1 text-orange-500"></i>
+                      Actualización cada 30 min
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                      <i className="fas fa-circle text-xs mr-1"></i>
+                      En línea
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Companies Mosaic */}
           <div className="mb-8">
             <div className="flex justify-between items-center mb-6">

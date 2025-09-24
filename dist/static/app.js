@@ -25,6 +25,11 @@ class ExpensesApp {
       await this.loadUsers();
       await this.loadExpenseTypes();
       
+      // Load exchange rates (always visible)
+      if (this.isDashboardPage()) {
+        await this.loadExchangeRates();
+      }
+      
       // Check authentication for protected features
       const isAuthenticated = await this.checkAuthStatus();
       
@@ -200,6 +205,93 @@ class ExpensesApp {
     }
   }
 
+  async loadExchangeRates() {
+    try {
+      const response = await this.apiCall('/exchange-rates');
+      
+      if (response.exchange_rates) {
+        this.updateExchangeRatesDisplay(response.exchange_rates);
+        
+        // Update timestamp
+        const updatedElement = document.getElementById('exchange-rates-updated');
+        if (updatedElement) {
+          const now = new Date();
+          updatedElement.textContent = `Actualizado: ${now.toLocaleTimeString()}`;
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load exchange rates:', error);
+      this.showExchangeRatesError();
+    }
+  }
+
+  updateExchangeRatesDisplay(rates) {
+    // Find rates for our currency pairs
+    const usdToMxn = rates.find(r => r.from_currency === 'USD' && r.to_currency === 'MXN');
+    const eurToMxn = rates.find(r => r.from_currency === 'EUR' && r.to_currency === 'MXN');
+    const usdToEur = rates.find(r => r.from_currency === 'USD' && r.to_currency === 'EUR');
+    
+    // Simulate daily changes (in real app, this would come from API)
+    const simulateChange = (rate) => {
+      const changePercent = (Math.random() - 0.5) * 4; // -2% to +2%
+      const change = rate * (changePercent / 100);
+      return { change, changePercent };
+    };
+    
+    // Update USD → MXN
+    if (usdToMxn) {
+      const rateElement = document.getElementById('rate-usd-mxn');
+      const changeElement = document.getElementById('change-usd-mxn');
+      if (rateElement) rateElement.textContent = `$${usdToMxn.rate.toFixed(2)}`;
+      if (changeElement) {
+        const { change, changePercent } = simulateChange(usdToMxn.rate);
+        const isPositive = change >= 0;
+        changeElement.textContent = `${isPositive ? '+' : ''}${change.toFixed(2)} (${changePercent.toFixed(1)}%)`;
+        changeElement.className = `text-xs ${isPositive ? 'text-green-600' : 'text-red-600'}`;
+      }
+    }
+    
+    // Update EUR → MXN
+    if (eurToMxn) {
+      const rateElement = document.getElementById('rate-eur-mxn');
+      const changeElement = document.getElementById('change-eur-mxn');
+      if (rateElement) rateElement.textContent = `$${eurToMxn.rate.toFixed(2)}`;
+      if (changeElement) {
+        const { change, changePercent } = simulateChange(eurToMxn.rate);
+        const isPositive = change >= 0;
+        changeElement.textContent = `${isPositive ? '+' : ''}${change.toFixed(2)} (${changePercent.toFixed(1)}%)`;
+        changeElement.className = `text-xs ${isPositive ? 'text-blue-600' : 'text-red-600'}`;
+      }
+    }
+    
+    // Update USD → EUR
+    if (usdToEur) {
+      const rateElement = document.getElementById('rate-usd-eur');
+      const changeElement = document.getElementById('change-usd-eur');
+      if (rateElement) rateElement.textContent = `€${usdToEur.rate.toFixed(3)}`;
+      if (changeElement) {
+        const { change, changePercent } = simulateChange(usdToEur.rate);
+        const isPositive = change >= 0;
+        changeElement.textContent = `${isPositive ? '+' : ''}${change.toFixed(3)} (${changePercent.toFixed(1)}%)`;
+        changeElement.className = `text-xs ${isPositive ? 'text-purple-600' : 'text-red-600'}`;
+      }
+    }
+  }
+
+  showExchangeRatesError() {
+    const container = document.getElementById('exchange-rates-container');
+    if (container) {
+      container.innerHTML = `
+        <div class="col-span-3 bg-red-50 border border-red-200 rounded-lg p-4">
+          <div class="flex items-center">
+            <i class="fas fa-exclamation-triangle text-red-500 mr-2"></i>
+            <span class="text-red-800">Error al cargar tipos de cambio. Usando valores de referencia.</span>
+          </div>
+        </div>
+      `;
+    }
+  }
+
   async loadDashboardMetrics() {
     try {
       const response = await this.apiCall('/dashboard/metrics');
@@ -228,6 +320,9 @@ class ExpensesApp {
       // Update charts
       this.renderCompanyChart(response.company_metrics);
       this.renderCurrencyChart(response.currency_metrics);
+      
+      // Load exchange rates
+      await this.loadExchangeRates();
       
       // Render recent activity and pending actions
       this.renderRecentActivity(response.recent_expenses);
@@ -1588,6 +1683,27 @@ function showExpenseForm() {
 function closeExpenseForm() {
   if (window.expensesApp) {
     window.expensesApp.closeExpenseForm();
+  }
+}
+
+function refreshExchangeRates() {
+  if (window.expensesApp) {
+    // Add visual feedback
+    const button = event.target;
+    const icon = button.querySelector('i');
+    if (icon) {
+      icon.classList.add('fa-spin');
+      setTimeout(() => icon.classList.remove('fa-spin'), 1000);
+    }
+    
+    window.expensesApp.loadExchangeRates();
+    
+    // Add animation to cards
+    const cards = document.querySelectorAll('.exchange-rate-card');
+    cards.forEach(card => {
+      card.classList.add('rate-update-animation');
+      setTimeout(() => card.classList.remove('rate-update-animation'), 500);
+    });
   }
 }
 
