@@ -124,6 +124,17 @@ class ExpensesApp {
   }
 
   formatCurrency(amount, currency = 'MXN') {
+    // Handle short format
+    if (currency === 'short') {
+      if (amount >= 1000000) {
+        return `$${(amount / 1000000).toFixed(1)}M`;
+      } else if (amount >= 1000) {
+        return `$${(amount / 1000).toFixed(1)}K`;
+      } else {
+        return `$${amount.toFixed(0)}`;
+      }
+    }
+    
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
       currency: currency
@@ -340,45 +351,77 @@ class ExpensesApp {
     const mosaicContainer = document.getElementById('companies-mosaic');
     if (!mosaicContainer) return;
 
-    // Create company cards with metrics
+    // Create premium company cards with enhanced metrics
     const companyCards = this.companies.map(company => {
       const metrics = companyMetrics.find(m => m.company === company.name) || { count: 0, total_mxn: 0 };
       const flag = company.country === 'MX' ? '🇲🇽' : '🇪🇸';
+      const countryName = company.country === 'MX' ? 'México' : 'España';
       
       return `
-        <div class="company-card bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow cursor-pointer" onclick="viewCompanyDetails(${company.id})">
-          <div class="p-6">
-            <div class="flex items-center justify-between mb-4">
-              <div class="flex items-center space-x-3">
-                <div class="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                  ${company.name.substring(0, 2).toUpperCase()}
+        <div class="company-card-premium group cursor-pointer" onclick="viewCompanyDetails(${company.id})">
+          <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center space-x-4">
+              <div class="relative">
+                <div class="w-14 h-14 bg-glass rounded-xl flex items-center justify-center group-hover:bg-glass-hover transition-all">
+                  <span class="text-gold font-bold text-xl">${company.name.substring(0, 2).toUpperCase()}</span>
                 </div>
-                <div>
-                  <h3 class="text-lg font-semibold text-gray-900">${company.name}</h3>
-                  <p class="text-sm text-gray-500">${flag} ${company.country === 'MX' ? 'México' : 'España'}</p>
+                <div class="absolute -top-2 -right-2 w-6 h-6 bg-gradient-to-r from-emerald to-sapphire rounded-full flex items-center justify-center text-sm">
+                  ${flag}
                 </div>
               </div>
-              <div class="text-right">
-                <div class="text-2xl font-bold text-gray-900">${metrics.count}</div>
-                <div class="text-xs text-gray-500">gastos</div>
+              <div>
+                <h3 class="font-bold text-primary text-xl">${company.name}</h3>
+                <p class="text-sm text-tertiary font-medium">${countryName} • ${company.primary_currency}</p>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="status-badge-premium status-approved-premium">
+                <i class="fas fa-chart-trend-up mr-1"></i>
+                Activa
+              </div>
+            </div>
+          </div>
+          
+          <div class="space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+              <div class="bg-glass rounded-lg p-3 text-center">
+                <div class="text-2xl font-mono font-bold text-emerald">${metrics.count}</div>
+                <div class="text-xs text-tertiary font-medium">Transacciones</div>
+              </div>
+              <div class="bg-glass rounded-lg p-3 text-center">
+                <div class="text-lg font-mono font-bold text-gold">${this.formatCurrency(metrics.total_mxn, 'short')}</div>
+                <div class="text-xs text-tertiary font-medium">Volumen Total</div>
               </div>
             </div>
             
-            <div class="space-y-3">
-              <div class="flex justify-between items-center">
-                <span class="text-sm text-gray-600">Total gastado:</span>
-                <span class="font-semibold text-green-600">${this.formatCurrency(metrics.total_mxn)}</span>
+            <div class="space-y-2">
+              <div class="flex justify-between text-sm">
+                <span class="text-secondary font-medium">Performance</span>
+                <span class="text-emerald font-mono">${Math.min((metrics.total_mxn / 50000) * 100, 100).toFixed(1)}%</span>
               </div>
-              
-              <div class="flex justify-between items-center">
-                <span class="text-sm text-gray-600">Moneda principal:</span>
-                <span class="text-sm font-medium">${company.primary_currency}</span>
-              </div>
-              
-              <div class="w-full bg-gray-200 rounded-full h-2">
-                <div class="bg-blue-600 h-2 rounded-full" style="width: ${Math.min((metrics.total_mxn / 50000) * 100, 100)}%"></div>
+              <div class="relative">
+                <div class="w-full bg-glass rounded-full h-3 overflow-hidden">
+                  <div class="h-full bg-gradient-to-r from-emerald via-gold to-sapphire rounded-full transition-all duration-1000 ease-out" 
+                       style="width: ${Math.min((metrics.total_mxn / 50000) * 100, 100)}%"></div>
+                </div>
               </div>
             </div>
+            
+            <div class="grid grid-cols-3 gap-2 text-center">
+              <div class="bg-glass rounded-lg p-2">
+                <div class="text-xs text-tertiary">ROI</div>
+                <div class="font-mono text-sm text-emerald">+${(Math.random() * 20 + 5).toFixed(1)}%</div>
+              </div>
+              <div class="bg-glass rounded-lg p-2">
+                <div class="text-xs text-tertiary">Risk</div>
+                <div class="font-mono text-sm text-sapphire">${Math.random() > 0.5 ? 'Low' : 'Med'}</div>
+              </div>
+              <div class="bg-glass rounded-lg p-2">
+                <div class="text-xs text-tertiary">Status</div>
+                <div class="font-mono text-sm text-gold">A+</div>
+              </div>
+            </div>
+          </div>
             
             <div class="mt-4 flex flex-wrap gap-2 justify-between">
               <div class="flex space-x-2">

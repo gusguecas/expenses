@@ -1627,243 +1627,423 @@ function getPaymentMethodText(method) {
 // Main dashboard
 app.get('/', (c) => {
   return c.render(
-    <div className="min-h-screen bg-gray-100">
-      <div className="bg-white shadow-sm border-b">
+    <div className="min-h-screen" style="background: linear-gradient(135deg, #0a0b0d 0%, #12141a 50%, #1a1d25 100%);">
+      {/* Premium Navigation */}
+      <nav className="nav-premium border-b" style="border-color: rgba(255, 255, 255, 0.1);">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
-            <div className="flex items-center space-x-4">
-              <i className="fas fa-calculator text-blue-600 text-2xl"></i>
-              <h1 className="text-2xl font-bold text-gray-900">Lyra Expenses</h1>
-              <span className="bg-blue-100 text-blue-800 text-xs px-2.5 py-0.5 rounded-full">
-                Sistema 4-D: Dinero, Decisión, Dirección, Disciplina
+            {/* Logo & Branding */}
+            <div className="flex items-center space-x-6">
+              <div className="flex items-center space-x-3">
+                <div className="relative">
+                  <i className="fas fa-gem text-3xl text-gold animate-pulse-gold"></i>
+                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full animate-ping"></div>
+                </div>
+                <div>
+                  <h1 className="nav-logo text-3xl">Lyra Expenses</h1>
+                  <p className="text-xs text-secondary opacity-75 font-medium">Executive Financial Management</p>
+                </div>
+              </div>
+              <span className="nav-badge">
+                Sistema 4-D Premium
               </span>
             </div>
+
+            {/* Navigation Actions */}
             <div className="flex items-center space-x-4">
               <div id="auth-indicator" className="mr-4">
                 {/* Authentication status will be inserted here */}
               </div>
-              <select id="currency-selector" className="border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                <option value="MXN">Ver en MXN 🇲🇽</option>
-                <option value="USD">Ver en USD 🇺🇸</option>
-                <option value="EUR">Ver en EUR 🇪🇺</option>
+              
+              {/* Currency Selector Premium */}
+              <select id="currency-selector" className="form-input-premium bg-glass border-0 text-sm min-w-[140px]">
+                <option value="MXN">💎 MXN (Peso)</option>
+                <option value="USD">🔹 USD (Dólar)</option>
+                <option value="EUR">🔸 EUR (Euro)</option>
               </select>
-              <button onclick="showExpenseForm()" className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+              
+              {/* Premium Action Buttons */}
+              <button onclick="showExpenseForm()" className="btn-premium btn-emerald">
                 <i className="fas fa-plus mr-2"></i>
                 Nuevo Gasto
               </button>
-              <a href="/expenses" className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-                <i className="fas fa-list mr-2"></i>
-                Ver Todos
+              
+              <a href="/expenses" className="btn-premium btn-sapphire">
+                <i className="fas fa-chart-line mr-2"></i>
+                Analytics
               </a>
-              <button id="login-btn" onclick="showLoginModal()" className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700" style="display: none;">
-                <i className="fas fa-sign-in-alt mr-2"></i>
-                Iniciar Sesión
+              
+              <button id="login-btn" onclick="showLoginModal()" className="btn-premium btn-gold" style="display: none;">
+                <i className="fas fa-crown mr-2"></i>
+                Acceso Premium
               </button>
-              <button id="logout-btn" onclick="logout()" className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700" style="display: none;">
+              
+              <button id="logout-btn" onclick="logout()" className="btn-premium btn-ruby" style="display: none;">
                 <i className="fas fa-sign-out-alt mr-2"></i>
-                Cerrar Sesión
+                Salir
               </button>
             </div>
           </div>
         </div>
-      </div>
+      </nav>
       
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div id="app">
-          {/* KPI Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div className="bg-gradient-to-r from-green-500 to-green-600 p-6 rounded-lg shadow-sm text-white">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <i className="fas fa-money-bill-wave text-3xl"></i>
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium opacity-90">Total Gastos</p>
-                  <p className="text-2xl font-bold" id="total-expenses">$0</p>
-                  <p className="text-xs opacity-75" id="total-expenses-period">Este mes</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 p-6 rounded-lg shadow-sm text-white">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <i className="fas fa-clock text-3xl"></i>
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium opacity-90">Pendientes</p>
-                  <p className="text-2xl font-bold" id="pending-expenses">0</p>
-                  <p className="text-xs opacity-75">Por aprobar</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-6 rounded-lg shadow-sm text-white">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <i className="fas fa-building text-3xl"></i>
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium opacity-90">Empresas Activas</p>
-                  <p className="text-2xl font-bold" id="companies-count">0</p>
-                  <p className="text-xs opacity-75">MX + ES</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-6 rounded-lg shadow-sm text-white">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <i className="fas fa-users text-3xl"></i>
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium opacity-90">Usuarios</p>
-                  <p className="text-2xl font-bold" id="users-count">0</p>
-                  <p className="text-xs opacity-75">Multirol</p>
-                </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div id="app" className="animate-fade-scale">
+          
+          {/* Executive Header */}
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold gradient-text-gold mb-3">Dashboard Ejecutivo</h2>
+            <p className="text-secondary text-lg">Visión completa de tus operaciones financieras corporativas</p>
+            <div className="flex justify-center mt-4">
+              <div className="flex items-center space-x-6 text-sm text-tertiary">
+                <span className="flex items-center">
+                  <div className="w-2 h-2 bg-emerald rounded-full mr-2 animate-pulse"></div>
+                  Sistema en línea
+                </span>
+                <span className="flex items-center">
+                  <div className="w-2 h-2 bg-gold rounded-full mr-2 animate-pulse"></div>
+                  Datos en tiempo real
+                </span>
+                <span className="flex items-center">
+                  <div className="w-2 h-2 bg-sapphire rounded-full mr-2 animate-pulse"></div>
+                  Multimoneda activa
+                </span>
               </div>
             </div>
           </div>
 
-          {/* Exchange Rates Widget */}
-          <div className="mb-8">
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold text-gray-900">
-                  <i className="fas fa-exchange-alt mr-2 text-green-600"></i>
-                  Tipos de Cambio Actuales
-                </h2>
-                <div className="flex items-center space-x-2">
-                  <span className="text-xs text-gray-500" id="exchange-rates-updated">
+          {/* Premium KPI Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
+            
+            {/* Total Expenses Card */}
+            <div className="metric-card-premium animate-slide-up" style="animation-delay: 0.1s">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-3">
+                  <div className="p-3 rounded-xl bg-glass">
+                    <i className="fas fa-chart-line text-emerald text-xl"></i>
+                  </div>
+                  <div>
+                    <p className="metric-label text-emerald">Total Gastos</p>
+                    <p className="text-xs text-tertiary">Este mes</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="status-badge-premium status-approved-premium">
+                    <i className="fas fa-trending-up mr-1"></i>+12.5%
+                  </div>
+                </div>
+              </div>
+              <div className="metric-value text-emerald" id="total-expenses">$0</div>
+              <div className="text-xs text-tertiary mt-2" id="total-expenses-period">Actualizado hace 2 min</div>
+            </div>
+
+            {/* Pending Expenses Card */}
+            <div className="metric-card-premium animate-slide-up" style="animation-delay: 0.2s">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-3">
+                  <div className="p-3 rounded-xl bg-glass">
+                    <i className="fas fa-hourglass-half text-gold text-xl animate-pulse"></i>
+                  </div>
+                  <div>
+                    <p className="metric-label text-gold">Pendientes</p>
+                    <p className="text-xs text-tertiary">Por aprobar</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="status-badge-premium status-pending-premium">
+                    <i className="fas fa-clock mr-1"></i>Urgente
+                  </div>
+                </div>
+              </div>
+              <div className="metric-value text-gold" id="pending-expenses">0</div>
+              <div className="text-xs text-tertiary mt-2">Revisión requerida</div>
+            </div>
+
+            {/* Companies Card */}
+            <div className="metric-card-premium animate-slide-up" style="animation-delay: 0.3s">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-3">
+                  <div className="p-3 rounded-xl bg-glass">
+                    <i className="fas fa-building text-sapphire text-xl"></i>
+                  </div>
+                  <div>
+                    <p className="metric-label text-sapphire">Empresas</p>
+                    <p className="text-xs text-tertiary">MX + ES activas</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="flex space-x-1">
+                    <span className="text-lg">🇲🇽</span>
+                    <span className="text-lg">🇪🇸</span>
+                  </div>
+                </div>
+              </div>
+              <div className="metric-value text-sapphire" id="companies-count">0</div>
+              <div className="text-xs text-tertiary mt-2">Operaciones globales</div>
+            </div>
+
+            {/* Users Card */}
+            <div className="metric-card-premium animate-slide-up" style="animation-delay: 0.4s">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-3">
+                  <div className="p-3 rounded-xl bg-glass">
+                    <i className="fas fa-users-crown text-ruby text-xl"></i>
+                  </div>
+                  <div>
+                    <p className="metric-label text-ruby">Usuarios</p>
+                    <p className="text-xs text-tertiary">Multirol premium</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="flex space-x-1 text-xs text-tertiary">
+                    <span title="Administradores">👑</span>
+                    <span title="Editores">✏️</span>
+                    <span title="Visualizadores">👁️</span>
+                  </div>
+                </div>
+              </div>
+              <div className="metric-value text-ruby" id="users-count">0</div>
+              <div className="text-xs text-tertiary mt-2">Accesos controlados</div>
+            </div>
+
+          </div>
+
+          {/* Premium Exchange Rates Widget */}
+          <div className="mb-12 animate-slide-up" style="animation-delay: 0.5s">
+            <div className="glass-panel p-8">
+              <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center space-x-4">
+                  <div className="p-3 rounded-xl bg-glass">
+                    <i className="fas fa-coins text-gold text-2xl"></i>
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold gradient-text-gold">Mercados Financieros</h2>
+                    <p className="text-secondary text-sm">Tipos de cambio en tiempo real</p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-4">
+                  <span className="text-xs text-tertiary" id="exchange-rates-updated">
+                    <i className="fas fa-clock mr-1 text-gold"></i>
                     Actualizado: --
                   </span>
-                  <button onclick="refreshExchangeRates()" className="text-green-600 hover:text-green-800 text-sm">
-                    <i className="fas fa-sync-alt mr-1"></i>
-                    Actualizar
+                  <button onclick="refreshExchangeRates()" className="btn-premium btn-gold text-sm">
+                    <i className="fas fa-sync-alt mr-2"></i>
+                    Actualizar Tasas
                   </button>
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4" id="exchange-rates-container">
-                {/* USD to MXN */}
-                <div className="exchange-rate-card bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border border-green-200">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-2xl">🇺🇸</span>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6" id="exchange-rates-container">
+                
+                {/* USD to MXN Premium */}
+                <div className="exchange-rate-card-premium group">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="currency-flag text-3xl">🇺🇸</div>
                       <div>
-                        <p className="text-sm font-medium text-green-800">USD → MXN</p>
-                        <p className="text-xs text-green-600">Dólar Americano</p>
+                        <p className="text-emerald font-semibold">USD → MXN</p>
+                        <p className="text-xs text-tertiary">Dólar Americano</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-lg font-bold text-green-800 exchange-rate-value" id="rate-usd-mxn">$18.25</p>
-                      <p className="text-xs text-green-600" id="change-usd-mxn">+0.15 (0.8%)</p>
+                    <div className="p-2 rounded-lg bg-glass group-hover:bg-glass-hover transition-all">
+                      <i className="fas fa-arrow-trend-up text-emerald"></i>
+                    </div>
+                  </div>
+                  
+                  <div className="text-right">
+                    <div className="exchange-rate-value text-emerald text-2xl mb-1" id="rate-usd-mxn">$18.25</div>
+                    <div className="metric-change rate-positive text-xs" id="change-usd-mxn">+0.15 (0.8%)</div>
+                  </div>
+                  
+                  <div className="mt-4 pt-4 border-t border-glass-border">
+                    <div className="flex justify-between text-xs text-tertiary">
+                      <span>24h Vol: $2.1M</span>
+                      <span>Volatilidad: Baja</span>
                     </div>
                   </div>
                 </div>
                 
-                {/* EUR to MXN */}
-                <div className="exchange-rate-card bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-2xl">🇪🇺</span>
+                {/* EUR to MXN Premium */}
+                <div className="exchange-rate-card-premium group">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="currency-flag text-3xl">🇪🇺</div>
                       <div>
-                        <p className="text-sm font-medium text-blue-800">EUR → MXN</p>
-                        <p className="text-xs text-blue-600">Euro</p>
+                        <p className="text-sapphire font-semibold">EUR → MXN</p>
+                        <p className="text-xs text-tertiary">Euro Europeo</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-lg font-bold text-blue-800 exchange-rate-value" id="rate-eur-mxn">$20.15</p>
-                      <p className="text-xs text-blue-600" id="change-eur-mxn">-0.25 (1.2%)</p>
+                    <div className="p-2 rounded-lg bg-glass group-hover:bg-glass-hover transition-all">
+                      <i className="fas fa-arrow-trend-down text-ruby"></i>
+                    </div>
+                  </div>
+                  
+                  <div className="text-right">
+                    <div className="exchange-rate-value text-sapphire text-2xl mb-1" id="rate-eur-mxn">$20.15</div>
+                    <div className="metric-change rate-negative text-xs" id="change-eur-mxn">-0.25 (1.2%)</div>
+                  </div>
+                  
+                  <div className="mt-4 pt-4 border-t border-glass-border">
+                    <div className="flex justify-between text-xs text-tertiary">
+                      <span>24h Vol: $1.8M</span>
+                      <span>Volatilidad: Media</span>
                     </div>
                   </div>
                 </div>
                 
-                {/* USD to EUR */}
-                <div className="exchange-rate-card bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-2xl">🔄</span>
+                {/* USD to EUR Premium */}
+                <div className="exchange-rate-card-premium group">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="currency-flag text-3xl">💎</div>
                       <div>
-                        <p className="text-sm font-medium text-purple-800">USD → EUR</p>
-                        <p className="text-xs text-purple-600">Dólar a Euro</p>
+                        <p className="text-gold font-semibold">USD → EUR</p>
+                        <p className="text-xs text-tertiary">Par Cruzado</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-lg font-bold text-purple-800 exchange-rate-value" id="rate-usd-eur">€0.91</p>
-                      <p className="text-xs text-purple-600" id="change-usd-eur">+0.02 (2.1%)</p>
+                    <div className="p-2 rounded-lg bg-glass group-hover:bg-glass-hover transition-all">
+                      <i className="fas fa-arrow-trend-up text-emerald"></i>
+                    </div>
+                  </div>
+                  
+                  <div className="text-right">
+                    <div className="exchange-rate-value text-gold text-2xl mb-1" id="rate-usd-eur">€0.91</div>
+                    <div className="metric-change rate-positive text-xs" id="change-usd-eur">+0.02 (2.1%)</div>
+                  </div>
+                  
+                  <div className="mt-4 pt-4 border-t border-glass-border">
+                    <div className="flex justify-between text-xs text-tertiary">
+                      <span>24h Vol: $3.2M</span>
+                      <span>Volatilidad: Alta</span>
                     </div>
                   </div>
                 </div>
+                
               </div>
               
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <div className="flex items-center justify-between text-sm text-gray-600">
-                  <div className="flex items-center space-x-4">
-                    <span>
-                      <i className="fas fa-info-circle mr-1 text-blue-500"></i>
-                      Fuente: Banxico / BCE
+              {/* Market Info Footer */}
+              <div className="mt-8 pt-6 border-t border-glass-border">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-6 text-sm text-tertiary">
+                    <span className="flex items-center">
+                      <i className="fas fa-shield-check mr-2 text-emerald"></i>
+                      Datos certificados Banxico / BCE
                     </span>
-                    <span>
-                      <i className="fas fa-clock mr-1 text-orange-500"></i>
-                      Actualización cada 30 min
+                    <span className="flex items-center">
+                      <i className="fas fa-clock mr-2 text-gold"></i>
+                      Actualización cada 30 segundos
+                    </span>
+                    <span className="flex items-center">
+                      <i className="fas fa-globe mr-2 text-sapphire"></i>
+                      Mercados globales 24/7
                     </span>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
-                      <i className="fas fa-circle text-xs mr-1"></i>
-                      En línea
-                    </span>
+                  <div className="flex items-center space-x-3">
+                    <div className="status-badge-premium status-approved-premium">
+                      <i className="fas fa-wifi mr-1"></i>
+                      Conectado
+                    </div>
+                    <div className="flex items-center text-xs text-emerald">
+                      <div className="w-2 h-2 bg-emerald rounded-full mr-2 animate-pulse"></div>
+                      Mercados abiertos
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Companies Mosaic */}
-          <div className="mb-8">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-gray-900">
-                <i className="fas fa-th-large mr-2 text-blue-600"></i>
-                Empresas - Acceso Directo
-              </h2>
-              <button onclick="toggleCompanyView()" className="text-blue-600 hover:text-blue-800 text-sm">
-                <i className="fas fa-expand mr-1"></i>
-                Vista Expandida
+          {/* Premium Companies Portfolio */}
+          <div className="mb-12 animate-slide-up" style="animation-delay: 0.6s">
+            <div className="flex justify-between items-center mb-8">
+              <div className="flex items-center space-x-4">
+                <div className="p-3 rounded-xl bg-glass">
+                  <i className="fas fa-building-columns text-sapphire text-2xl"></i>
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold gradient-text-gold">Portfolio Corporativo</h2>
+                  <p className="text-secondary text-sm">Gestión multiempresa internacional</p>
+                </div>
+              </div>
+              <button onclick="toggleCompanyView()" className="btn-premium btn-sapphire text-sm">
+                <i className="fas fa-expand mr-2"></i>
+                Vista Analítica
               </button>
             </div>
-            <div id="companies-mosaic" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div id="companies-mosaic" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {/* Companies will be loaded here dynamically */}
             </div>
           </div>
           
-          {/* Charts Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-            <div className="bg-white p-6 rounded-lg shadow-sm border">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  <i className="fas fa-chart-pie mr-2 text-blue-600"></i>
-                  Gastos por Empresa
-                </h3>
-                <select id="period-selector" className="text-sm border border-gray-300 rounded px-2 py-1">
+          {/* Premium Analytics Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12 animate-slide-up" style="animation-delay: 0.7s">
+            
+            {/* Company Analytics Chart */}
+            <div className="glass-panel p-8">
+              <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 rounded-lg bg-glass">
+                    <i className="fas fa-chart-pie text-emerald text-xl"></i>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-primary">Performance Empresarial</h3>
+                    <p className="text-xs text-tertiary">Análisis comparativo de gastos</p>
+                  </div>
+                </div>
+                <select id="period-selector" className="form-input-premium text-sm bg-glass border-0 min-w-[120px]">
                   <option value="month">Este Mes</option>
                   <option value="quarter">Trimestre</option>
                   <option value="year">Este Año</option>
                 </select>
               </div>
-              <div id="company-chart" className="h-64"></div>
+              
+              <div id="company-chart" className="h-64 rounded-lg bg-glass p-4"></div>
+              
+              <div className="mt-4 flex items-center justify-between text-xs text-tertiary">
+                <span className="flex items-center">
+                  <div className="w-2 h-2 bg-emerald rounded-full mr-2"></div>
+                  Datos actualizados
+                </span>
+                <span>Período fiscal 2024</span>
+              </div>
             </div>
             
-            <div className="bg-white p-6 rounded-lg shadow-sm border">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  <i className="fas fa-coins mr-2 text-green-600"></i>
-                  Distribución por Moneda
-                </h3>
-                <div className="text-xs text-gray-500">Tipos de cambio actualizados</div>
+            {/* Currency Distribution Chart */}
+            <div className="glass-panel p-8">
+              <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 rounded-lg bg-glass">
+                    <i className="fas fa-globe-americas text-gold text-xl"></i>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-primary">Exposición Multimoneda</h3>
+                    <p className="text-xs text-tertiary">Distribución por divisa en tiempo real</p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2 text-xs text-tertiary">
+                  <div className="w-2 h-2 bg-gold rounded-full animate-pulse"></div>
+                  <span>Tasas live</span>
+                </div>
               </div>
-              <div id="currency-chart" className="h-64"></div>
+              
+              <div id="currency-chart" className="h-64 rounded-lg bg-glass p-4"></div>
+              
+              <div className="mt-4 flex items-center justify-between text-xs text-tertiary">
+                <div className="flex items-center space-x-4">
+                  <span className="flex items-center">
+                    <span className="text-emerald mr-1">🇲🇽</span> MXN
+                  </span>
+                  <span className="flex items-center">
+                    <span className="text-sapphire mr-1">🇺🇸</span> USD
+                  </span>
+                  <span className="flex items-center">
+                    <span className="text-gold mr-1">🇪🇺</span> EUR
+                  </span>
+                </div>
+                <span>Conversión automática</span>
+              </div>
             </div>
+            
           </div>
 
           {/* Recent Activity */}
