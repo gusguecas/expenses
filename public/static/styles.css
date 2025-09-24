@@ -282,6 +282,139 @@
   }
 }
 
+/* Mobile-First Optimizations */
+@media (max-width: 768px) {
+  /* Improve touch targets */
+  button, input[type="submit"], input[type="button"] {
+    min-height: 48px !important;
+    min-width: 48px;
+    font-size: 16px !important; /* Prevents zoom on iOS */
+  }
+  
+  /* Better form inputs */
+  input, select, textarea {
+    min-height: 48px !important;
+    font-size: 16px !important; /* Prevents zoom on iOS */
+    padding: 12px !important;
+  }
+  
+  /* Camera capture button enhancements */
+  .camera-capture-btn {
+    background: linear-gradient(45deg, #059669, #10b981);
+    box-shadow: 0 4px 8px rgba(5, 150, 105, 0.3);
+    transform: scale(1);
+    transition: all 0.2s ease;
+  }
+  
+  .camera-capture-btn:active {
+    transform: scale(0.95);
+    box-shadow: 0 2px 4px rgba(5, 150, 105, 0.5);
+  }
+  
+  /* Location button enhancements */
+  .location-btn {
+    background: linear-gradient(45deg, #7c3aed, #8b5cf6);
+    box-shadow: 0 4px 8px rgba(124, 58, 237, 0.3);
+  }
+  
+  .location-btn:active {
+    transform: scale(0.95);
+  }
+  
+  /* Modal improvements for mobile */
+  .modal {
+    width: 95% !important;
+    max-width: none !important;
+    margin: 10px;
+    border-radius: 12px;
+  }
+  
+  .modal-body {
+    padding: 1rem !important;
+  }
+  
+  /* Better drag and drop area */
+  .upload-area {
+    min-height: 120px;
+    border-width: 3px;
+    border-radius: 12px;
+  }
+  
+  /* Haptic feedback visual cue */
+  .haptic-feedback {
+    animation: vibrate 0.2s ease-in-out;
+  }
+  
+  @keyframes vibrate {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-2px); }
+    75% { transform: translateX(2px); }
+  }
+  
+  /* Better spacing for mobile */
+  .mobile-spacing {
+    padding: 1rem 0.5rem;
+  }
+  
+  /* Sticky headers for forms */
+  .sticky-mobile-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid #e5e7eb;
+  }
+  
+  /* Location indicator */
+  .location-indicator {
+    background: rgba(124, 58, 237, 0.1);
+    border: 1px solid rgba(124, 58, 237, 0.3);
+    border-radius: 8px;
+    padding: 8px;
+    color: #7c3aed;
+    font-size: 12px;
+    animation: pulse 2s infinite;
+  }
+  
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+}
+
+/* Progressive Web App (PWA) styles */
+.pwa-install-prompt {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  right: 20px;
+  background: linear-gradient(45deg, #2563eb, #3b82f6);
+  color: white;
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.3);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.pwa-install-prompt button {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
+}
+
 /* Print styles */
 @media print {
   .no-print {

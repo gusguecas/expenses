@@ -9,29 +9,46 @@ class ExpensesApp {
     this.users = [];
     this.expenseTypes = [];
     
+    // Authentication state
+    this.currentUser = null;
+    this.accessToken = localStorage.getItem('lyra_access_token');
+    this.refreshToken = localStorage.getItem('lyra_refresh_token');
+    this.sessionId = localStorage.getItem('lyra_session_id');
+    
     this.init();
   }
 
   async init() {
     try {
-      // Load initial data
+      // Load basic data first (needed for forms)
       await this.loadCompanies();
       await this.loadUsers();
       await this.loadExpenseTypes();
       
-      // Load dashboard metrics if on dashboard page
-      if (this.isDashboardPage()) {
-        await this.loadDashboardMetrics();
+      // Check authentication for protected features
+      const isAuthenticated = await this.checkAuthStatus();
+      
+      if (isAuthenticated) {
+        // Load dashboard metrics if on dashboard page and authenticated
+        if (this.isDashboardPage()) {
+          await this.loadDashboardMetrics();
+        }
+        
+        // Load expenses if on expenses page
+        if (this.isExpensesPage()) {
+          await this.loadExpenses();
+          this.setupFilters();
+        }
+      } else {
+        // User not authenticated - show basic interface but allow form usage
+        this.updateAuthUI();
       }
       
-      // Load expenses if on expenses page
-      if (this.isExpensesPage()) {
-        await this.loadExpenses();
-        this.setupFilters();
-      }
-      
-      // Setup event listeners
+      // Setup event listeners (always needed)
       this.setupEventListeners();
+      
+      // Apply mobile optimizations
+      optimizeForMobile();
     } catch (error) {
       console.error('Failed to initialize app:', error);
       this.showError('Error al inicializar la aplicación');
@@ -48,15 +65,47 @@ class ExpensesApp {
     return window.location.pathname === '/expenses';
   }
 
+  isMobileDevice() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+           ('ontouchstart' in window) || 
+           (window.innerWidth <= 768);
+  }
+
   async apiCall(endpoint, options = {}) {
     try {
+      const headers = {
+        'Content-Type': 'application/json',
+        ...options.headers
+      };
+      
+      // Add authorization header if token exists
+      if (this.accessToken) {
+        headers['Authorization'] = `Bearer ${this.accessToken}`;
+      }
+      
       const response = await fetch(`${this.apiBase}${endpoint}`, {
-        headers: {
-          'Content-Type': 'application/json',
-          ...options.headers
-        },
+        headers,
         ...options
       });
+
+      // Handle 401 (unauthorized) by trying to refresh token
+      if (response.status === 401 && this.accessToken) {
+        const refreshed = await this.refreshAccessToken();
+        if (refreshed) {
+          // Retry the original request with new token
+          headers['Authorization'] = `Bearer ${this.accessToken}`;
+          const retryResponse = await fetch(`${this.apiBase}${endpoint}`, {
+            headers,
+            ...options
+          });
+          
+          if (!retryResponse.ok) {
+            throw new Error(`HTTP error! status: ${retryResponse.status}`);
+          }
+          
+          return await retryResponse.json();
+        }
+      }
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -236,15 +285,23 @@ class ExpensesApp {
               </div>
             </div>
             
-            <div class="mt-4 flex justify-between">
-              <button onclick="event.stopPropagation(); addExpenseForCompany(${company.id})" class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full hover:bg-green-200">
-                <i class="fas fa-plus mr-1"></i>
-                Agregar Gasto
-              </button>
-              <button onclick="event.stopPropagation(); viewCompanyReport(${company.id})" class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full hover:bg-blue-200">
-                <i class="fas fa-chart-bar mr-1"></i>
-                Ver Reporte
-              </button>
+            <div class="mt-4 flex flex-wrap gap-2 justify-between">
+              <div class="flex space-x-2">
+                <button onclick="event.stopPropagation(); addExpenseForCompany(${company.id})" class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full hover:bg-green-200">
+                  <i class="fas fa-plus mr-1"></i>
+                  Agregar Gasto
+                </button>
+                <button onclick="event.stopPropagation(); viewCompanyReport(${company.id})" class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full hover:bg-blue-200">
+                  <i class="fas fa-chart-bar mr-1"></i>
+                  Ver Reporte
+                </button>
+              </div>
+              ${company.country === 'MX' ? `
+                <button onclick="event.stopPropagation(); window.expensesApp.openCfdiValidation(${company.id})" class="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full hover:bg-purple-200">
+                  <i class="fas fa-file-invoice mr-1"></i>
+                  Validar CFDI
+                </button>
+              ` : ''}
             </div>
           </div>
         </div>
@@ -623,7 +680,6 @@ class ExpensesApp {
     // Reload expenses
     this.loadExpenses();
   }
-}
 
   // ===== EXPENSE FORM METHODS =====
 
@@ -797,36 +853,78 @@ class ExpensesApp {
 
   // ===== FILE HANDLING =====
 
-  handleFileSelect(files) {
+  async handleFileSelect(files) {
     const attachmentsList = document.getElementById('attachments-list');
     const attachmentsPreview = document.getElementById('attachments-preview');
+    const ocrEnabled = document.getElementById('enable-ocr')?.checked;
     
     if (!attachmentsList || !files.length) return;
 
     attachmentsPreview.classList.remove('hidden');
     
-    Array.from(files).forEach((file, index) => {
+    for (const file of Array.from(files)) {
       const fileDiv = document.createElement('div');
-      fileDiv.className = 'flex items-center justify-between p-3 bg-gray-50 rounded-lg border';
+      fileDiv.className = 'border border-gray-200 rounded-lg p-4 bg-white';
       
       const fileInfo = document.createElement('div');
-      fileInfo.className = 'flex items-center space-x-3';
+      fileInfo.className = 'flex items-center justify-between mb-3';
       
       const icon = this.getFileIcon(file.type);
       const fileSize = this.formatFileSize(file.size);
       
       fileInfo.innerHTML = `
-        <i class="${icon} text-blue-600"></i>
-        <div>
-          <p class="text-sm font-medium text-gray-900">${file.name}</p>
-          <p class="text-xs text-gray-500">${fileSize} - ${file.type}</p>
+        <div class="flex items-center space-x-3">
+          <i class="${icon} text-blue-600 text-xl"></i>
+          <div>
+            <p class="text-sm font-medium text-gray-900">${file.name}</p>
+            <p class="text-xs text-gray-500">${fileSize} - ${file.type}</p>
+          </div>
+        </div>
+        <div class="flex items-center space-x-2">
+          ${ocrEnabled && this.canProcessOcr(file.type) ? 
+            '<span class="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full">OCR Activado</span>' : 
+            ''}
+          <button type="button" class="text-red-600 hover:text-red-800 remove-file-btn">
+            <i class="fas fa-times"></i>
+          </button>
         </div>
       `;
       
-      const removeBtn = document.createElement('button');
-      removeBtn.type = 'button';
-      removeBtn.className = 'text-red-600 hover:text-red-800';
-      removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+      // OCR Processing Area
+      if (ocrEnabled && this.canProcessOcr(file.type)) {
+        const ocrDiv = document.createElement('div');
+        ocrDiv.className = 'mt-3 border-t pt-3';
+        ocrDiv.innerHTML = `
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-gray-600">
+              <i class="fas fa-robot mr-1"></i>
+              Procesando OCR...
+            </span>
+            <div class="w-4 h-4">
+              <i class="fas fa-spinner fa-spin text-blue-600"></i>
+            </div>
+          </div>
+          <div class="ocr-results mt-2 hidden">
+            <div class="bg-green-50 border border-green-200 rounded p-2 text-sm">
+              <div class="ocr-data"></div>
+              <div class="flex space-x-2 mt-2">
+                <button type="button" class="apply-ocr-btn text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700">
+                  <i class="fas fa-check mr-1"></i>
+                  Aplicar
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+        
+        fileDiv.appendChild(ocrDiv);
+        
+        // Process OCR
+        this.processFileOcr(file, ocrDiv);
+      }
+      
+      // Add event listeners
+      const removeBtn = fileInfo.querySelector('.remove-file-btn');
       removeBtn.onclick = () => {
         fileDiv.remove();
         if (attachmentsList.children.length === 0) {
@@ -834,10 +932,156 @@ class ExpensesApp {
         }
       };
       
-      fileDiv.appendChild(fileInfo);
-      fileDiv.appendChild(removeBtn);
       attachmentsList.appendChild(fileDiv);
-    });
+    }
+  }
+
+  canProcessOcr(mimeType) {
+    return mimeType.startsWith('image/') || mimeType === 'application/pdf';
+  }
+
+  async processFileOcr(file, ocrDiv) {
+    try {
+      // Simulate OCR processing
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Get OCR data (simulate API call)
+      const ocrData = await this.simulateOcrProcessing(file);
+      
+      // Update UI with results
+      const resultsDiv = ocrDiv.querySelector('.ocr-results');
+      const dataDiv = ocrDiv.querySelector('.ocr-data');
+      
+      if (ocrData && ocrData.extracted_data) {
+        const data = ocrData.extracted_data;
+        
+        dataDiv.innerHTML = `
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            ${data.amount ? `<div><strong>Monto:</strong> $${data.amount} ${data.currency}</div>` : ''}
+            ${data.date ? `<div><strong>Fecha:</strong> ${data.date}</div>` : ''}
+            ${data.vendor ? `<div><strong>Proveedor:</strong> ${data.vendor}</div>` : ''}
+            ${data.payment_method ? `<div><strong>Pago:</strong> ${data.payment_method}</div>` : ''}
+          </div>
+          <div class="text-xs text-gray-500 mt-1">
+            Confianza: ${Math.round(data.confidence_score * 100)}%
+          </div>
+        `;
+        
+        // Add click handler to apply button
+        const applyBtn = ocrDiv.querySelector('.apply-ocr-btn');
+        applyBtn.onclick = () => this.applyOcrDataToForm(data);
+        
+        resultsDiv.classList.remove('hidden');
+      } else {
+        dataDiv.innerHTML = '<div class="text-red-600">No se pudieron extraer datos del archivo</div>';
+        resultsDiv.classList.remove('hidden');
+      }
+      
+      // Hide processing indicator
+      ocrDiv.querySelector('.flex').classList.add('hidden');
+      
+    } catch (error) {
+      console.error('OCR processing failed:', error);
+      const dataDiv = ocrDiv.querySelector('.ocr-data');
+      dataDiv.innerHTML = '<div class="text-red-600">Error procesando OCR</div>';
+      ocrDiv.querySelector('.ocr-results').classList.remove('hidden');
+      ocrDiv.querySelector('.flex').classList.add('hidden');
+    }
+  }
+
+  async simulateOcrProcessing(file) {
+    // In production, this would call the actual OCR API
+    const fileName = file.name.toLowerCase();
+    
+    let mockData;
+    if (fileName.includes('ticket') || fileName.includes('recibo')) {
+      mockData = {
+        extracted_data: {
+          amount: 850.00,
+          currency: 'MXN',
+          date: new Date().toISOString().split('T')[0],
+          vendor: 'Restaurante Pujol',
+          description: 'Comida de trabajo',
+          payment_method: 'credit_card',
+          confidence_score: 0.94
+        }
+      };
+    } else if (fileName.includes('uber') || fileName.includes('taxi')) {
+      mockData = {
+        extracted_data: {
+          amount: 320.50,
+          currency: 'MXN',
+          date: new Date().toISOString().split('T')[0],
+          vendor: 'Uber',
+          description: 'Transporte al aeropuerto',
+          payment_method: 'cash',
+          confidence_score: 0.89
+        }
+      };
+    } else {
+      mockData = {
+        extracted_data: {
+          amount: 1500.00,
+          currency: 'USD',
+          date: new Date().toISOString().split('T')[0],
+          vendor: 'Adobe Inc',
+          description: 'Licencia de software',
+          payment_method: 'company_card',
+          confidence_score: 0.92
+        }
+      };
+    }
+    
+    return mockData;
+  }
+
+  applyOcrDataToForm(data) {
+    if (data.amount) {
+      const amountInput = document.getElementById('form-amount');
+      if (amountInput && !amountInput.value) {
+        amountInput.value = data.amount;
+      }
+    }
+    
+    if (data.currency) {
+      const currencySelect = document.getElementById('form-currency');
+      if (currencySelect && !currencySelect.value) {
+        currencySelect.value = data.currency;
+        // Trigger exchange rate update
+        window.updateExchangeRate();
+      }
+    }
+    
+    if (data.date) {
+      const dateInput = document.getElementById('form-expense-date');
+      if (dateInput && !dateInput.value) {
+        dateInput.value = data.date;
+      }
+    }
+    
+    if (data.vendor) {
+      const vendorInput = document.getElementById('form-vendor');
+      if (vendorInput && !vendorInput.value) {
+        vendorInput.value = data.vendor;
+      }
+    }
+    
+    if (data.description) {
+      const descInput = document.getElementById('form-description');
+      if (descInput && !descInput.value) {
+        descInput.value = data.description;
+      }
+    }
+    
+    if (data.payment_method) {
+      const paymentSelect = document.getElementById('form-payment-method');
+      if (paymentSelect && !paymentSelect.value) {
+        paymentSelect.value = data.payment_method;
+      }
+    }
+    
+    // Show success message
+    this.showSuccess('Datos del OCR aplicados al formulario');
   }
 
   getFileIcon(mimeType) {
@@ -854,6 +1098,451 @@ class ExpensesApp {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
+
+  // ===== AUTHENTICATION METHODS =====
+
+  async checkAuthStatus() {
+    if (!this.accessToken) {
+      this.showLoginModal();
+      return false;
+    }
+
+    try {
+      const response = await fetch('/api/auth/profile', {
+        headers: {
+          'Authorization': `Bearer ${this.accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        this.currentUser = result.user;
+        this.updateAuthUI();
+        return true;
+      } else if (response.status === 401) {
+        // Token expired, try to refresh
+        return await this.refreshAccessToken();
+      }
+    } catch (error) {
+      console.error('Auth check failed:', error);
+    }
+
+    this.logout();
+    return false;
+  }
+
+  async refreshAccessToken() {
+    if (!this.refreshToken) {
+      this.logout();
+      return false;
+    }
+
+    try {
+      const response = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: this.refreshToken })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        this.accessToken = result.tokens.accessToken;
+        this.refreshToken = result.tokens.refreshToken;
+        
+        localStorage.setItem('lyra_access_token', this.accessToken);
+        localStorage.setItem('lyra_refresh_token', this.refreshToken);
+        
+        // Retry getting user profile
+        return await this.checkAuthStatus();
+      }
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+    }
+
+    this.logout();
+    return false;
+  }
+
+  async login(email, password) {
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        this.currentUser = result.user;
+        this.accessToken = result.tokens.accessToken;
+        this.refreshToken = result.tokens.refreshToken;
+        this.sessionId = result.session_id;
+
+        // Store tokens
+        localStorage.setItem('lyra_access_token', this.accessToken);
+        localStorage.setItem('lyra_refresh_token', this.refreshToken);
+        localStorage.setItem('lyra_session_id', this.sessionId);
+
+        this.updateAuthUI();
+        this.hideLoginModal();
+        this.showMessage(`Bienvenido, ${result.user.name}!`, 'success');
+        
+        // Reload data after login
+        await this.loadDashboardMetrics();
+        
+        return true;
+      } else {
+        throw new Error(result.error || 'Login failed');
+      }
+    } catch (error) {
+      this.showMessage('Error de autenticación: ' + error.message, 'error');
+      return false;
+    }
+  }
+
+  async logout() {
+    try {
+      if (this.accessToken) {
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${this.accessToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ session_id: this.sessionId })
+        });
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+
+    // Clear local state
+    this.currentUser = null;
+    this.accessToken = null;
+    this.refreshToken = null;
+    this.sessionId = null;
+
+    localStorage.removeItem('lyra_access_token');
+    localStorage.removeItem('lyra_refresh_token');
+    localStorage.removeItem('lyra_session_id');
+
+    this.updateAuthUI();
+    this.showLoginModal();
+    this.showMessage('Sesión cerrada exitosamente', 'info');
+  }
+
+  updateAuthUI() {
+    const authIndicator = document.getElementById('auth-indicator');
+    const userInfo = document.getElementById('user-info');
+    const loginBtn = document.getElementById('login-btn');
+    const logoutBtn = document.getElementById('logout-btn');
+
+    if (this.currentUser) {
+      // User is logged in
+      if (authIndicator) {
+        authIndicator.innerHTML = `
+          <div class="flex items-center space-x-2 text-green-700 bg-green-100 px-3 py-1 rounded-full">
+            <i class="fas fa-user-check"></i>
+            <span>${this.currentUser.name}</span>
+            <span class="text-xs opacity-75">(${this.currentUser.role})</span>
+          </div>
+        `;
+      }
+      if (loginBtn) loginBtn.style.display = 'none';
+      if (logoutBtn) logoutBtn.style.display = 'block';
+    } else {
+      // User is not logged in
+      if (authIndicator) {
+        authIndicator.innerHTML = `
+          <div class="flex items-center space-x-2 text-red-700 bg-red-100 px-3 py-1 rounded-full">
+            <i class="fas fa-user-times"></i>
+            <span>No autenticado</span>
+          </div>
+        `;
+      }
+      if (loginBtn) loginBtn.style.display = 'block';
+      if (logoutBtn) logoutBtn.style.display = 'none';
+    }
+  }
+
+  showLoginModal() {
+    const modal = document.getElementById('login-modal');
+    if (!modal) {
+      this.createLoginModal();
+    }
+    
+    document.getElementById('login-modal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+  }
+
+  hideLoginModal() {
+    const modal = document.getElementById('login-modal');
+    if (modal) {
+      modal.classList.add('hidden');
+      document.body.style.overflow = 'auto';
+    }
+  }
+
+  createLoginModal() {
+    const modalHTML = `
+      <div id="login-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+          <div class="mt-3 text-center">
+            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 mb-4">
+              <i class="fas fa-lock text-blue-600 text-xl"></i>
+            </div>
+            <h3 class="text-lg font-medium text-gray-900 mb-6">Iniciar Sesión</h3>
+            
+            <form id="login-form" onsubmit="submitLogin(event)">
+              <div class="mb-4 text-left">
+                <label for="login-email" class="block text-sm font-medium text-gray-700 mb-2">
+                  Email
+                </label>
+                <input type="email" id="login-email" name="email" required
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       placeholder="admin@techmx.com">
+              </div>
+              
+              <div class="mb-6 text-left">
+                <label for="login-password" class="block text-sm font-medium text-gray-700 mb-2">
+                  Contraseña
+                </label>
+                <input type="password" id="login-password" name="password" required
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       placeholder="••••••••">
+              </div>
+              
+              <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-sm">
+                <p class="text-blue-800 font-medium mb-2">Usuarios de prueba:</p>
+                <p class="text-blue-700">• <strong>admin@techmx.com</strong> (admin123) - Administrador</p>
+                <p class="text-blue-700">• <strong>maria.lopez@techmx.com</strong> (user123) - Editor</p>
+              </div>
+              
+              <div class="flex justify-end space-x-3">
+                <button type="button" onclick="closeLoginModal()" 
+                        class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
+                  Cancelar
+                </button>
+                <button type="submit" 
+                        class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
+                  <i class="fas fa-sign-in-alt mr-1"></i>
+                  Iniciar Sesión
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+  }
+
+  // ===== CFDI VALIDATION METHODS =====
+
+  openCfdiValidation(companyId) {
+    const company = this.companies.find(c => c.id === companyId);
+    if (!company || company.country !== 'MX') {
+      this.showMessage('Solo las empresas mexicanas pueden validar CFDI', 'error');
+      return;
+    }
+
+    const modal = document.getElementById('cfdi-modal');
+    if (!modal) {
+      this.createCfdiModal();
+    }
+
+    // Update modal title with company name
+    document.getElementById('cfdi-company-name').textContent = company.name;
+    document.getElementById('cfdi-company-id').value = companyId;
+
+    // Reset form
+    this.resetCfdiForm();
+
+    // Show modal
+    document.getElementById('cfdi-modal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+  }
+
+  createCfdiModal() {
+    const modalHTML = `
+      <div id="cfdi-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden">
+        <div class="relative top-10 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+          <div class="mt-3">
+            <!-- Header -->
+            <div class="flex justify-between items-center mb-6">
+              <h3 class="text-lg font-semibold text-gray-900">
+                <i class="fas fa-file-invoice text-purple-600 mr-2"></i>
+                Validación CFDI - <span id="cfdi-company-name"></span>
+              </h3>
+              <button onclick="closeCfdiModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-xl"></i>
+              </button>
+            </div>
+
+            <!-- CFDI Upload Form -->
+            <form id="cfdi-form" onsubmit="submitCfdiValidation(event)">
+              <input type="hidden" id="cfdi-company-id" value="">
+              
+              <!-- File Upload Area -->
+              <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Archivo CFDI (XML o PDF)
+                </label>
+                <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:border-purple-400 transition-colors"
+                     ondrop="handleCfdiFileDrop(event)" 
+                     ondragover="handleDragOver(event)" 
+                     ondragleave="handleDragLeave(event)">
+                  <div class="space-y-1 text-center">
+                    <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-2"></i>
+                    <div class="flex text-sm text-gray-600">
+                      <label for="cfdi-file-input" class="relative cursor-pointer bg-white rounded-md font-medium text-purple-600 hover:text-purple-500">
+                        <span>Seleccionar archivo CFDI</span>
+                        <input id="cfdi-file-input" name="cfdi-file" type="file" class="sr-only" 
+                               accept=".xml,.pdf" onchange="handleCfdiFileSelect(event)">
+                      </label>
+                      <p class="pl-1">o arrastra y suelta aquí</p>
+                    </div>
+                    <p class="text-xs text-gray-500">XML o PDF hasta 10MB</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- File Preview Area -->
+              <div id="cfdi-file-preview" class="mb-6 hidden">
+                <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                  <div id="cfdi-file-info" class="flex items-center justify-between mb-3">
+                    <!-- File info will be inserted here -->
+                  </div>
+                  <div id="cfdi-validation-status" class="hidden">
+                    <!-- Validation status will be inserted here -->
+                  </div>
+                </div>
+              </div>
+
+              <!-- Manual Data Input -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div>
+                  <label for="cfdi-rfc-emisor" class="block text-sm font-medium text-gray-700">RFC Emisor</label>
+                  <input type="text" id="cfdi-rfc-emisor" name="rfc_emisor" 
+                         class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500"
+                         placeholder="RFC123456789">
+                </div>
+                <div>
+                  <label for="cfdi-rfc-receptor" class="block text-sm font-medium text-gray-700">RFC Receptor</label>
+                  <input type="text" id="cfdi-rfc-receptor" name="rfc_receptor" 
+                         class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500"
+                         placeholder="RFC987654321">
+                </div>
+                <div>
+                  <label for="cfdi-uuid" class="block text-sm font-medium text-gray-700">UUID (Folio Fiscal)</label>
+                  <input type="text" id="cfdi-uuid" name="uuid" 
+                         class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500"
+                         placeholder="12345678-1234-1234-1234-123456789012">
+                </div>
+                <div>
+                  <label for="cfdi-total" class="block text-sm font-medium text-gray-700">Total</label>
+                  <input type="number" id="cfdi-total" name="total" step="0.01" 
+                         class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500"
+                         placeholder="0.00">
+                </div>
+              </div>
+
+              <!-- Actions -->
+              <div class="flex justify-end space-x-3">
+                <button type="button" onclick="closeCfdiModal()" 
+                        class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
+                  Cancelar
+                </button>
+                <button type="submit" 
+                        class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
+                  <i class="fas fa-check mr-1"></i>
+                  Validar CFDI
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+  }
+
+  resetCfdiForm() {
+    const form = document.getElementById('cfdi-form');
+    if (form) {
+      form.reset();
+      document.getElementById('cfdi-file-preview').classList.add('hidden');
+      document.getElementById('cfdi-validation-status').classList.add('hidden');
+    }
+  }
+
+  async validateCfdiFile(file, companyId) {
+    try {
+      this.showMessage('Validando archivo CFDI...', 'info');
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('company_id', companyId);
+
+      const response = await fetch('/api/cfdi/validate', {
+        method: 'POST',
+        body: formData
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        this.displayCfdiValidationResult(result);
+        this.showMessage('CFDI validado exitosamente', 'success');
+      } else {
+        throw new Error(result.error || 'Error al validar CFDI');
+      }
+
+    } catch (error) {
+      console.error('Error validating CFDI:', error);
+      this.showMessage('Error al validar CFDI: ' + error.message, 'error');
+    }
+  }
+
+  displayCfdiValidationResult(result) {
+    const statusDiv = document.getElementById('cfdi-validation-status');
+    
+    if (result.cfdi_data) {
+      // Populate form fields with extracted data
+      const data = result.cfdi_data;
+      if (data.rfc_emisor) document.getElementById('cfdi-rfc-emisor').value = data.rfc_emisor;
+      if (data.rfc_receptor) document.getElementById('cfdi-rfc-receptor').value = data.rfc_receptor;
+      if (data.uuid) document.getElementById('cfdi-uuid').value = data.uuid;
+      if (data.total) document.getElementById('cfdi-total').value = data.total;
+    }
+
+    // Display validation status
+    const isValid = result.sat_valid;
+    const statusClass = isValid ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800';
+    const statusIcon = isValid ? 'fas fa-check-circle' : 'fas fa-exclamation-triangle';
+
+    statusDiv.innerHTML = `
+      <div class="${statusClass} border rounded-lg p-3">
+        <div class="flex items-center">
+          <i class="${statusIcon} mr-2"></i>
+          <span class="font-semibold">
+            ${isValid ? 'CFDI Válido' : 'CFDI No Válido'}
+          </span>
+        </div>
+        ${result.validation_details ? `
+          <div class="mt-2 text-sm">
+            <p><strong>Detalles:</strong> ${result.validation_details}</p>
+          </div>
+        ` : ''}
+      </div>
+    `;
+
+    statusDiv.classList.remove('hidden');
   }
 }
 
@@ -895,6 +1584,11 @@ async function submitExpenseForm(event) {
     return;
   }
   
+  // Capture location automatically for mobile devices
+  if (window.expensesApp.isMobileDevice()) {
+    await captureLocationForExpense();
+  }
+  
   const formData = window.expensesApp.getFormData();
   
   try {
@@ -914,6 +1608,129 @@ function refreshExchangeRate() {
 
 function handleFileSelect(event) {
   window.expensesApp.handleFileSelect(event.target.files);
+}
+
+// Mobile camera capture functions
+function captureFromCamera() {
+  const cameraInput = document.getElementById('camera-capture');
+  if (cameraInput) {
+    // Add haptic feedback for mobile devices
+    if ('vibrate' in navigator) {
+      navigator.vibrate([50, 50, 50]);
+    }
+    cameraInput.click();
+  }
+}
+
+function handleCameraCapture(event) {
+  const files = event.target.files;
+  if (files.length > 0) {
+    // Show immediate feedback for mobile users
+    window.expensesApp.showMessage('📸 Foto capturada exitosamente', 'success');
+    window.expensesApp.handleFileSelect(files);
+    
+    // Auto-fill expense date with today's date if empty
+    const dateField = document.getElementById('form-expense-date');
+    if (dateField && !dateField.value) {
+      const today = new Date().toISOString().split('T')[0];
+      dateField.value = today;
+    }
+  }
+}
+
+// Mobile-first optimization functions
+function optimizeForMobile() {
+  if (window.expensesApp.isMobileDevice()) {
+    // Add mobile-specific classes for better touch targets
+    const buttons = document.querySelectorAll('button, input[type="submit"]');
+    buttons.forEach(btn => {
+      btn.classList.add('min-h-12', 'text-base');
+    });
+    
+    // Improve form inputs for mobile
+    const inputs = document.querySelectorAll('input, select, textarea');
+    inputs.forEach(input => {
+      input.classList.add('min-h-12', 'text-base');
+    });
+    
+    // Add mobile keyboard hints
+    const amountInput = document.getElementById('form-amount');
+    if (amountInput) {
+      amountInput.setAttribute('inputmode', 'decimal');
+      amountInput.setAttribute('pattern', '[0-9]*\\.?[0-9]*');
+    }
+    
+    const dateInput = document.getElementById('form-expense-date');
+    if (dateInput) {
+      dateInput.setAttribute('inputmode', 'none');
+    }
+  }
+}
+
+// Auto-location for mobile expense tracking
+async function captureLocationForExpense() {
+  if ('geolocation' in navigator && window.expensesApp.isMobileDevice()) {
+    try {
+      const position = await new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 300000
+        });
+      });
+      
+      const { latitude, longitude } = position.coords;
+      window.expensesApp.showMessage('📍 Ubicación capturada', 'info');
+      
+      // Store location data (could be used for expense validation)
+      const locationData = {
+        latitude,
+        longitude,
+        timestamp: new Date().toISOString()
+      };
+      
+      // Add to notes field if empty
+      const notesField = document.getElementById('form-notes');
+      if (notesField && !notesField.value.trim()) {
+        notesField.value = `📍 Ubicación: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+      }
+      
+      return locationData;
+    } catch (error) {
+      console.log('Location capture failed:', error.message);
+    }
+  }
+  return null;
+}
+
+// Drag and drop handlers
+function handleFileDrop(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  
+  const uploadArea = event.currentTarget;
+  uploadArea.classList.remove('border-blue-400', 'bg-blue-50');
+  
+  const files = event.dataTransfer.files;
+  if (files.length > 0) {
+    window.expensesApp.handleFileSelect(files);
+  }
+}
+
+function handleDragOver(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  
+  const uploadArea = event.currentTarget;
+  uploadArea.classList.add('border-blue-400', 'bg-blue-50');
+}
+
+function handleDragLeave(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  
+  const uploadArea = event.currentTarget;
+  uploadArea.classList.remove('border-blue-400', 'bg-blue-50');
 }
 
 function saveDraft() {
@@ -1470,3 +2287,179 @@ document.addEventListener('DOMContentLoaded', () => {
   handleCurrencyChange();
   handlePeriodChange();
 });
+
+// ===== AUTHENTICATION GLOBAL FUNCTIONS =====
+
+function showLoginModal() {
+  window.expensesApp.showLoginModal();
+}
+
+function closeLoginModal() {
+  window.expensesApp.hideLoginModal();
+}
+
+async function submitLogin(event) {
+  event.preventDefault();
+  
+  const form = event.target;
+  const formData = new FormData(form);
+  const email = formData.get('email');
+  const password = formData.get('password');
+  
+  const submitBtn = form.querySelector('button[type="submit"]');
+  const originalText = submitBtn.innerHTML;
+  
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Iniciando...';
+  
+  try {
+    const success = await window.expensesApp.login(email, password);
+    if (!success) {
+      // Error already shown in login method
+    }
+  } catch (error) {
+    window.expensesApp.showMessage('Error de conexión', 'error');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = originalText;
+  }
+}
+
+function logout() {
+  window.expensesApp.logout();
+}
+
+// ===== CFDI VALIDATION GLOBAL FUNCTIONS =====
+
+function closeCfdiModal() {
+  const modal = document.getElementById('cfdi-modal');
+  if (modal) {
+    modal.classList.add('hidden');
+    document.body.style.overflow = 'auto';
+  }
+}
+
+function handleCfdiFileSelect(event) {
+  const file = event.target.files[0];
+  if (file) {
+    displayCfdiFileInfo(file);
+    
+    // Auto-validate if file is selected
+    const companyId = document.getElementById('cfdi-company-id').value;
+    if (companyId) {
+      window.expensesApp.validateCfdiFile(file, companyId);
+    }
+  }
+}
+
+function handleCfdiFileDrop(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  
+  const uploadArea = event.currentTarget;
+  uploadArea.classList.remove('border-purple-400', 'bg-purple-50');
+  
+  const files = event.dataTransfer.files;
+  if (files.length > 0) {
+    const file = files[0];
+    
+    // Check file type
+    if (file.type === 'text/xml' || file.type === 'application/xml' || 
+        file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.xml')) {
+      
+      displayCfdiFileInfo(file);
+      
+      // Auto-validate
+      const companyId = document.getElementById('cfdi-company-id').value;
+      if (companyId) {
+        window.expensesApp.validateCfdiFile(file, companyId);
+      }
+    } else {
+      window.expensesApp.showMessage('Solo se permiten archivos XML o PDF', 'error');
+    }
+  }
+}
+
+function displayCfdiFileInfo(file) {
+  const previewDiv = document.getElementById('cfdi-file-preview');
+  const fileInfoDiv = document.getElementById('cfdi-file-info');
+  
+  const fileSize = window.expensesApp.formatFileSize(file.size);
+  const fileIcon = file.type === 'application/pdf' ? 'fas fa-file-pdf text-red-600' : 'fas fa-file-code text-blue-600';
+  
+  fileInfoDiv.innerHTML = `
+    <div class="flex items-center space-x-3">
+      <i class="${fileIcon} text-xl"></i>
+      <div>
+        <p class="text-sm font-medium text-gray-900">${file.name}</p>
+        <p class="text-xs text-gray-500">${fileSize} - ${file.type}</p>
+      </div>
+    </div>
+    <button type="button" onclick="clearCfdiFile()" class="text-red-600 hover:text-red-800">
+      <i class="fas fa-times"></i>
+    </button>
+  `;
+  
+  previewDiv.classList.remove('hidden');
+}
+
+function clearCfdiFile() {
+  document.getElementById('cfdi-file-input').value = '';
+  document.getElementById('cfdi-file-preview').classList.add('hidden');
+  document.getElementById('cfdi-validation-status').classList.add('hidden');
+}
+
+async function submitCfdiValidation(event) {
+  event.preventDefault();
+  
+  const form = event.target;
+  const formData = new FormData(form);
+  const companyId = document.getElementById('cfdi-company-id').value;
+  
+  // Validate required fields
+  const rfcEmisor = formData.get('rfc_emisor');
+  const rfcReceptor = formData.get('rfc_receptor');
+  const uuid = formData.get('uuid');
+  
+  if (!rfcEmisor || !rfcReceptor || !uuid) {
+    window.expensesApp.showMessage('Por favor complete todos los campos obligatorios', 'error');
+    return;
+  }
+  
+  try {
+    window.expensesApp.showMessage('Validando datos CFDI...', 'info');
+    
+    const response = await fetch('/api/cfdi/validate-data', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        company_id: companyId,
+        rfc_emisor: rfcEmisor,
+        rfc_receptor: rfcReceptor,
+        uuid: uuid,
+        total: formData.get('total')
+      })
+    });
+    
+    const result = await response.json();
+    
+    if (response.ok) {
+      window.expensesApp.displayCfdiValidationResult(result);
+      window.expensesApp.showMessage('CFDI validado exitosamente', 'success');
+      
+      // Auto-close modal after success
+      setTimeout(() => {
+        closeCfdiModal();
+      }, 2000);
+      
+    } else {
+      throw new Error(result.error || 'Error al validar CFDI');
+    }
+    
+  } catch (error) {
+    console.error('Error validating CFDI:', error);
+    window.expensesApp.showMessage('Error al validar CFDI: ' + error.message, 'error');
+  }
+}

@@ -152,6 +152,35 @@ app.post('/api/init-db', async (c) => {
         source TEXT NOT NULL DEFAULT 'banxico',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(from_currency, to_currency, rate_date)
+      )`,
+      
+      `CREATE TABLE IF NOT EXISTS cfdi_validations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        company_id INTEGER NOT NULL,
+        expense_id INTEGER,
+        uuid TEXT NOT NULL,
+        rfc_emisor TEXT NOT NULL,
+        rfc_receptor TEXT NOT NULL,
+        total DECIMAL(12,2) NOT NULL,
+        fecha_emision DATETIME,
+        serie TEXT,
+        folio TEXT,
+        is_valid BOOLEAN NOT NULL DEFAULT FALSE,
+        validation_details TEXT,
+        validation_source TEXT DEFAULT 'manual',
+        validated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        validated_by INTEGER,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(uuid, company_id)
+      )`,
+      
+      `CREATE TABLE IF NOT EXISTS user_sessions (
+        id TEXT PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        expires_at DATETIME NOT NULL,
+        ip_address TEXT,
+        user_agent TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`
     ];
 
@@ -187,12 +216,12 @@ app.post('/api/init-db', async (c) => {
 
     await env.DB.prepare(`
       INSERT OR IGNORE INTO users (id, email, name, password_hash, role, active) VALUES 
-        (1, 'admin@techmx.com', 'Alejandro Rodríguez', '$2b$10$example_hash_admin', 'admin', TRUE),
-        (2, 'maria.lopez@techmx.com', 'María López', '$2b$10$example_hash_user1', 'editor', TRUE),
-        (3, 'carlos.martinez@innovacion.mx', 'Carlos Martínez', '$2b$10$example_hash_user2', 'advanced', TRUE),
-        (4, 'ana.garcia@consultoria.mx', 'Ana García', '$2b$10$example_hash_user3', 'editor', TRUE),
-        (5, 'pedro.sanchez@techespana.es', 'Pedro Sánchez', '$2b$10$example_hash_user4', 'advanced', TRUE),
-        (6, 'elena.torres@madrid.es', 'Elena Torres', '$2b$10$example_hash_user5', 'editor', TRUE)
+        (1, 'admin@techmx.com', 'Alejandro Rodríguez', '$2b$10$yvsqabOwKIXJf5cu2nCIq.LDZQAKQPusEN2pvncvnTgO9lHfgE1F6', 'admin', TRUE),
+        (2, 'maria.lopez@techmx.com', 'María López', '$2b$10$E28fauI9DklVUyNGeGC6X.TP6wUw7PjE2d/anA3DhqXr3V64.3M7C', 'editor', TRUE),
+        (3, 'carlos.martinez@innovacion.mx', 'Carlos Martínez', '$2b$10$E28fauI9DklVUyNGeGC6X.TP6wUw7PjE2d/anA3DhqXr3V64.3M7C', 'advanced', TRUE),
+        (4, 'ana.garcia@consultoria.mx', 'Ana García', '$2b$10$E28fauI9DklVUyNGeGC6X.TP6wUw7PjE2d/anA3DhqXr3V64.3M7C', 'editor', TRUE),
+        (5, 'pedro.sanchez@techespana.es', 'Pedro Sánchez', '$2b$10$E28fauI9DklVUyNGeGC6X.TP6wUw7PjE2d/anA3DhqXr3V64.3M7C', 'advanced', TRUE),
+        (6, 'elena.torres@madrid.es', 'Elena Torres', '$2b$10$E28fauI9DklVUyNGeGC6X.TP6wUw7PjE2d/anA3DhqXr3V64.3M7C', 'editor', TRUE)
     `).run();
 
     await env.DB.prepare(`
@@ -229,9 +258,24 @@ app.post('/api/init-db', async (c) => {
         (7, 3, 4, 6, 'Material de oficina importado', '2024-09-23', 250.00, 'USD', 18.25, 4562.50, 'bank_transfer', 'Office Depot USA', 'pending', 'Material especializado', FALSE, 4)
     `).run();
 
+    // Sample CFDI validations for Mexican companies
+    await env.DB.prepare(`
+      INSERT OR IGNORE INTO cfdi_validations (
+        company_id, expense_id, uuid, rfc_emisor, rfc_receptor, total, 
+        fecha_emision, serie, folio, is_valid, validation_details, 
+        validation_source, validated_by
+      ) VALUES 
+        (1, 1, '12345678-1234-1234-1234-123456789012', 'RPU123456789', 'TMX123456789', 850.00, 
+         '2024-09-20T14:30:00', 'A', '001', TRUE, 'CFDI válido - Verificado en SAT', 'xml', 1),
+        (2, 3, '87654321-4321-4321-4321-210987654321', 'ADO987654321', 'IDM987654321', 2500.00, 
+         '2024-09-22T09:15:00', 'B', '002', TRUE, 'CFDI válido - Factura de software', 'pdf', 3),
+        (3, 7, 'ABCDEFGH-1111-2222-3333-444455556666', 'ODP555666777', 'CEM555666777', 4562.50, 
+         '2024-09-23T16:45:00', 'C', '003', FALSE, 'Error: Receptor no coincide', 'manual', 4)
+    `).run();
+
     return c.json({ 
       success: true, 
-      message: 'Base de datos inicializada con datos de prueba',
+      message: 'Base de datos inicializada con datos de prueba (incluyendo CFDI validations)',
       timestamp: new Date().toISOString()
     });
   } catch (error) {
@@ -568,7 +612,7 @@ app.post('/api/exchange-rates/update', async (c) => {
   }
 })
 
-// Upload attachments endpoint
+// Upload attachments endpoint with OCR processing
 app.post('/api/attachments', async (c) => {
   const { env } = c;
   
@@ -578,6 +622,7 @@ app.post('/api/attachments', async (c) => {
     const formData = await c.req.formData();
     const file = formData.get('file');
     const expenseId = formData.get('expense_id');
+    const processOcr = formData.get('process_ocr') === 'true';
     
     if (!file || !expenseId) {
       return c.json({ error: 'File and expense_id are required' }, 400);
@@ -585,20 +630,29 @@ app.post('/api/attachments', async (c) => {
     
     // Simulate file upload
     const fileUrl = `/uploads/${Date.now()}-${file.name}`;
+    const fileType = file.type.startsWith('image/') ? 'image' : (file.type === 'application/pdf' ? 'pdf' : 'xml');
+    
+    // Process OCR if requested and file is an image or PDF
+    let ocrData = null;
+    if (processOcr && (fileType === 'image' || fileType === 'pdf')) {
+      ocrData = await processOcrExtraction(file, fileType);
+    }
     
     // Save attachment record
     const result = await env.DB.prepare(`
       INSERT INTO attachments (
         expense_id, file_name, file_type, file_url, file_size, 
-        mime_type, uploaded_by, uploaded_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        mime_type, ocr_text, ocr_confidence, uploaded_by, uploaded_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     `).bind(
       expenseId,
       file.name,
-      file.type.startsWith('image/') ? 'image' : (file.type === 'application/pdf' ? 'pdf' : 'xml'),
+      fileType,
       fileUrl,
       file.size,
       file.type,
+      ocrData?.text || null,
+      ocrData?.confidence || null,
       1 // Demo user
     ).run();
     
@@ -606,12 +660,530 @@ app.post('/api/attachments', async (c) => {
       success: true, 
       attachment_id: result.meta.last_row_id,
       file_url: fileUrl,
-      message: 'File uploaded successfully' 
+      ocr_data: ocrData,
+      message: 'File uploaded successfully' + (ocrData ? ' with OCR processing' : '')
     });
   } catch (error) {
-    return c.json({ error: 'Failed to upload attachment' }, 500);
+    return c.json({ error: 'Failed to upload attachment', details: error.message }, 500);
   }
 })
+
+// OCR processing endpoint for existing files
+app.post('/api/attachments/:id/ocr', async (c) => {
+  const { env } = c;
+  const attachmentId = c.req.param('id');
+  
+  try {
+    // Get attachment info
+    const attachment = await env.DB.prepare(`
+      SELECT * FROM attachments WHERE id = ?
+    `).bind(attachmentId).first();
+    
+    if (!attachment) {
+      return c.json({ error: 'Attachment not found' }, 404);
+    }
+    
+    if (attachment.file_type !== 'image' && attachment.file_type !== 'pdf') {
+      return c.json({ error: 'OCR only supported for images and PDFs' }, 400);
+    }
+    
+    // Process OCR (simulate with realistic data)
+    const ocrData = await processOcrExtraction(null, attachment.file_type, attachment.file_name);
+    
+    // Update attachment with OCR data
+    await env.DB.prepare(`
+      UPDATE attachments 
+      SET ocr_text = ?, ocr_confidence = ?
+      WHERE id = ?
+    `).bind(ocrData.text, ocrData.confidence, attachmentId).run();
+    
+    return c.json({ 
+      success: true,
+      ocr_data: ocrData,
+      message: 'OCR processing completed'
+    });
+  } catch (error) {
+    return c.json({ error: 'Failed to process OCR', details: error.message }, 500);
+  }
+})
+
+// Extract expense data from OCR text using AI
+app.post('/api/ocr/extract-expense-data', async (c) => {
+  const { env } = c;
+  
+  try {
+    const { ocr_text, attachment_id } = await c.req.json();
+    
+    if (!ocr_text) {
+      return c.json({ error: 'OCR text is required' }, 400);
+    }
+    
+    // Use AI to extract structured expense data from OCR text
+    const extractedData = await extractExpenseDataFromOcr(ocr_text);
+    
+    return c.json({ 
+      success: true,
+      extracted_data: extractedData,
+      message: 'Expense data extracted successfully'
+    });
+  } catch (error) {
+    return c.json({ error: 'Failed to extract expense data', details: error.message }, 500);
+  }
+})
+
+// Helper function to simulate OCR processing
+async function processOcrExtraction(file, fileType, fileName = null) {
+  // Simulate OCR processing with realistic ticket/receipt data
+  const sampleOcrResults = {
+    'ticket': {
+      text: `RESTAURANTE PUJOL
+Tennyson 133, Polanco
+Ciudad de México
+RFC: RPU890123ABC
+
+FECHA: ${new Date().toLocaleDateString('es-MX')}
+HORA: ${new Date().toLocaleTimeString('es-MX')}
+
+MESA: 12
+MESERO: Carlos Martinez
+
+CONSUMO:
+1x Menú Degustación     $1,200.00
+2x Vino Tinto Casa      $400.00
+1x Postre Especial      $250.00
+
+SUBTOTAL:               $1,850.00
+IVA (16%):              $296.00
+PROPINA SUGERIDA:       $277.50
+
+TOTAL:                  $2,146.00
+
+FORMA DE PAGO: TARJETA ****1234
+AUTORIZACIÓN: 123456
+
+GRACIAS POR SU VISITA
+www.pujol.com.mx`,
+      confidence: 0.94
+    },
+    'factura': {
+      text: `FACTURA ELECTRÓNICA
+Adobe Systems Incorporated
+RFC: ASI123456789
+
+LUGAR DE EXPEDICIÓN: 06600
+FECHA: ${new Date().toLocaleDateString('es-MX')}
+FOLIO FISCAL: 12345678-ABCD-1234-EFGH-123456789012
+
+RECEPTOR:
+TechMX Solutions S.A. de C.V.
+RFC: TMX123456789
+USO CFDI: G03 - Gastos en General
+
+CONCEPTO:
+Licencia Adobe Creative Suite Anual
+Cantidad: 1
+Precio Unitario: $2,500.00
+Importe: $2,500.00
+
+SUBTOTAL: $2,500.00
+IVA (16%): $400.00
+TOTAL: $2,900.00
+
+MÉTODO DE PAGO: 04 - Tarjeta de Crédito
+MONEDA: MXN
+
+SELLO DIGITAL SAT: ABC123DEF456...`,
+      confidence: 0.97
+    },
+    'uber': {
+      text: `Uber
+VIAJE COMPLETADO
+
+DOMINGO, ${new Date().toLocaleDateString('es-MX')}
+${new Date().toLocaleTimeString('es-MX')}
+
+DESDE: Torre Reforma
+HASTA: Aeropuerto Internacional
+
+CONDUCTOR: Miguel Hernández
+AUTO: Nissan Versa Blanco
+PLACAS: ABC-123-D
+
+DISTANCIA: 32.5 km
+DURACIÓN: 45 min
+
+TARIFA BASE:     $45.00
+TIEMPO Y DIST:   $235.50
+PEAJE:          $40.00
+
+SUBTOTAL:       $320.50
+PROPINA:        $0.00
+TOTAL:          $320.50
+
+MÉTODO DE PAGO: Efectivo
+ID VIAJE: 1234-5678-9012`,
+      confidence: 0.89
+    }
+  };
+  
+  // Determine type based on file name or content
+  let ocrType = 'ticket';
+  if (fileName) {
+    if (fileName.toLowerCase().includes('factura') || fileName.toLowerCase().includes('invoice')) {
+      ocrType = 'factura';
+    } else if (fileName.toLowerCase().includes('uber') || fileName.toLowerCase().includes('taxi')) {
+      ocrType = 'uber';
+    }
+  }
+  
+  // Simulate processing delay
+  await new Promise(resolve => setTimeout(resolve, 1500));
+  
+  return sampleOcrResults[ocrType] || sampleOcrResults.ticket;
+}
+
+// CFDI Validation endpoint for Mexican companies
+app.post('/api/cfdi/validate', async (c) => {
+  const { env } = c;
+  
+  try {
+    const formData = await c.req.formData();
+    const file = formData.get('file');
+    const expenseId = formData.get('expense_id');
+    
+    if (!file) {
+      return c.json({ error: 'XML or PDF file is required for CFDI validation' }, 400);
+    }
+    
+    let cfdiData = null;
+    
+    if (file.type === 'application/xml' || file.type === 'text/xml') {
+      // Process XML CFDI
+      cfdiData = await processCfdiXml(file);
+    } else if (file.type === 'application/pdf') {
+      // Extract CFDI data from PDF (usually contains XML embedded)
+      cfdiData = await processCfdiPdf(file);
+    } else {
+      return c.json({ error: 'Only XML and PDF files are supported for CFDI validation' }, 400);
+    }
+    
+    // Validate CFDI with SAT (simulate validation)
+    const satValidation = await validateWithSat(cfdiData);
+    
+    // Update attachment record if expense_id provided
+    if (expenseId && cfdiData.uuid) {
+      await env.DB.prepare(`
+        UPDATE attachments 
+        SET is_cfdi_valid = ?, cfdi_uuid = ?
+        WHERE expense_id = ? AND id = (
+          SELECT id FROM attachments WHERE expense_id = ? ORDER BY uploaded_at DESC LIMIT 1
+        )
+      `).bind(satValidation.valid, cfdiData.uuid, expenseId, expenseId).run();
+    }
+    
+    return c.json({ 
+      success: true,
+      cfdi_data: cfdiData,
+      sat_validation: satValidation,
+      message: satValidation.valid ? 'CFDI válido' : 'CFDI inválido o con errores'
+    });
+  } catch (error) {
+    return c.json({ error: 'Failed to validate CFDI', details: error.message }, 500);
+  }
+})
+
+// CFDI Manual Data Validation endpoint
+app.post('/api/cfdi/validate-data', async (c) => {
+  const { env } = c;
+  
+  try {
+    const body = await c.req.json();
+    const { company_id, rfc_emisor, rfc_receptor, uuid, total } = body;
+    
+    if (!company_id || !rfc_emisor || !rfc_receptor || !uuid) {
+      return c.json({ error: 'company_id, rfc_emisor, rfc_receptor, and uuid are required' }, 400);
+    }
+    
+    // Validate company is Mexican
+    const company = await env.DB.prepare('SELECT * FROM companies WHERE id = ? AND country = ?')
+      .bind(company_id, 'MX').first();
+    
+    if (!company) {
+      return c.json({ error: 'Company not found or not a Mexican company' }, 400);
+    }
+    
+    // Validate UUID format (basic check)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(uuid)) {
+      return c.json({ error: 'Invalid UUID format' }, 400);
+    }
+    
+    // Simulate SAT validation with manual data
+    const cfdiData = {
+      rfc_emisor,
+      rfc_receptor,
+      uuid,
+      total: parseFloat(total) || 0,
+      fecha_emision: new Date().toISOString(),
+      serie: 'A',
+      folio: '001'
+    };
+    
+    const satValidation = await validateWithSat(cfdiData);
+    
+    // Store CFDI validation record
+    const validationResult = await env.DB.prepare(`
+      INSERT INTO cfdi_validations (
+        company_id, uuid, rfc_emisor, rfc_receptor, total, 
+        is_valid, validation_details
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      company_id, 
+      uuid, 
+      rfc_emisor, 
+      rfc_receptor, 
+      total || 0,
+      satValidation.valid ? 1 : 0,
+      satValidation.mensaje
+    ).run();
+    
+    return c.json({ 
+      success: true,
+      validation_id: validationResult.meta.last_row_id,
+      cfdi_data: cfdiData,
+      sat_valid: satValidation.valid,
+      validation_details: satValidation.mensaje,
+      message: satValidation.valid ? 'CFDI validado exitosamente' : 'CFDI con errores de validación'
+    });
+    
+  } catch (error) {
+    return c.json({ error: 'Failed to validate CFDI data', details: error.message }, 500);
+  }
+})
+
+// Get CFDI status for an expense
+app.get('/api/expenses/:id/cfdi-status', async (c) => {
+  const { env } = c;
+  const expenseId = c.req.param('id');
+  
+  try {
+    const cfdiAttachments = await env.DB.prepare(`
+      SELECT id, file_name, is_cfdi_valid, cfdi_uuid, uploaded_at
+      FROM attachments
+      WHERE expense_id = ? AND (file_type = 'xml' OR file_type = 'pdf')
+      ORDER BY uploaded_at DESC
+    `).bind(expenseId).all();
+    
+    return c.json({ 
+      success: true,
+      cfdi_attachments: cfdiAttachments.results,
+      has_valid_cfdi: cfdiAttachments.results.some(a => a.is_cfdi_valid === 1)
+    });
+  } catch (error) {
+    return c.json({ error: 'Failed to get CFDI status' }, 500);
+  }
+})
+
+// Helper functions for CFDI processing
+async function processCfdiXml(file) {
+  // In production, this would parse the actual XML file
+  // For demo, we'll simulate CFDI data extraction
+  
+  const cfdiData = {
+    version: '4.0',
+    uuid: generateUuid(),
+    rfc_emisor: 'ABC123456789',
+    razon_social_emisor: 'Empresa Emisora S.A. de C.V.',
+    rfc_receptor: 'XYZ987654321',
+    razon_social_receptor: 'TechMX Solutions S.A. de C.V.',
+    fecha: new Date().toISOString(),
+    folio: 'A001-' + Math.floor(Math.random() * 100000),
+    serie: 'A',
+    forma_pago: '04', // Tarjeta de crédito
+    metodo_pago: 'PUE', // Pago en una exhibición
+    uso_cfdi: 'G03', // Gastos en general
+    lugar_expedicion: '06600',
+    moneda: 'MXN',
+    tipo_cambio: '1.000000',
+    conceptos: [
+      {
+        clave_prod_serv: '84111506',
+        no_identificacion: null,
+        cantidad: '1.000000',
+        clave_unidad: 'ACT',
+        unidad: 'Actividad',
+        descripcion: 'Servicios de consultoría',
+        valor_unitario: '2500.00',
+        importe: '2500.00'
+      }
+    ],
+    subtotal: '2500.00',
+    iva: '400.00',
+    total: '2900.00',
+    sello_digital: 'ABC123DEF456GHI789JKL012MNO345PQR678STU901VWX234YZ...',
+    certificado_sat: 'DEF456GHI789JKL012MNO345PQR678STU901VWX234YZ567ABC...',
+    fecha_timbrado: new Date().toISOString(),
+    no_certificado_sat: '30001000000400002495'
+  };
+  
+  return cfdiData;
+}
+
+async function processCfdiPdf(file) {
+  // In production, this would extract XML from PDF or parse PDF content
+  // For demo, we'll simulate extraction
+  
+  const cfdiData = {
+    version: '4.0',
+    uuid: generateUuid(),
+    rfc_emisor: 'PDF123456789',
+    razon_social_emisor: 'Empresa PDF S.A. de C.V.',
+    rfc_receptor: 'TMX123456789',
+    razon_social_receptor: 'TechMX Solutions S.A. de C.V.',
+    fecha: new Date().toISOString(),
+    folio: 'P001-' + Math.floor(Math.random() * 100000),
+    serie: 'P',
+    forma_pago: '01', // Efectivo
+    metodo_pago: 'PUE',
+    uso_cfdi: 'G01', // Adquisición de mercancías
+    lugar_expedicion: '06600',
+    moneda: 'MXN',
+    subtotal: '850.00',
+    iva: '136.00',
+    total: '986.00',
+    extracted_from: 'PDF',
+    confidence: 0.85
+  };
+  
+  return cfdiData;
+}
+
+async function validateWithSat(cfdiData) {
+  // In production, this would call the actual SAT web service
+  // For demo, we'll simulate validation
+  
+  await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API call delay
+  
+  const validationChecks = {
+    uuid_format: /^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$/.test(cfdiData.uuid),
+    rfc_format: /^[A-Z]{3,4}\d{6}[A-Z0-9]{3}$/.test(cfdiData.rfc_emisor),
+    date_valid: cfdiData.fecha_emision ? new Date(cfdiData.fecha_emision) <= new Date() : true,
+    amounts_valid: parseFloat(cfdiData.total) > 0,
+    version_supported: cfdiData.version ? ['3.3', '4.0'].includes(cfdiData.version) : true
+  };
+  
+  const isValid = Object.values(validationChecks).every(check => check);
+  
+  return {
+    valid: isValid,
+    timestamp: new Date().toISOString(),
+    checks: validationChecks,
+    sat_status: isValid ? 'VIGENTE' : 'INVALIDO',
+    cancelable: isValid,
+    estado_sat: isValid ? 'Activo' : 'Cancelado',
+    mensaje: isValid ? 
+      'CFDI válido y vigente en el SAT' : 
+      'CFDI inválido o con errores en la estructura'
+  };
+}
+
+function generateUuid() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+// Helper function to extract structured expense data from OCR text
+async function extractExpenseDataFromOcr(ocrText) {
+  // Simulate AI processing to extract structured data
+  const extractedData = {
+    amount: null,
+    currency: 'MXN',
+    date: null,
+    vendor: null,
+    description: null,
+    tax_amount: null,
+    payment_method: null,
+    invoice_number: null,
+    confidence_score: 0.85,
+    is_cfdi: false,
+    cfdi_uuid: null,
+    rfc_emisor: null
+  };
+  
+  // Check if it's a CFDI (Mexican electronic invoice)
+  if (ocrText.includes('CFDI') || ocrText.includes('UUID') || ocrText.includes('FOLIO FISCAL')) {
+    extractedData.is_cfdi = true;
+    extractedData.confidence_score += 0.1;
+    
+    // Extract UUID
+    const uuidMatch = ocrText.match(/UUID[\s:]*([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12})/i);
+    if (uuidMatch) {
+      extractedData.cfdi_uuid = uuidMatch[1];
+    }
+    
+    // Extract Folio Fiscal (alternative UUID location)
+    const folioFiscalMatch = ocrText.match(/FOLIO FISCAL[\s:]*([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12})/i);
+    if (folioFiscalMatch) {
+      extractedData.cfdi_uuid = folioFiscalMatch[1];
+    }
+  }
+  
+  // Extract amount (look for patterns like $1,234.56 or TOTAL: $amount)
+  const amountMatch = ocrText.match(/(?:TOTAL|Total|total)[\s:]*\$?([\d,]+\.?\d*)/i);
+  if (amountMatch) {
+    extractedData.amount = parseFloat(amountMatch[1].replace(',', ''));
+    extractedData.confidence_score += 0.1;
+  }
+  
+  // Extract date
+  const dateMatch = ocrText.match(/(?:FECHA|Fecha|fecha)[\s:]*(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
+  if (dateMatch) {
+    extractedData.date = dateMatch[1];
+    extractedData.confidence_score += 0.05;
+  }
+  
+  // Extract vendor/establishment
+  const lines = ocrText.split('\n');
+  if (lines.length > 0) {
+    // Usually the first non-empty line is the business name
+    const businessName = lines.find(line => line.trim() && !line.includes('TICKET') && !line.includes('FACTURA'));
+    if (businessName) {
+      extractedData.vendor = businessName.trim();
+      extractedData.description = `Gasto en ${businessName.trim()}`;
+    }
+  }
+  
+  // Extract RFC (Mexican tax ID)
+  const rfcMatch = ocrText.match(/RFC[\s:]*([A-Z]{3,4}\d{6}[A-Z0-9]{3})/i);
+  if (rfcMatch) {
+    extractedData.rfc_emisor = rfcMatch[1];
+    extractedData.confidence_score += 0.05;
+  }
+  
+  // Extract payment method
+  if (ocrText.toLowerCase().includes('efectivo') || ocrText.toLowerCase().includes('cash')) {
+    extractedData.payment_method = 'cash';
+  } else if (ocrText.toLowerCase().includes('tarjeta') || ocrText.toLowerCase().includes('card')) {
+    extractedData.payment_method = 'credit_card';
+  }
+  
+  // Extract folio/invoice number
+  const folioMatch = ocrText.match(/(?:FOLIO|Folio|folio)[\s:]*([A-Z0-9\-]+)/i);
+  if (folioMatch) {
+    extractedData.invoice_number = folioMatch[1];
+  }
+  
+  // Extract IVA (Mexican VAT)
+  const ivaMatch = ocrText.match(/(?:IVA|iva)[\s:]*\$?([\d,]+\.?\d*)/i);
+  if (ivaMatch) {
+    extractedData.tax_amount = parseFloat(ivaMatch[1].replace(',', ''));
+  }
+  
+  return extractedData;
+}
 
 // Get attachments for an expense
 app.get('/api/expenses/:id/attachments', async (c) => {
@@ -1067,6 +1639,9 @@ app.get('/', (c) => {
               </span>
             </div>
             <div className="flex items-center space-x-4">
+              <div id="auth-indicator" className="mr-4">
+                {/* Authentication status will be inserted here */}
+              </div>
               <select id="currency-selector" className="border border-gray-300 rounded-lg px-3 py-2 text-sm">
                 <option value="MXN">Ver en MXN 🇲🇽</option>
                 <option value="USD">Ver en USD 🇺🇸</option>
@@ -1080,6 +1655,14 @@ app.get('/', (c) => {
                 <i className="fas fa-list mr-2"></i>
                 Ver Todos
               </a>
+              <button id="login-btn" onclick="showLoginModal()" className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700" style="display: none;">
+                <i className="fas fa-sign-in-alt mr-2"></i>
+                Iniciar Sesión
+              </button>
+              <button id="logout-btn" onclick="logout()" className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700" style="display: none;">
+                <i className="fas fa-sign-out-alt mr-2"></i>
+                Cerrar Sesión
+              </button>
             </div>
           </div>
         </div>
@@ -1596,22 +2179,93 @@ app.get('/expenses', (c) => {
                   </div>
                 </div>
 
-                {/* Archivos Adjuntos */}
+                {/* Archivos Adjuntos con OCR */}
                 <div className="mt-6">
-                  <h4 className="font-semibold text-gray-900 border-b pb-2 mb-4">📎 Archivos Adjuntos</h4>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                    <i className="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-4"></i>
-                    <p className="text-gray-600 mb-2">Arrastra archivos aquí o haz clic para seleccionar</p>
-                    <p className="text-sm text-gray-500">Tickets, facturas PDF/XML, fotografías (Max: 10MB por archivo)</p>
-                    <input type="file" id="form-attachments" multiple accept=".pdf,.xml,.jpg,.jpeg,.png,.gif" className="hidden" onchange="handleFileSelect(event)" />
-                    <button type="button" onclick="document.getElementById('form-attachments').click()" className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                      <i className="fas fa-paperclip mr-2"></i>
-                      Seleccionar Archivos
-                    </button>
+                  <h4 className="font-semibold text-gray-900 border-b pb-2 mb-4">📎 Archivos Adjuntos con OCR Inteligente</h4>
+                  
+                  {/* OCR Settings */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                    <div className="flex items-center space-x-3">
+                      <input type="checkbox" id="enable-ocr" checked className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                      <label for="enable-ocr" className="text-sm font-medium text-blue-900">
+                        <i className="fas fa-robot mr-1"></i>
+                        Activar OCR - Extracción Automática de Datos
+                      </label>
+                    </div>
+                    <p className="text-xs text-blue-700 mt-1 ml-6">
+                      El sistema extraerá automáticamente: monto, fecha, proveedor, y método de pago desde tickets y facturas
+                    </p>
                   </div>
+
+                  {/* Upload Area */}
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors" 
+                       ondrop="handleFileDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
+                    <i className="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-4"></i>
+                    <p className="text-gray-600 mb-2">
+                      <strong>Arrastra archivos aquí</strong> o haz clic para seleccionar
+                    </p>
+                    <p className="text-sm text-gray-500 mb-3">
+                      📸 Tickets • 📄 Facturas PDF/XML • 🖼️ Fotografías (Max: 10MB por archivo)
+                    </p>
+                    
+                    {/* Mobile Camera Button */}
+                    <div className="flex justify-center space-x-3">
+                      <input type="file" id="form-attachments" multiple accept=".pdf,.xml,.jpg,.jpeg,.png,.gif" className="hidden" onchange="handleFileSelect(event)" />
+                      
+                      <button type="button" onclick="document.getElementById('form-attachments').click()" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                        <i className="fas fa-paperclip mr-2"></i>
+                        Seleccionar Archivos
+                      </button>
+                      
+                      <button type="button" onclick="captureFromCamera()" className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 md:hidden min-h-12">
+                        <i className="fas fa-camera mr-2"></i>
+                        📸 Tomar Foto
+                      </button>
+                      
+                      <button type="button" onclick="captureLocationForExpense()" className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 md:hidden min-h-12">
+                        <i className="fas fa-map-marker-alt mr-2"></i>
+                        📍 Ubicación
+                      </button>
+                    </div>
+                    
+                    <input type="file" id="camera-capture" accept="image/*" capture="environment" className="hidden" onchange="handleCameraCapture(event)" />
+                  </div>
+                  
+                  {/* OCR Processing Status */}
+                  <div id="ocr-status" className="mt-3 hidden">
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                      <div className="flex items-center">
+                        <i className="fas fa-cog fa-spin text-yellow-600 mr-2"></i>
+                        <span class="text-yellow-800">Procesando OCR...</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Attachments Preview */}
                   <div id="attachments-preview" className="mt-4 hidden">
-                    <h5 className="font-medium text-gray-900 mb-2">Archivos Seleccionados:</h5>
+                    <h5 className="font-medium text-gray-900 mb-2">Archivos y Datos Extraídos:</h5>
                     <div id="attachments-list" className="space-y-2"></div>
+                  </div>
+
+                  {/* OCR Results */}
+                  <div id="ocr-results" className="mt-4 hidden">
+                    <h5 className="font-medium text-gray-900 mb-2">
+                      <i className="fas fa-magic mr-1 text-purple-600"></i>
+                      Datos Extraídos Automáticamente:
+                    </h5>
+                    <div id="ocr-data-preview" className="bg-green-50 border border-green-200 rounded-lg p-4">
+                      {/* OCR extracted data will be shown here */}
+                    </div>
+                    <div className="flex space-x-2 mt-2">
+                      <button type="button" onclick="applyOcrData()" className="text-sm px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700">
+                        <i className="fas fa-check mr-1"></i>
+                        Aplicar Datos
+                      </button>
+                      <button type="button" onclick="clearOcrData()" className="text-sm px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-700">
+                        <i className="fas fa-times mr-1"></i>
+                        Descartar
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -1637,6 +2291,391 @@ app.get('/expenses', (c) => {
       </div>
     </div>
   );
+})
+
+// Dashboard metrics endpoint (protected)
+app.get('/api/dashboard-metrics', authMiddleware, async (c) => {
+  const { env } = c;
+  
+  try {
+    const userId = c.get('userId');
+    const userRole = c.get('userRole');
+    
+    // Get accessible companies based on user role
+    let companyFilter = '';
+    if (userRole !== 'admin') {
+      companyFilter = `
+        AND e.company_id IN (
+          SELECT company_id FROM user_companies WHERE user_id = ${userId}
+        )
+      `;
+    }
+    
+    // Total expenses (this month)
+    const totalExpenses = await env.DB.prepare(`
+      SELECT COUNT(*) as count, COALESCE(SUM(amount_mxn), 0) as total
+      FROM expenses e
+      WHERE strftime('%Y-%m', e.expense_date) = strftime('%Y-%m', 'now')
+      ${companyFilter}
+    `).first();
+    
+    // Pending expenses
+    const pendingExpenses = await env.DB.prepare(`
+      SELECT COUNT(*) as count
+      FROM expenses e
+      WHERE e.status = 'pending'
+      ${companyFilter}
+    `).first();
+    
+    // Company metrics
+    const companyMetrics = await env.DB.prepare(`
+      SELECT c.name as company, COUNT(e.id) as count, 
+             COALESCE(SUM(e.amount_mxn), 0) as total_mxn
+      FROM companies c
+      LEFT JOIN expenses e ON c.id = e.company_id
+      WHERE c.active = TRUE
+      ${userRole !== 'admin' ? `AND c.id IN (SELECT company_id FROM user_companies WHERE user_id = ${userId})` : ''}
+      GROUP BY c.id, c.name
+      ORDER BY total_mxn DESC
+    `).all();
+    
+    // Currency metrics
+    const currencyMetrics = await env.DB.prepare(`
+      SELECT currency, COUNT(*) as count, SUM(amount) as total_original, SUM(amount_mxn) as total_mxn
+      FROM expenses e
+      WHERE strftime('%Y-%m', e.expense_date) = strftime('%Y-%m', 'now')
+      ${companyFilter}
+      GROUP BY currency
+      ORDER BY total_mxn DESC
+    `).all();
+    
+    // Status metrics
+    const statusMetrics = await env.DB.prepare(`
+      SELECT status, COUNT(*) as count
+      FROM expenses e
+      WHERE 1=1 ${companyFilter}
+      GROUP BY status
+    `).all();
+    
+    // Recent expenses
+    const recentExpenses = await env.DB.prepare(`
+      SELECT e.*, c.name as company_name, u.name as user_name
+      FROM expenses e
+      JOIN companies c ON e.company_id = c.id
+      JOIN users u ON e.user_id = u.id
+      WHERE 1=1 ${companyFilter}
+      ORDER BY e.created_at DESC
+      LIMIT 10
+    `).all();
+    
+    return c.json({
+      success: true,
+      total_expenses: totalExpenses,
+      pending_expenses: pendingExpenses,
+      company_metrics: companyMetrics.results || [],
+      currency_metrics: currencyMetrics.results || [],
+      status_metrics: statusMetrics.results || [],
+      recent_expenses: recentExpenses.results || []
+    });
+    
+  } catch (error) {
+    return c.json({ error: 'Failed to load dashboard metrics', details: error.message }, 500);
+  }
+})
+
+// ===== JWT AUTHENTICATION SYSTEM =====
+
+import { SignJWT, jwtVerify } from 'jose'
+import bcrypt from 'bcryptjs'
+
+// JWT Secret (in production, use environment variable)
+const JWT_SECRET = new TextEncoder().encode('lyra-expenses-jwt-secret-2024-very-secure-key-change-in-production')
+
+// JWT Helper Functions
+async function generateTokens(userId: number, userRole: string) {
+  const now = Math.floor(Date.now() / 1000)
+  
+  // Access token (15 minutes)
+  const accessToken = await new SignJWT({
+    sub: userId.toString(),
+    role: userRole,
+    type: 'access'
+  })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt(now)
+    .setExpirationTime(now + 15 * 60) // 15 minutes
+    .sign(JWT_SECRET)
+
+  // Refresh token (7 days)
+  const refreshToken = await new SignJWT({
+    sub: userId.toString(),
+    role: userRole,
+    type: 'refresh'
+  })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt(now)
+    .setExpirationTime(now + 7 * 24 * 60 * 60) // 7 days
+    .sign(JWT_SECRET)
+
+  return { accessToken, refreshToken }
+}
+
+async function verifyToken(token: string, tokenType: 'access' | 'refresh' = 'access') {
+  try {
+    const { payload } = await jwtVerify(token, JWT_SECRET)
+    
+    if (payload.type !== tokenType) {
+      throw new Error('Invalid token type')
+    }
+    
+    return payload
+  } catch (error) {
+    return null
+  }
+}
+
+// Authentication Middleware
+async function authMiddleware(c: any, next: any) {
+  const authHeader = c.req.header('Authorization')
+  
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return c.json({ error: 'Authentication required' }, 401)
+  }
+  
+  const token = authHeader.split(' ')[1]
+  const payload = await verifyToken(token, 'access')
+  
+  if (!payload) {
+    return c.json({ error: 'Invalid or expired token' }, 401)
+  }
+  
+  // Add user info to request context
+  c.set('userId', parseInt(payload.sub as string))
+  c.set('userRole', payload.role as string)
+  
+  await next()
+}
+
+// Role-based middleware
+function requireRole(allowedRoles: string[]) {
+  return async (c: any, next: any) => {
+    const userRole = c.get('userRole')
+    
+    if (!allowedRoles.includes(userRole)) {
+      return c.json({ error: 'Insufficient permissions' }, 403)
+    }
+    
+    await next()
+  }
+}
+
+// ===== AUTHENTICATION ENDPOINTS =====
+
+// Login endpoint
+app.post('/api/auth/login', async (c) => {
+  const { env } = c;
+  
+  try {
+    const { email, password } = await c.req.json();
+    
+    if (!email || !password) {
+      return c.json({ error: 'Email and password are required' }, 400);
+    }
+    
+    // Find user by email
+    const user = await env.DB.prepare('SELECT * FROM users WHERE email = ? AND active = TRUE')
+      .bind(email.toLowerCase()).first();
+    
+    if (!user) {
+      return c.json({ error: 'Invalid credentials' }, 401);
+    }
+    
+    // Verify password
+    const isValidPassword = await bcrypt.compare(password, user.password_hash);
+    
+    if (!isValidPassword) {
+      return c.json({ error: 'Invalid credentials' }, 401);
+    }
+    
+    // Generate JWT tokens
+    const tokens = await generateTokens(user.id, user.role);
+    
+    // Update last login
+    await env.DB.prepare('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?')
+      .bind(user.id).run();
+    
+    // Create session record
+    const sessionId = crypto.randomUUID();
+    await env.DB.prepare(`
+      INSERT INTO user_sessions (id, user_id, expires_at, ip_address, user_agent) 
+      VALUES (?, ?, datetime('now', '+7 days'), ?, ?)
+    `).bind(
+      sessionId, 
+      user.id, 
+      c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || 'unknown',
+      c.req.header('User-Agent') || 'unknown'
+    ).run();
+    
+    // Return user data and tokens
+    return c.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role
+      },
+      tokens,
+      session_id: sessionId
+    });
+    
+  } catch (error) {
+    return c.json({ error: 'Login failed', details: error.message }, 500);
+  }
+})
+
+// Refresh token endpoint
+app.post('/api/auth/refresh', async (c) => {
+  const { env } = c;
+  
+  try {
+    const { refresh_token } = await c.req.json();
+    
+    if (!refresh_token) {
+      return c.json({ error: 'Refresh token is required' }, 400);
+    }
+    
+    const payload = await verifyToken(refresh_token, 'refresh');
+    
+    if (!payload) {
+      return c.json({ error: 'Invalid or expired refresh token' }, 401);
+    }
+    
+    const userId = parseInt(payload.sub as string);
+    
+    // Verify user still exists and is active
+    const user = await env.DB.prepare('SELECT * FROM users WHERE id = ? AND active = TRUE')
+      .bind(userId).first();
+    
+    if (!user) {
+      return c.json({ error: 'User not found or inactive' }, 401);
+    }
+    
+    // Generate new tokens
+    const tokens = await generateTokens(user.id, user.role);
+    
+    return c.json({
+      success: true,
+      tokens
+    });
+    
+  } catch (error) {
+    return c.json({ error: 'Token refresh failed', details: error.message }, 500);
+  }
+})
+
+// Logout endpoint
+app.post('/api/auth/logout', authMiddleware, async (c) => {
+  const { env } = c;
+  
+  try {
+    const { session_id } = await c.req.json();
+    const userId = c.get('userId');
+    
+    if (session_id) {
+      // Delete specific session
+      await env.DB.prepare('DELETE FROM user_sessions WHERE id = ? AND user_id = ?')
+        .bind(session_id, userId).run();
+    } else {
+      // Delete all user sessions (logout from all devices)
+      await env.DB.prepare('DELETE FROM user_sessions WHERE user_id = ?')
+        .bind(userId).run();
+    }
+    
+    return c.json({ success: true, message: 'Logged out successfully' });
+    
+  } catch (error) {
+    return c.json({ error: 'Logout failed', details: error.message }, 500);
+  }
+})
+
+// Get current user profile
+app.get('/api/auth/profile', authMiddleware, async (c) => {
+  const { env } = c;
+  
+  try {
+    const userId = c.get('userId');
+    
+    // Get user with company permissions
+    const user = await env.DB.prepare(`
+      SELECT u.*, 
+             GROUP_CONCAT(DISTINCT c.id || ':' || c.name) as companies
+      FROM users u
+      LEFT JOIN user_companies uc ON u.id = uc.user_id
+      LEFT JOIN companies c ON uc.company_id = c.id
+      WHERE u.id = ? AND u.active = TRUE
+      GROUP BY u.id
+    `).bind(userId).first();
+    
+    if (!user) {
+      return c.json({ error: 'User not found' }, 404);
+    }
+    
+    const companies = user.companies ? 
+      user.companies.split(',').map(item => {
+        const [id, name] = item.split(':');
+        return { id: parseInt(id), name };
+      }) : [];
+    
+    return c.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        companies,
+        last_login: user.last_login,
+        created_at: user.created_at
+      }
+    });
+    
+  } catch (error) {
+    return c.json({ error: 'Failed to get profile', details: error.message }, 500);
+  }
+})
+
+// Protected route example - Get user's accessible companies
+app.get('/api/auth/companies', authMiddleware, async (c) => {
+  const { env } = c;
+  
+  try {
+    const userId = c.get('userId');
+    const userRole = c.get('userRole');
+    
+    let companies;
+    
+    if (userRole === 'admin') {
+      // Admins can see all companies
+      companies = await env.DB.prepare('SELECT * FROM companies WHERE active = TRUE').all();
+    } else {
+      // Other users only see assigned companies
+      companies = await env.DB.prepare(`
+        SELECT c.* 
+        FROM companies c
+        JOIN user_companies uc ON c.id = uc.company_id
+        WHERE uc.user_id = ? AND c.active = TRUE
+      `).bind(userId).all();
+    }
+    
+    return c.json({
+      success: true,
+      companies: companies.results
+    });
+    
+  } catch (error) {
+    return c.json({ error: 'Failed to get companies', details: error.message }, 500);
+  }
 })
 
 export default app

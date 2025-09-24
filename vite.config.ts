@@ -10,5 +10,15 @@ export default defineConfig({
       adapter,
       entry: 'src/index.tsx'
     })
-  ]
+  ],
+  css: {
+    postcss: './postcss.config.js'
+  },
+  build: {
+    rollupOptions: {
+      input: {
+        main: 'src/styles/main.css'
+      }
+    }
+  }
 })
