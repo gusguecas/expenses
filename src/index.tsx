@@ -768,6 +768,12 @@ app.get('/api/expenses', async (c) => {
     params.push(query.user_id);
   }
   
+  // Filtrar por nombre de usuario
+  if (query.user_name) {
+    sql += ` AND u.name = ?`;
+    params.push(query.user_name);
+  }
+  
   if (query.status) {
     sql += ` AND e.status = ?`;
     params.push(query.status);
@@ -3950,17 +3956,31 @@ app.get('/analytics', (c) => {
         // 4️⃣ VISUALIZACIÓN DE TENDENCIAS - Datos en tiempo real
         async function applyFilters() {
           try {
-            // Obtener valores de filtros
-            const filters = {
-              organization: document.getElementById('filter-organization')?.value,
-              company: document.getElementById('filter-company')?.value,
-              user: document.getElementById('filter-user')?.value,
-              costCenter: document.getElementById('filter-cost-center')?.value,
-              dateFrom: document.getElementById('filter-date-from')?.value,
-              dateTo: document.getElementById('filter-date-to')?.value
-            };
+            // Obtener valores de filtros con nombres correctos para la API
+            const filters = {};
+            
+            // Empresa (company_id)
+            const companyValue = document.getElementById('filter-company')?.value;
+            if (companyValue) filters.company_id = companyValue;
+            
+            // Usuario (buscar user_id por nombre)
+            const userValue = document.getElementById('filter-user')?.value;
+            if (userValue) {
+              // Buscar el user_id correspondiente al nombre seleccionado
+              const userOption = document.querySelector('#filter-user option[value="' + userValue + '"]');
+              if (userOption) {
+                // Por ahora usaremos el valor directamente, pero necesitamos mejorar esto
+                filters.user_name = userValue; // La API necesita adaptarse para filtrar por nombre
+              }
+            }
+            
+            // Fechas (date_from, date_to)
+            const dateFrom = document.getElementById('filter-date-from')?.value;
+            const dateTo = document.getElementById('filter-date-to')?.value;
+            if (dateFrom) filters.date_from = dateFrom;
+            if (dateTo) filters.date_to = dateTo;
 
-            console.log('🎯 Aplicando filtros:', filters);
+            console.log('🎯 Aplicando filtros con parámetros API:', filters);
             
             // Recargar datos con filtros
             await loadDashboardData(filters);
@@ -3998,9 +4018,12 @@ app.get('/analytics', (c) => {
         }
 
         async function updateChartsWithData(expenses) {
+          console.log('📊 Actualizando gráficos con', expenses.length, 'gastos filtrados');
+          
           // Actualizar gráfico de categorías
           if (categoryChart) {
             const categoryData = groupExpensesByCategory(expenses);
+            console.log('📈 Datos por categoría:', categoryData);
             categoryChart.data.datasets[0].data = Object.values(categoryData);
             categoryChart.data.labels = Object.keys(categoryData);
             categoryChart.update();
@@ -4009,6 +4032,7 @@ app.get('/analytics', (c) => {
           // Actualizar gráfico de empresas
           if (companyChart) {
             const companyData = await groupExpensesByCompany(expenses);
+            console.log('🏢 Datos por empresa:', companyData);
             companyChart.data.datasets[0].data = Object.values(companyData);
             companyChart.data.labels = Object.keys(companyData);
             companyChart.update();
@@ -4022,6 +4046,12 @@ app.get('/analytics', (c) => {
             const daysOld = getDaysAgo(exp.expense_date);
             return daysOld > 7 || parseFloat(exp.amount || 0) > 50000;
           }).length;
+
+          console.log('📊 Actualizando KPIs:', {
+            totalAmount: formatCurrency(totalAmount),
+            totalTickets: expenses.length,
+            alertCount: alertCount
+          });
 
           document.getElementById('kpi-importe').textContent = formatCurrency(totalAmount);
           document.getElementById('kpi-tickets').textContent = expenses.length;

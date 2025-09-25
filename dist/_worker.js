@@ -249,7 +249,7 @@ var Ja=Object.defineProperty;var Ct=e=>{throw TypeError(e)};var Za=(e,a,s)=>a in
     JOIN users u ON e.user_id = u.id
     JOIN expense_types et ON e.expense_type_id = et.id
     WHERE 1=1
-  `;const i=[];s.company_id&&(r+=" AND e.company_id = ?",i.push(s.company_id)),s.user_id&&(r+=" AND e.user_id = ?",i.push(s.user_id)),s.status&&(r+=" AND e.status = ?",i.push(s.status)),s.currency&&(r+=" AND e.currency = ?",i.push(s.currency)),s.date_from&&(r+=" AND e.expense_date >= ?",i.push(s.date_from)),s.date_to&&(r+=" AND e.expense_date <= ?",i.push(s.date_to)),r+=" ORDER BY e.expense_date DESC, e.created_at DESC",s.limit&&(r+=" LIMIT ?",i.push(parseInt(s.limit)||50));try{const o=await a.DB.prepare(r).bind(...i).all();return e.json({expenses:o.results,total:o.results.length})}catch{return e.json({error:"Failed to fetch expenses"},500)}});w.post("/api/expenses",async e=>{const{env:a}=e;try{const s=await e.req.json(),r=["company_id","expense_type_id","description","expense_date","amount","currency"];for(const l of r)if(!s[l])return e.json({error:`Missing required field: ${l}`},400);let i=s.amount,n=1;s.currency==="USD"?(n=18.25,i=s.amount*n):s.currency==="EUR"&&(n=20.15,i=s.amount*n);const o=await a.DB.prepare(`
+  `;const i=[];s.company_id&&(r+=" AND e.company_id = ?",i.push(s.company_id)),s.user_id&&(r+=" AND e.user_id = ?",i.push(s.user_id)),s.user_name&&(r+=" AND u.name = ?",i.push(s.user_name)),s.status&&(r+=" AND e.status = ?",i.push(s.status)),s.currency&&(r+=" AND e.currency = ?",i.push(s.currency)),s.date_from&&(r+=" AND e.expense_date >= ?",i.push(s.date_from)),s.date_to&&(r+=" AND e.expense_date <= ?",i.push(s.date_to)),r+=" ORDER BY e.expense_date DESC, e.created_at DESC",s.limit&&(r+=" LIMIT ?",i.push(parseInt(s.limit)||50));try{const o=await a.DB.prepare(r).bind(...i).all();return e.json({expenses:o.results,total:o.results.length})}catch{return e.json({error:"Failed to fetch expenses"},500)}});w.post("/api/expenses",async e=>{const{env:a}=e;try{const s=await e.req.json(),r=["company_id","expense_type_id","description","expense_date","amount","currency"];for(const l of r)if(!s[l])return e.json({error:`Missing required field: ${l}`},400);let i=s.amount,n=1;s.currency==="USD"?(n=18.25,i=s.amount*n):s.currency==="EUR"&&(n=20.15,i=s.amount*n);const o=await a.DB.prepare(`
       INSERT INTO expenses (
         company_id, user_id, expense_type_id, description, expense_date, 
         amount, currency, exchange_rate, amount_mxn, payment_method, 
@@ -1317,17 +1317,31 @@ GRACIAS POR SU COMPRA
         // 4️⃣ VISUALIZACIÓN DE TENDENCIAS - Datos en tiempo real
         async function applyFilters() {
           try {
-            // Obtener valores de filtros
-            const filters = {
-              organization: document.getElementById('filter-organization')?.value,
-              company: document.getElementById('filter-company')?.value,
-              user: document.getElementById('filter-user')?.value,
-              costCenter: document.getElementById('filter-cost-center')?.value,
-              dateFrom: document.getElementById('filter-date-from')?.value,
-              dateTo: document.getElementById('filter-date-to')?.value
-            };
+            // Obtener valores de filtros con nombres correctos para la API
+            const filters = {};
+            
+            // Empresa (company_id)
+            const companyValue = document.getElementById('filter-company')?.value;
+            if (companyValue) filters.company_id = companyValue;
+            
+            // Usuario (buscar user_id por nombre)
+            const userValue = document.getElementById('filter-user')?.value;
+            if (userValue) {
+              // Buscar el user_id correspondiente al nombre seleccionado
+              const userOption = document.querySelector('#filter-user option[value="' + userValue + '"]');
+              if (userOption) {
+                // Por ahora usaremos el valor directamente, pero necesitamos mejorar esto
+                filters.user_name = userValue; // La API necesita adaptarse para filtrar por nombre
+              }
+            }
+            
+            // Fechas (date_from, date_to)
+            const dateFrom = document.getElementById('filter-date-from')?.value;
+            const dateTo = document.getElementById('filter-date-to')?.value;
+            if (dateFrom) filters.date_from = dateFrom;
+            if (dateTo) filters.date_to = dateTo;
 
-            console.log('🎯 Aplicando filtros:', filters);
+            console.log('🎯 Aplicando filtros con parámetros API:', filters);
             
             // Recargar datos con filtros
             await loadDashboardData(filters);
@@ -1365,9 +1379,12 @@ GRACIAS POR SU COMPRA
         }
 
         async function updateChartsWithData(expenses) {
+          console.log('📊 Actualizando gráficos con', expenses.length, 'gastos filtrados');
+          
           // Actualizar gráfico de categorías
           if (categoryChart) {
             const categoryData = groupExpensesByCategory(expenses);
+            console.log('📈 Datos por categoría:', categoryData);
             categoryChart.data.datasets[0].data = Object.values(categoryData);
             categoryChart.data.labels = Object.keys(categoryData);
             categoryChart.update();
@@ -1376,6 +1393,7 @@ GRACIAS POR SU COMPRA
           // Actualizar gráfico de empresas
           if (companyChart) {
             const companyData = await groupExpensesByCompany(expenses);
+            console.log('🏢 Datos por empresa:', companyData);
             companyChart.data.datasets[0].data = Object.values(companyData);
             companyChart.data.labels = Object.keys(companyData);
             companyChart.update();
@@ -1389,6 +1407,12 @@ GRACIAS POR SU COMPRA
             const daysOld = getDaysAgo(exp.expense_date);
             return daysOld > 7 || parseFloat(exp.amount || 0) > 50000;
           }).length;
+
+          console.log('📊 Actualizando KPIs:', {
+            totalAmount: formatCurrency(totalAmount),
+            totalTickets: expenses.length,
+            alertCount: alertCount
+          });
 
           document.getElementById('kpi-importe').textContent = formatCurrency(totalAmount);
           document.getElementById('kpi-tickets').textContent = expenses.length;
