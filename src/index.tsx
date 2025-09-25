@@ -3699,33 +3699,42 @@ app.get('/analytics', (c) => {
             <h1 class="text-2xl font-bold text-gray-800 mb-6">KPIs - resumen de datos</h1>
             
             <div class="grid grid-cols-6 gap-6">
+              <!-- 1. IMPORTE TOTAL -->
               <div class="bg-white rounded-lg p-4 text-center shadow-sm">
-                <div class="text-2xl font-bold text-purple-600" id="kpi-importe">890 €</div>
-                <div class="text-sm text-gray-600">Importe (€)</div>
+                <div class="text-2xl font-bold text-purple-600" id="kpi-importe">€0</div>
+                <div class="text-sm text-gray-600">Importe Total</div>
               </div>
               
+              <!-- 2. TOTAL EMPRESAS -->
               <div class="bg-white rounded-lg p-4 text-center shadow-sm">
-                <div class="text-2xl font-bold text-gray-800" id="kpi-total-km">1,294</div>
-                <div class="text-sm text-gray-600">Total KM</div>
+                <div class="text-2xl font-bold text-blue-600" id="kpi-empresas">0</div>
+                <div class="text-sm text-gray-600">Empresas</div>
               </div>
               
-              <div class="bg-white rounded-lg p-4 text-center shadow-sm">
-                <div class="text-2xl font-bold text-gray-800" id="kpi-tickets">30</div>
-                <div class="text-sm text-gray-600">Tickets</div>
+              <!-- 3. PENDIENTES AUTORIZACIÓN (Clickeable en rojo) -->
+              <div class="bg-white rounded-lg p-4 text-center shadow-sm cursor-pointer hover:bg-red-50 transition-colors" 
+                   onclick="goToPendingExpenses()" 
+                   title="Click para ver gastos pendientes de autorización">
+                <div class="text-2xl font-bold text-red-600" id="kpi-pendientes">0</div>
+                <div class="text-sm text-red-600 font-medium">Pendientes Autorización</div>
+                <div class="text-xs text-red-500 mt-1">Click para ver detalles</div>
               </div>
               
+              <!-- 4. ALERTAS -->
               <div class="bg-white rounded-lg p-4 text-center shadow-sm">
-                <div class="text-2xl font-bold text-red-600" id="kpi-alertas">4</div>
+                <div class="text-2xl font-bold text-orange-600" id="kpi-alertas">0</div>
                 <div class="text-sm text-gray-600">Alertas</div>
               </div>
               
+              <!-- 5. PROMEDIO POR GASTO -->
               <div class="bg-white rounded-lg p-4 text-center shadow-sm">
-                <div class="text-2xl font-bold text-gray-800" id="kpi-informes">14</div>
-                <div class="text-sm text-gray-600">Informes</div>
+                <div class="text-2xl font-bold text-green-600" id="kpi-promedio">€0</div>
+                <div class="text-sm text-gray-600">Promedio/Gasto</div>
               </div>
               
+              <!-- 6. EMPLEADOS ACTIVOS -->
               <div class="bg-white rounded-lg p-4 text-center shadow-sm">
-                <div class="text-2xl font-bold text-gray-800" id="kpi-empleados">12</div>
+                <div class="text-2xl font-bold text-indigo-600" id="kpi-empleados">0</div>
                 <div class="text-sm text-gray-600">Empleados</div>
               </div>
             </div>
@@ -3826,22 +3835,26 @@ app.get('/analytics', (c) => {
             const expenses = expensesData.expenses || [];
             const companies = companiesData.companies || [];
             
-            // Calcular KPIs
+            // Calcular KPIs Relevantes
             const totalAmount = expenses.reduce((sum, exp) => sum + parseFloat(exp.amount_mxn || exp.amount || 0), 0);
             const pendingExpenses = expenses.filter(exp => exp.status === 'pending');
-            const totalTickets = expenses.length;
-            const alertCount = pendingExpenses.filter(exp => {
+            const totalCompanies = companies.length;
+            const uniqueEmployees = [...new Set(expenses.map(exp => exp.user_name))].filter(Boolean).length;
+            const averagePerExpense = expenses.length > 0 ? totalAmount / expenses.length : 0;
+            
+            // Alertas: gastos > 7 días pendientes O gastos > 50,000
+            const alertCount = expenses.filter(exp => {
               const daysOld = getDaysAgo(exp.expense_date);
-              return daysOld > 7 || parseFloat(exp.amount || 0) > 50000;
+              return (exp.status === 'pending' && daysOld > 7) || parseFloat(exp.amount || 0) > 50000;
             }).length;
             
             // Actualizar KPIs en el UI
             document.getElementById('kpi-importe').textContent = formatCurrency(totalAmount);
-            document.getElementById('kpi-total-km').textContent = '1,294'; // Mock data
-            document.getElementById('kpi-tickets').textContent = totalTickets;
+            document.getElementById('kpi-empresas').textContent = totalCompanies;
+            document.getElementById('kpi-pendientes').textContent = pendingExpenses.length;
             document.getElementById('kpi-alertas').textContent = alertCount;
-            document.getElementById('kpi-informes').textContent = '14'; // Mock data
-            document.getElementById('kpi-empleados').textContent = '12'; // Mock data
+            document.getElementById('kpi-promedio').textContent = formatCurrency(averagePerExpense);
+            document.getElementById('kpi-empleados').textContent = uniqueEmployees;
             
           } catch (error) {
             console.error('Error loading KPI data:', error);
@@ -4041,21 +4054,33 @@ app.get('/analytics', (c) => {
 
         async function updateKPIsWithData(expenses) {
           const totalAmount = expenses.reduce((sum, exp) => sum + parseFloat(exp.amount_mxn || exp.amount || 0), 0);
-          const pendingCount = expenses.filter(exp => exp.status === 'pending').length;
+          const pendingExpenses = expenses.filter(exp => exp.status === 'pending');
+          const uniqueCompanies = [...new Set(expenses.map(exp => exp.company_name))].filter(Boolean).length;
+          const uniqueEmployees = [...new Set(expenses.map(exp => exp.user_name))].filter(Boolean).length;
+          const averagePerExpense = expenses.length > 0 ? totalAmount / expenses.length : 0;
+          
+          // Alertas: gastos > 7 días pendientes O gastos > 50,000
           const alertCount = expenses.filter(exp => {
             const daysOld = getDaysAgo(exp.expense_date);
-            return daysOld > 7 || parseFloat(exp.amount || 0) > 50000;
+            return (exp.status === 'pending' && daysOld > 7) || parseFloat(exp.amount || 0) > 50000;
           }).length;
 
-          console.log('📊 Actualizando KPIs:', {
+          console.log('📊 Actualizando KPIs con filtros:', {
             totalAmount: formatCurrency(totalAmount),
-            totalTickets: expenses.length,
-            alertCount: alertCount
+            pendientes: pendingExpenses.length,
+            empresas: uniqueCompanies,
+            empleados: uniqueEmployees,
+            promedio: formatCurrency(averagePerExpense),
+            alertas: alertCount
           });
 
+          // Actualizar todos los KPIs
           document.getElementById('kpi-importe').textContent = formatCurrency(totalAmount);
-          document.getElementById('kpi-tickets').textContent = expenses.length;
+          document.getElementById('kpi-empresas').textContent = uniqueCompanies;
+          document.getElementById('kpi-pendientes').textContent = pendingExpenses.length;
           document.getElementById('kpi-alertas').textContent = alertCount;
+          document.getElementById('kpi-promedio').textContent = formatCurrency(averagePerExpense);
+          document.getElementById('kpi-empleados').textContent = uniqueEmployees;
         }
 
         // 6️⃣ INFORMES ÁGILES - Funciones de utilidad
@@ -4103,6 +4128,13 @@ app.get('/analytics', (c) => {
             minimumFractionDigits: 0,
             maximumFractionDigits: 0
           }).format(amount || 0);
+        }
+
+        // 🎯 FUNCIÓN PARA NAVEGAR A GASTOS PENDIENTES
+        function goToPendingExpenses() {
+          console.log('🔄 Navegando a gastos pendientes de autorización...');
+          // Navegar a la página de gastos con filtro de status=pending
+          window.location.href = '/expenses?status=pending&highlight=pending';
         }
 
         console.log('🎯 Dashboard Analítico configurado - Los 6 pilares implementados');
