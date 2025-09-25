@@ -3813,8 +3813,12 @@ app.get('/analytics', (c) => {
               fetch('/api/companies')
             ]);
             
-            const expenses = await expensesResponse.json();
-            const companies = await companiesResponse.json();
+            const expensesData = await expensesResponse.json();
+            const companiesData = await companiesResponse.json();
+            
+            // Extraer arrays de las respuestas de API
+            const expenses = expensesData.expenses || [];
+            const companies = companiesData.companies || [];
             
             // Calcular KPIs
             const totalAmount = expenses.reduce((sum, exp) => sum + parseFloat(exp.amount_mxn || exp.amount || 0), 0);
@@ -3897,7 +3901,8 @@ app.get('/analytics', (c) => {
         async function loadCompaniesForFilter() {
           try {
             const response = await fetch('/api/companies');
-            const companies = await response.json();
+            const companiesData = await response.json();
+            const companies = companiesData.companies || [];
             
             const select = document.getElementById('filter-company');
             if (select) {
@@ -3914,7 +3919,8 @@ app.get('/analytics', (c) => {
         async function loadUsersForFilter() {
           try {
             const response = await fetch('/api/expenses');
-            const expenses = await response.json();
+            const expensesData = await response.json();
+            const expenses = expensesData.expenses || [];
             
             // Extraer usuarios únicos
             const uniqueUsers = [...new Set(expenses.map(exp => exp.user_name))].filter(Boolean);
@@ -3977,7 +3983,8 @@ app.get('/analytics', (c) => {
             });
 
             const response = await fetch(\`/api/expenses?\${queryParams}\`);
-            const expenses = await response.json();
+            const expensesData = await response.json();
+            const expenses = expensesData.expenses || [];
             
             // Actualizar gráficos con datos filtrados
             await updateChartsWithData(expenses);
