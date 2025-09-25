@@ -3556,6 +3556,526 @@ app.get('/', (c) => {
   );
 })
 
+// Dashboard Analítico - Los 6 Pilares Fundamentales
+app.get('/analytics', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Dashboard Analítico - Lyra Expenses</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <link href="/static/styles.css" rel="stylesheet">
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/dayjs.min.js"></script>
+    </head>
+    <body class="bg-gray-50">
+      
+      <!-- Top Navigation Bar -->
+      <nav class="bg-white shadow-sm border-b">
+        <div class="max-w-full px-4 py-3">
+          <div class="flex justify-between items-center">
+            <!-- Logo -->
+            <div class="flex items-center space-x-3">
+              <i class="fas fa-gem text-2xl text-purple-600"></i>
+              <h1 class="text-xl font-bold text-gray-800">Lyra Expenses</h1>
+            </div>
+
+            <!-- Navigation -->
+            <div class="flex items-center space-x-4">
+              <div class="flex items-center space-x-2 bg-gray-100 px-3 py-2 rounded-lg">
+                <i class="fas fa-calendar-alt text-gray-600"></i>
+                <input type="date" id="dashboard-date-from" class="bg-transparent text-sm text-gray-700 border-0 focus:outline-none">
+                <span class="text-gray-500">-</span>
+                <input type="date" id="dashboard-date-to" class="bg-transparent text-sm text-gray-700 border-0 focus:outline-none">
+              </div>
+              <nav class="flex space-x-4">
+                <a href="/" class="text-gray-600 hover:text-purple-600 flex items-center space-x-2">
+                  <i class="fas fa-chart-pie"></i>
+                  <span>Dashboard</span>
+                </a>
+                <a href="/analytics" class="text-purple-600 font-medium flex items-center space-x-2">
+                  <i class="fas fa-analytics"></i>
+                  <span>Analytics</span>
+                </a>
+                <a href="/companies" class="text-gray-600 hover:text-purple-600 flex items-center space-x-2">
+                  <i class="fas fa-building"></i>
+                  <span>Empresas</span>
+                </a>
+                <a href="/expenses" class="text-gray-600 hover:text-purple-600 flex items-center space-x-2">
+                  <i class="fas fa-receipt"></i>
+                  <span>Gastos</span>
+                </a>
+                <a href="/expenses" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2 text-sm">
+                  <i class="fas fa-plus"></i>
+                  <span>Nuevo Gasto</span>
+                </a>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </nav>
+      
+      <!-- DASHBOARD ANALÍTICO - Estilo de la imagen de referencia -->
+      <div class="flex h-screen bg-gray-50">
+        
+        <!-- LEFT SIDEBAR - Panel de Filtros como en la imagen -->
+        <div class="w-80 bg-purple-600 text-white p-6 overflow-y-auto">
+          
+          <!-- Header del Sidebar -->
+          <div class="mb-6">
+            <h2 class="text-xl font-bold mb-2">Ficha de gasto</h2>
+            <p class="text-purple-200 text-sm">Fecha</p>
+            <div class="flex space-x-2 mt-2">
+              <input type="date" id="filter-date-from" class="bg-purple-500 text-white text-sm px-2 py-1 rounded border-0">
+              <input type="date" id="filter-date-to" class="bg-purple-500 text-white text-sm px-2 py-1 rounded border-0">
+            </div>
+          </div>
+
+          <!-- Filtros Organizacionales -->
+          <div class="space-y-6">
+            
+            <div>
+              <label class="block text-sm font-medium mb-2">Organización</label>
+              <select id="filter-organization" class="w-full bg-gray-700 text-white p-2 rounded text-sm">
+                <option value="">Todos</option>
+                <option value="lyra-mx">Lyra México</option>
+                <option value="lyra-es">Lyra España</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-2">Código de empresa</label>
+              <select id="filter-company" class="w-full bg-gray-700 text-white p-2 rounded text-sm">
+                <option value="">Todos</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-2">Usuario</label>
+              <select id="filter-user" class="w-full bg-gray-700 text-white p-2 rounded text-sm">
+                <option value="">Todos</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-2">Centro coste</label>
+              <select id="filter-cost-center" class="w-full bg-gray-700 text-white p-2 rounded text-sm">
+                <option value="">Todos</option>
+                <option value="administracion">Administración</option>
+                <option value="ventas">Ventas</option>
+                <option value="marketing">Marketing</option>
+                <option value="tecnologia">Tecnología</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-3">Filtros adicionales</label>
+              <div>
+                <label class="block text-xs mb-1">Nombre del WF</label>
+                <select class="w-full bg-gray-700 text-white p-1 rounded text-xs">
+                  <option>Todos</option>
+                </select>
+              </div>
+            </div>
+            
+          </div>
+        </div>
+
+        <!-- RIGHT CONTENT AREA - KPIs y Gráficos -->
+        <div class="flex-1 p-6 overflow-y-auto">
+          
+          <!-- KPIs Header - Como en la imagen -->
+          <div class="mb-6">
+            <h1 class="text-2xl font-bold text-gray-800 mb-6">KPIs - resumen de datos</h1>
+            
+            <div class="grid grid-cols-6 gap-6">
+              <div class="bg-white rounded-lg p-4 text-center shadow-sm">
+                <div class="text-2xl font-bold text-purple-600" id="kpi-importe">890 €</div>
+                <div class="text-sm text-gray-600">Importe (€)</div>
+              </div>
+              
+              <div class="bg-white rounded-lg p-4 text-center shadow-sm">
+                <div class="text-2xl font-bold text-gray-800" id="kpi-total-km">1,294</div>
+                <div class="text-sm text-gray-600">Total KM</div>
+              </div>
+              
+              <div class="bg-white rounded-lg p-4 text-center shadow-sm">
+                <div class="text-2xl font-bold text-gray-800" id="kpi-tickets">30</div>
+                <div class="text-sm text-gray-600">Tickets</div>
+              </div>
+              
+              <div class="bg-white rounded-lg p-4 text-center shadow-sm">
+                <div class="text-2xl font-bold text-red-600" id="kpi-alertas">4</div>
+                <div class="text-sm text-gray-600">Alertas</div>
+              </div>
+              
+              <div class="bg-white rounded-lg p-4 text-center shadow-sm">
+                <div class="text-2xl font-bold text-gray-800" id="kpi-informes">14</div>
+                <div class="text-sm text-gray-600">Informes</div>
+              </div>
+              
+              <div class="bg-white rounded-lg p-4 text-center shadow-sm">
+                <div class="text-2xl font-bold text-gray-800" id="kpi-empleados">12</div>
+                <div class="text-sm text-gray-600">Empleados</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Charts Section - Como en la imagen -->
+          <div class="grid grid-cols-2 gap-6">
+            
+            <!-- Left Chart - Gastos por categoría (Donut) -->
+            <div class="bg-white rounded-lg p-6 shadow-sm">
+              <div class="flex justify-between items-center mb-4">
+                <h3 class="font-semibold text-gray-800">Gastos por categoría</h3>
+                <div class="flex space-x-2">
+                  <button class="p-1 text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-download"></i>
+                  </button>
+                  <button class="p-1 text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-expand"></i>
+                  </button>
+                  <button class="p-1 text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-cog"></i>
+                  </button>
+                </div>
+              </div>
+              <div id="category-chart" class="h-64">
+                <canvas id="categoryCanvas" width="300" height="300"></canvas>
+              </div>
+            </div>
+
+            <!-- Right Chart - Gastos por empresa (Bars) -->
+            <div class="bg-white rounded-lg p-6 shadow-sm">
+              <div class="flex justify-between items-center mb-4">
+                <h3 class="font-semibold text-gray-800">Gastos por empresa</h3>
+                <div class="flex space-x-2">
+                  <button class="p-1 text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-download"></i>
+                  </button>
+                  <button class="p-1 text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-expand"></i>
+                  </button>
+                </div>
+              </div>
+              <div id="company-chart" class="h-64">
+                <canvas id="companyCanvas" width="400" height="300"></canvas>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+
+      <script>
+        // 🎯 DASHBOARD ANALÍTICO EJECUTIVO - Los 6 Pilares Fundamentales
+        console.log('🚀 Iniciando Dashboard Ejecutivo Analítico...');
+
+        // Variables globales para los gráficos
+        let categoryChart = null;
+        let companyChart = null;
+
+        // Inicializar dashboard al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+          initializeDashboard();
+        });
+
+        async function initializeDashboard() {
+          try {
+            // Cargar datos iniciales
+            await Promise.all([
+              loadKPIData(),
+              loadCompaniesForFilter(),
+              loadUsersForFilter(), 
+              initializeCharts(),
+              loadDashboardData()
+            ]);
+            
+            // Configurar filtros
+            setupFilters();
+            
+            console.log('✅ Dashboard inicializado correctamente');
+          } catch (error) {
+            console.error('❌ Error inicializando dashboard:', error);
+          }
+        }
+
+        // 1️⃣ VISIÓN GLOBAL DE EMPLEADOS - KPIs principales
+        async function loadKPIData() {
+          try {
+            const [expensesResponse, companiesResponse] = await Promise.all([
+              fetch('/api/expenses'),
+              fetch('/api/companies')
+            ]);
+            
+            const expenses = await expensesResponse.json();
+            const companies = await companiesResponse.json();
+            
+            // Calcular KPIs
+            const totalAmount = expenses.reduce((sum, exp) => sum + parseFloat(exp.amount_mxn || exp.amount || 0), 0);
+            const pendingExpenses = expenses.filter(exp => exp.status === 'pending');
+            const totalTickets = expenses.length;
+            const alertCount = pendingExpenses.filter(exp => {
+              const daysOld = getDaysAgo(exp.expense_date);
+              return daysOld > 7 || parseFloat(exp.amount || 0) > 50000;
+            }).length;
+            
+            // Actualizar KPIs en el UI
+            document.getElementById('kpi-importe').textContent = formatCurrency(totalAmount);
+            document.getElementById('kpi-total-km').textContent = '1,294'; // Mock data
+            document.getElementById('kpi-tickets').textContent = totalTickets;
+            document.getElementById('kpi-alertas').textContent = alertCount;
+            document.getElementById('kpi-informes').textContent = '14'; // Mock data
+            document.getElementById('kpi-empleados').textContent = '12'; // Mock data
+            
+          } catch (error) {
+            console.error('Error loading KPI data:', error);
+          }
+        }
+
+        // 2️⃣ PROFUNDIZACIÓN CON 1 CLIC - Gráficos interactivos
+        async function initializeCharts() {
+          // Inicializar gráfico de categorías (donut)
+          const categoryCtx = document.getElementById('categoryCanvas');
+          if (categoryCtx) {
+            categoryChart = new Chart(categoryCtx, {
+              type: 'doughnut',
+              data: {
+                labels: ['Alojamiento', 'Kilometraje', 'Taxi', 'Restaurantes', 'Aparcamiento', 'Autopista'],
+                datasets: [{
+                  data: [180, 150, 120, 100, 80, 60],
+                  backgroundColor: [
+                    '#8B5CF6', '#06B6D4', '#F59E0B', 
+                    '#10B981', '#EF4444', '#6366F1'
+                  ]
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    position: 'right'
+                  }
+                }
+              }
+            });
+          }
+
+          // Inicializar gráfico de empresas (barras)
+          const companyCtx = document.getElementById('companyCanvas');
+          if (companyCtx) {
+            companyChart = new Chart(companyCtx, {
+              type: 'bar',
+              data: {
+                labels: ['Lyra MX', 'Lyra ES', 'Lyra Tech', 'Lyra Corp', 'Otros'],
+                datasets: [{
+                  label: 'Gastos (€)',
+                  data: [435.83, 256.95, 89.36, 59.99, 39.84],
+                  backgroundColor: '#3B82F6'
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                  y: {
+                    beginAtZero: true
+                  }
+                }
+              }
+            });
+          }
+        }
+
+        // 3️⃣ FILTRADO DETALLADO - Filtros multidimensionales
+        async function loadCompaniesForFilter() {
+          try {
+            const response = await fetch('/api/companies');
+            const companies = await response.json();
+            
+            const select = document.getElementById('filter-company');
+            if (select) {
+              select.innerHTML = '<option value="">Todos</option>';
+              companies.forEach(company => {
+                select.innerHTML += \`<option value="\${company.id}">\${company.name}</option>\`;
+              });
+            }
+          } catch (error) {
+            console.error('Error loading companies for filter:', error);
+          }
+        }
+
+        async function loadUsersForFilter() {
+          try {
+            const response = await fetch('/api/expenses');
+            const expenses = await response.json();
+            
+            // Extraer usuarios únicos
+            const uniqueUsers = [...new Set(expenses.map(exp => exp.user_name))].filter(Boolean);
+            
+            const select = document.getElementById('filter-user');
+            if (select) {
+              select.innerHTML = '<option value="">Todos</option>';
+              uniqueUsers.forEach(userName => {
+                select.innerHTML += \`<option value="\${userName}">\${userName}</option>\`;
+              });
+            }
+          } catch (error) {
+            console.error('Error loading users for filter:', error);
+          }
+        }
+
+        function setupFilters() {
+          // Event listeners para filtros
+          document.getElementById('filter-organization')?.addEventListener('change', applyFilters);
+          document.getElementById('filter-company')?.addEventListener('change', applyFilters);
+          document.getElementById('filter-user')?.addEventListener('change', applyFilters);
+          document.getElementById('filter-cost-center')?.addEventListener('change', applyFilters);
+          document.getElementById('filter-date-from')?.addEventListener('change', applyFilters);
+          document.getElementById('filter-date-to')?.addEventListener('change', applyFilters);
+        }
+
+        // 4️⃣ VISUALIZACIÓN DE TENDENCIAS - Datos en tiempo real
+        async function applyFilters() {
+          try {
+            // Obtener valores de filtros
+            const filters = {
+              organization: document.getElementById('filter-organization')?.value,
+              company: document.getElementById('filter-company')?.value,
+              user: document.getElementById('filter-user')?.value,
+              costCenter: document.getElementById('filter-cost-center')?.value,
+              dateFrom: document.getElementById('filter-date-from')?.value,
+              dateTo: document.getElementById('filter-date-to')?.value
+            };
+
+            console.log('🎯 Aplicando filtros:', filters);
+            
+            // Recargar datos con filtros
+            await loadDashboardData(filters);
+            
+            // Feedback visual
+            showFilterFeedback();
+            
+          } catch (error) {
+            console.error('Error applying filters:', error);
+          }
+        }
+
+        // 5️⃣ PLANIFICACIÓN ÁGIL - Carga de datos filtrados
+        async function loadDashboardData(filters = {}) {
+          try {
+            // Construir query string para filtros
+            const queryParams = new URLSearchParams();
+            Object.entries(filters).forEach(([key, value]) => {
+              if (value) queryParams.append(key, value);
+            });
+
+            const response = await fetch(\`/api/expenses?\${queryParams}\`);
+            const expenses = await response.json();
+            
+            // Actualizar gráficos con datos filtrados
+            await updateChartsWithData(expenses);
+            
+            // Actualizar KPIs
+            await updateKPIsWithData(expenses);
+            
+          } catch (error) {
+            console.error('Error loading dashboard data:', error);
+          }
+        }
+
+        async function updateChartsWithData(expenses) {
+          // Actualizar gráfico de categorías
+          if (categoryChart) {
+            const categoryData = groupExpensesByCategory(expenses);
+            categoryChart.data.datasets[0].data = Object.values(categoryData);
+            categoryChart.data.labels = Object.keys(categoryData);
+            categoryChart.update();
+          }
+
+          // Actualizar gráfico de empresas
+          if (companyChart) {
+            const companyData = await groupExpensesByCompany(expenses);
+            companyChart.data.datasets[0].data = Object.values(companyData);
+            companyChart.data.labels = Object.keys(companyData);
+            companyChart.update();
+          }
+        }
+
+        async function updateKPIsWithData(expenses) {
+          const totalAmount = expenses.reduce((sum, exp) => sum + parseFloat(exp.amount_mxn || exp.amount || 0), 0);
+          const pendingCount = expenses.filter(exp => exp.status === 'pending').length;
+          const alertCount = expenses.filter(exp => {
+            const daysOld = getDaysAgo(exp.expense_date);
+            return daysOld > 7 || parseFloat(exp.amount || 0) > 50000;
+          }).length;
+
+          document.getElementById('kpi-importe').textContent = formatCurrency(totalAmount);
+          document.getElementById('kpi-tickets').textContent = expenses.length;
+          document.getElementById('kpi-alertas').textContent = alertCount;
+        }
+
+        // 6️⃣ INFORMES ÁGILES - Funciones de utilidad
+        function groupExpensesByCategory(expenses) {
+          const categories = {};
+          expenses.forEach(expense => {
+            const category = expense.expense_type_name || 'Otros';
+            categories[category] = (categories[category] || 0) + parseFloat(expense.amount_mxn || expense.amount || 0);
+          });
+          return categories;
+        }
+
+        async function groupExpensesByCompany(expenses) {
+          const companies = {};
+          expenses.forEach(expense => {
+            const company = expense.company_name || 'Sin empresa';
+            companies[company] = (companies[company] || 0) + parseFloat(expense.amount_mxn || expense.amount || 0);
+          });
+          return companies;
+        }
+
+        function showFilterFeedback() {
+          // Mostrar indicador visual de que los filtros se aplicaron
+          const indicator = document.createElement('div');
+          indicator.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg z-50';
+          indicator.textContent = '✅ Filtros aplicados';
+          document.body.appendChild(indicator);
+          
+          setTimeout(() => {
+            document.body.removeChild(indicator);
+          }, 2000);
+        }
+
+        function getDaysAgo(dateStr) {
+          const date = new Date(dateStr);
+          const now = new Date();
+          const diffTime = Math.abs(now - date);
+          return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        }
+
+        function formatCurrency(amount) {
+          return new Intl.NumberFormat('es-ES', {
+            style: 'currency',
+            currency: 'EUR',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+          }).format(amount || 0);
+        }
+
+        console.log('🎯 Dashboard Analítico configurado - Los 6 pilares implementados');
+      </script>
+
+    </body>
+    </html>
+  `)
+})
+
 // Companies page - List all companies
 app.get('/companies', (c) => {
   return c.render(
