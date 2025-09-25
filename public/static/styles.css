@@ -3,6 +3,34 @@
    Premium Corporate Dashboard Design
    ======================================== */
 
+/* === FILTROS QUE SÍ SE VEN - COLORES FORZADOS === */
+select, input[type="date"], input[type="text"], input[type="email"], input[type="password"] {
+  background-color: white !important;
+  color: black !important;
+  border: 1px solid #ccc !important;
+}
+
+select option {
+  background-color: white !important;
+  color: black !important;
+}
+
+/* Filtros específicos de gastos */
+#filter-company, #filter-user, #filter-status, #filter-currency, 
+#filter-expense-type, #filter-date-from, #filter-date-to, #filter-payment-method {
+  background-color: white !important;
+  color: black !important;
+  border: 2px solid #007bff !important;
+  font-weight: 500 !important;
+}
+
+#filter-company option, #filter-user option, #filter-status option, 
+#filter-currency option, #filter-expense-type option, #filter-payment-method option {
+  background-color: white !important;
+  color: black !important;
+  padding: 8px !important;
+}
+
 /* === VARIABLES DE COLORES PREMIUM === */
 :root {
   /* Dark Theme Base */
@@ -296,6 +324,39 @@ body {
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
 }
 
+.nav-link {
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.nav-link:hover {
+  background: var(--color-glass-bg);
+  transform: translateY(-1px);
+}
+
+.nav-link.active,
+.nav-link[aria-current="page"] {
+  background: var(--color-glass-hover);
+  color: var(--color-accent-gold) !important;
+  box-shadow: var(--shadow-glow);
+}
+
+.nav-link.active::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  height: 2px;
+  background: var(--gradient-gold);
+  border-radius: 2px;
+}
+
 .nav-logo {
   font-family: var(--font-display);
   font-size: 24px;
@@ -414,7 +475,7 @@ select.form-input-premium::-webkit-scrollbar-thumb:hover {
   }
 }
 
-/* Force text color for all analytics filter selects */
+/* CRITICAL: Force text visibility for all analytics filter selects */
 #analytics-user-filter,
 #analytics-status-filter,
 #analytics-company-filter,
@@ -423,11 +484,17 @@ select.form-input-premium::-webkit-scrollbar-thumb:hover {
 #analytics-currency-filter-main,
 #analytics-period-filter-main,
 #period-selector {
-  background: var(--color-glass-bg) !important;
-  color: var(--color-text-primary) !important;
-  border: 1px solid var(--color-glass-border) !important;
+  background: #1a1d25 !important;
+  background-color: #1a1d25 !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  -webkit-text-fill-color: #ffffff !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
 }
 
+/* CRITICAL: Force option text visibility */
 #analytics-user-filter option,
 #analytics-status-filter option,
 #analytics-company-filter option,
@@ -436,8 +503,28 @@ select.form-input-premium::-webkit-scrollbar-thumb:hover {
 #analytics-currency-filter-main option,
 #analytics-period-filter-main option,
 #period-selector option {
-  background: var(--color-bg-secondary) !important;
-  color: var(--color-text-primary) !important;
+  background: #12141a !important;
+  background-color: #12141a !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  padding: 8px 12px !important;
+}
+
+/* CRITICAL: Focus states with visible text */
+#analytics-user-filter:focus,
+#analytics-status-filter:focus,
+#analytics-company-filter:focus,
+#analytics-company-filter-main:focus,
+#analytics-currency-filter:focus,
+#analytics-currency-filter-main:focus,
+#analytics-period-filter-main:focus,
+#period-selector:focus {
+  background: #252932 !important;
+  background-color: #252932 !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  border-color: #f59e0b !important;
+  outline: none !important;
 }
 
 /* Hover states for better UX */
@@ -449,8 +536,42 @@ select.form-input-premium::-webkit-scrollbar-thumb:hover {
 #analytics-currency-filter-main:hover,
 #analytics-period-filter-main:hover,
 #period-selector:hover {
-  background: var(--color-glass-hover) !important;
-  border-color: var(--color-accent-gold) !important;
+  background: #252932 !important;
+  background-color: #252932 !important;
+  border-color: #f59e0b !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+/* ULTRA-SPECIFIC SELECTORS - LAST RESORT */
+select[id="analytics-user-filter"],
+select[id="analytics-user-filter-trend"],
+select[id="analytics-status-filter"],
+select[id="analytics-status-filter-chart"], 
+select[id="analytics-company-filter"],
+select[id="analytics-company-filter-main"],
+select[id="analytics-currency-filter"],
+select[id="analytics-currency-filter-main"],
+select[id="analytics-period-filter-main"],
+select[id="period-selector"] {
+  background: #1a1d25 !important;
+  color: white !important;
+  -webkit-text-fill-color: white !important;
+}
+
+select[id="analytics-user-filter"] option,
+select[id="analytics-user-filter-trend"] option,
+select[id="analytics-status-filter"] option,
+select[id="analytics-status-filter-chart"] option,
+select[id="analytics-company-filter"] option,
+select[id="analytics-company-filter-main"] option,
+select[id="analytics-currency-filter"] option,
+select[id="analytics-currency-filter-main"] option,
+select[id="analytics-period-filter-main"] option,
+select[id="period-selector"] option {
+  background: #12141a !important;
+  color: white !important;
+  -webkit-text-fill-color: white !important;
 }
 
 /* === MODAL PREMIUM === */
@@ -621,4 +742,26 @@ select.form-input-premium::-webkit-scrollbar-thumb:hover {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+/* === COMPANY CARDS HOVER EFFECTS === */
+.company-card-premium.cursor-pointer:hover {
+  cursor: pointer;
+}
+
+.company-card-premium .fas.fa-arrow-right {
+  transition: transform 0.3s ease;
+}
+
+/* === MOBILE RESPONSIVE NAVIGATION === */
+@media (max-width: 768px) {
+  .nav-premium .flex.space-x-6 {
+    display: none;
+  }
+  
+  .nav-premium .flex.space-x-8 {
+    flex-direction: column;
+    space-x: 0;
+    gap: 1rem;
+  }
 }

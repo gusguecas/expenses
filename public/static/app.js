@@ -18,6 +18,54 @@ class ExpensesApp {
     this.init();
   }
 
+  // Show message to user
+  showMessage(message, type = 'info') {
+    // Remove existing messages
+    const existingMessages = document.querySelectorAll('.lyra-message');
+    existingMessages.forEach(msg => msg.remove());
+    
+    // Create message element
+    const messageEl = document.createElement('div');
+    messageEl.className = `lyra-message fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm transform transition-all duration-300 translate-x-full`;
+    
+    // Set styles based on type
+    switch(type) {
+      case 'success':
+        messageEl.className += ' bg-green-600 text-white';
+        break;
+      case 'error':
+        messageEl.className += ' bg-red-600 text-white';
+        break;
+      case 'warning':
+        messageEl.className += ' bg-yellow-600 text-white';
+        break;
+      default:
+        messageEl.className += ' bg-blue-600 text-white';
+    }
+    
+    messageEl.innerHTML = `
+      <div class="flex items-center">
+        <span class="mr-2">${message}</span>
+        <button onclick="this.parentElement.parentElement.remove()" class="ml-auto text-white hover:text-gray-200">×</button>
+      </div>
+    `;
+    
+    document.body.appendChild(messageEl);
+    
+    // Animate in
+    setTimeout(() => {
+      messageEl.classList.remove('translate-x-full');
+    }, 10);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+      if (messageEl.parentElement) {
+        messageEl.classList.add('translate-x-full');
+        setTimeout(() => messageEl.remove(), 300);
+      }
+    }, 5000);
+  }
+
   async init() {
     try {
       // Load basic data first (needed for forms)
@@ -37,7 +85,6 @@ class ExpensesApp {
         // Load dashboard metrics if on dashboard page and authenticated
         if (this.isDashboardPage()) {
           await this.loadDashboardMetrics();
-          this.setupAnalyticsFilters();
         }
         
         // Load expenses if on expenses page
@@ -48,6 +95,50 @@ class ExpensesApp {
       } else {
         // User not authenticated - show basic interface but allow form usage
         this.updateAuthUI();
+      }
+      
+      // Setup analytics filters regardless of authentication (data is public)
+      if (this.isDashboardPage()) {
+        console.log('🔧 Setting up analytics filters for dashboard');
+        
+        // Try to setup filters, with retries in case DOM isn't ready
+        const setupFiltersWithRetry = () => {
+          console.log('🔧 Attempting to setup analytics filters...');
+          
+          // Check if analytics filter elements exist
+          const userFilter = document.getElementById('analytics-user-filter');
+          const statusFilter = document.getElementById('analytics-status-filter');
+          
+          if (userFilter && statusFilter) {
+            console.log('🔧 Filter elements found, setting up filters');
+            this.setupAnalyticsFilters();
+          } else {
+            console.log('🔧 Filter elements not found yet, retrying in 500ms');
+            setTimeout(setupFiltersWithRetry, 500);
+          }
+        };
+        
+        // Start setup attempt
+        setupFiltersWithRetry();
+        
+        // Also try to refresh the page to ensure database is initialized
+        setTimeout(async () => {
+          console.log('🔧 Ensuring database is initialized...');
+          try {
+            await fetch('/api/init-db', { method: 'POST' });
+            console.log('🔧 Database initialization completed');
+            
+            // Retry loading users and companies after database init
+            await this.loadUsers();
+            await this.loadCompanies();
+            
+            // Re-setup filters with fresh data
+            this.setupAnalyticsFilters();
+            
+          } catch (error) {
+            console.error('🔧 Database initialization failed:', error);
+          }
+        }, 2000);
       }
       
       // Setup event listeners (always needed)
@@ -903,13 +994,54 @@ class ExpensesApp {
   }
 
   setupAnalyticsFilters() {
-    // Fill filter dropdowns
-    this.fillAnalyticsCompanyFilter();
-    this.fillAnalyticsCompanyFilterMain();
-    this.fillAnalyticsUserFilter();
+    console.log('🚀 setupAnalyticsFilters called');
+    console.log('🚀 Companies loaded:', this.companies.length);
+    console.log('🚀 Users loaded:', this.users.length);
+    
+    // Fill filter dropdowns (not needed since they're hardcoded now)
+    // this.fillAnalyticsCompanyFilter();
+    // this.fillAnalyticsCompanyFilterMain();
+    // this.fillAnalyticsUserFilter();
+    // this.fillAnalyticsUserFilterTrend();
     
     // Setup event listeners for analytics filters
     initializeAnalyticsFilters();
+    
+    // Test the filters immediately
+    this.testAnalyticsFilters();
+    
+    console.log('🚀 setupAnalyticsFilters completed');
+  }
+
+  testAnalyticsFilters() {
+    console.log('🧪 Testing analytics filters...');
+    
+    // Test each filter element
+    const filterIds = [
+      'analytics-user-filter',
+      'analytics-status-filter', 
+      'analytics-company-filter-main',
+      'analytics-currency-filter-main',
+      'analytics-period-filter-main',
+      'analytics-company-filter',
+      'analytics-currency-filter',
+      'analytics-user-filter-trend',
+      'analytics-status-filter-chart'
+    ];
+    
+    filterIds.forEach(id => {
+      const element = document.getElementById(id);
+      if (element) {
+        console.log(`✅ Filter ${id}: Found with ${element.options.length} options`);
+        // Test change event
+        element.addEventListener('change', (e) => {
+          console.log(`🎯 Filter ${id} changed to:`, e.target.value);
+          this.showSuccess(`Filtro aplicado: ${id} = ${e.target.value || 'todos'}`);
+        });
+      } else {
+        console.log(`❌ Filter ${id}: NOT FOUND`);
+      }
+    });
   }
 
   fillAnalyticsCompanyFilter() {
@@ -941,16 +1073,47 @@ class ExpensesApp {
   }
 
   fillAnalyticsUserFilter() {
+    console.log('🔍 fillAnalyticsUserFilter called');
+    console.log('🔍 Users available:', this.users.length);
+    console.log('🔍 Users data:', this.users);
+    
     const userFilter = document.getElementById('analytics-user-filter');
+    console.log('🔍 User filter element found:', !!userFilter);
+    
     if (userFilter && this.users.length > 0) {
       // Keep the "All Users" option and add user options
       const existingOptions = userFilter.innerHTML;
+      console.log('🔍 Existing options:', existingOptions);
+      
       const userOptions = this.users.map(user => {
         const roleIcon = this.getRoleIcon(user.role);
         return `<option value="${user.id}">${roleIcon} ${user.name}</option>`;
       }).join('');
       
+      console.log('🔍 New user options:', userOptions);
       userFilter.innerHTML = existingOptions + userOptions;
+      console.log('🔍 Final innerHTML:', userFilter.innerHTML);
+    } else {
+      console.log('🔍 Cannot fill user filter - missing element or no users');
+    }
+  }
+
+  fillAnalyticsUserFilterTrend() {
+    console.log('🔍 fillAnalyticsUserFilterTrend called');
+    
+    const userFilterTrend = document.getElementById('analytics-user-filter-trend');
+    console.log('🔍 User filter trend element found:', !!userFilterTrend);
+    
+    if (userFilterTrend && this.users.length > 0) {
+      // Keep the "All Users" option and add user options
+      const existingOptions = userFilterTrend.innerHTML;
+      
+      const userOptions = this.users.map(user => {
+        const roleIcon = this.getRoleIcon(user.role);
+        return `<option value="${user.id}">${roleIcon} ${user.name}</option>`;
+      }).join('');
+      
+      userFilterTrend.innerHTML = existingOptions + userOptions;
     }
   }
 
@@ -2081,6 +2244,7 @@ class ExpensesApp {
                 </label>
                 <input type="email" id="login-email" name="email" required
                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       style="background: white !important; color: #1f2937 !important; border: 2px solid #d1d5db !important;"
                        placeholder="admin@techmx.com">
               </div>
               
@@ -2090,6 +2254,7 @@ class ExpensesApp {
                 </label>
                 <input type="password" id="login-password" name="password" required
                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       style="background: white !important; color: #1f2937 !important; border: 2px solid #d1d5db !important;"
                        placeholder="••••••••">
               </div>
               
@@ -3082,7 +3247,9 @@ function initializeAnalyticsFilters() {
   // All analytics filters
   const filterIds = [
     'analytics-user-filter',
-    'analytics-status-filter', 
+    'analytics-user-filter-trend',
+    'analytics-status-filter',
+    'analytics-status-filter-chart', 
     'analytics-company-filter',
     'analytics-company-filter-main',
     'analytics-currency-filter',
@@ -3101,39 +3268,69 @@ function initializeAnalyticsFilters() {
 }
 
 async function updateAnalyticsFilters() {
+  console.log('🔄 updateAnalyticsFilters called');
+  
   const filters = {};
   
   // Get period (try main first, then legacy)
   const period = document.getElementById('analytics-period-filter-main')?.value || 
                   document.getElementById('period-selector')?.value;
-  if (period) filters.period = period;
+  if (period) {
+    filters.period = period;
+    console.log('📅 Period filter:', period);
+  }
   
   // Get company filter (try main first, then legacy)
   const company = document.getElementById('analytics-company-filter-main')?.value ||
                   document.getElementById('analytics-company-filter')?.value;
-  if (company) filters.company_id = company;
+  if (company) {
+    filters.company_id = company;
+    console.log('🏢 Company filter:', company);
+  }
   
-  // Get user filter
-  const user = document.getElementById('analytics-user-filter')?.value;
-  if (user) filters.user_id = user;
+  // Get user filter (try both versions)
+  const user = document.getElementById('analytics-user-filter')?.value ||
+               document.getElementById('analytics-user-filter-trend')?.value;
+  if (user) {
+    filters.user_id = user;
+    console.log('👤 User filter:', user);
+  }
   
-  // Get status filter
-  const status = document.getElementById('analytics-status-filter')?.value;
-  if (status) filters.status = status;
+  // Get status filter (try both versions)
+  const status = document.getElementById('analytics-status-filter')?.value ||
+                 document.getElementById('analytics-status-filter-chart')?.value;
+  if (status) {
+    filters.status = status;
+    console.log('📊 Status filter:', status);
+  }
   
   // Get currency filter (try main first, then legacy)
   const currency = document.getElementById('analytics-currency-filter-main')?.value ||
                    document.getElementById('analytics-currency-filter')?.value;
-  if (currency) filters.currency = currency;
+  if (currency) {
+    filters.currency = currency;
+    console.log('💰 Currency filter:', currency);
+  }
+  
+  console.log('🎯 All filters collected:', filters);
+  
+  // Create filter summary for user
+  const filterCount = Object.keys(filters).length;
+  const filterSummary = filterCount > 0 ? 
+    `Aplicando ${filterCount} filtro(s): ${Object.entries(filters).map(([k,v]) => `${k}=${v}`).join(', ')}` :
+    'Mostrando todos los datos (sin filtros)';
+    
+  console.log('📋', filterSummary);
   
   // Show loading
   showChartsLoading();
   
   try {
     await window.expensesApp.loadDashboardMetricsWithFilters(filters);
+    window.expensesApp.showSuccess(filterSummary);
   } catch (error) {
-    console.error('Error updating analytics filters:', error);
-    window.expensesApp.showMessage('Error al aplicar filtros', 'error');
+    console.error('❌ Error updating analytics filters:', error);
+    window.expensesApp.showMessage('Error al aplicar filtros: ' + error.message, 'error');
   }
 }
 
@@ -3170,12 +3367,476 @@ function refreshStatusMetrics() {
   }
 }
 
+// ===== FUNCIONES BRUTALES PARA FILTROS DE GASTOS /expenses =====
+
+let currentExpensesFilters = {};
+
+function EXPENSES_FILTER_COMPANY(companyId) {
+  console.log('🏢 FILTRO EMPRESA:', companyId);
+  currentExpensesFilters.company_id = companyId;
+  if (companyId) {
+    const companyNames = {
+      '1': 'TechMX Solutions',
+      '2': 'Innovación Digital MX', 
+      '3': 'Consultoría Estratégica MX',
+      '4': 'TechES Barcelona',
+      '5': 'Innovación Madrid SL',
+      '6': 'Digital Valencia S.A.'
+    };
+    EXPENSES_LOAD_FILTERED_DATA(`Empresa: ${companyNames[companyId]}`);
+  } else {
+    EXPENSES_LOAD_FILTERED_DATA('Todas las empresas');
+  }
+}
+
+function EXPENSES_FILTER_USER(userId) {
+  console.log('👤 FILTRO USUARIO:', userId);
+  currentExpensesFilters.user_id = userId;
+  if (userId) {
+    const userNames = {
+      '1': 'Alejandro Rodríguez',
+      '2': 'María López',
+      '3': 'Carlos Martínez', 
+      '4': 'Ana García',
+      '5': 'Pedro Sánchez',
+      '6': 'Elena Torres'
+    };
+    EXPENSES_LOAD_FILTERED_DATA(`Usuario: ${userNames[userId]}`);
+  } else {
+    EXPENSES_LOAD_FILTERED_DATA('Todos los usuarios');
+  }
+}
+
+function EXPENSES_FILTER_STATUS(status) {
+  console.log('📊 FILTRO STATUS:', status);
+  currentExpensesFilters.status = status;
+  if (status) {
+    const statusNames = {
+      'pending': 'Pendientes',
+      'approved': 'Aprobados',
+      'rejected': 'Rechazados',
+      'reimbursed': 'Reembolsados', 
+      'invoiced': 'Facturados'
+    };
+    EXPENSES_LOAD_FILTERED_DATA(`Estado: ${statusNames[status]}`);
+  } else {
+    EXPENSES_LOAD_FILTERED_DATA('Todos los estados');
+  }
+}
+
+function EXPENSES_FILTER_TYPE(typeId) {
+  console.log('🏷️ FILTRO TIPO:', typeId);
+  currentExpensesFilters.expense_type_id = typeId;
+  if (typeId) {
+    const typeNames = {
+      '1': 'Comidas de Trabajo',
+      '2': 'Transporte Terrestre',
+      '3': 'Combustible',
+      '4': 'Hospedaje',
+      '5': 'Vuelos',
+      '6': 'Material de Oficina',
+      '7': 'Software y Licencias',
+      '8': 'Capacitación',
+      '9': 'Marketing',
+      '10': 'Otros Gastos'
+    };
+    EXPENSES_LOAD_FILTERED_DATA(`Tipo: ${typeNames[typeId]}`);
+  } else {
+    EXPENSES_LOAD_FILTERED_DATA('Todos los tipos');
+  }
+}
+
+function EXPENSES_APPLY_ALL_FILTERS() {
+  console.log('🎯 APLICANDO TODOS LOS FILTROS');
+  
+  // Recolectar todos los valores
+  const company = document.getElementById('filter-company')?.value;
+  const user = document.getElementById('filter-user')?.value;
+  const status = document.getElementById('filter-status')?.value;
+  const currency = document.getElementById('filter-currency')?.value;
+  const expenseType = document.getElementById('filter-expense-type')?.value;
+  const dateFrom = document.getElementById('filter-date-from')?.value;
+  const dateTo = document.getElementById('filter-date-to')?.value;
+  const paymentMethod = document.getElementById('filter-payment-method')?.value;
+  
+  // Construir filtros
+  currentExpensesFilters = {};
+  if (company) currentExpensesFilters.company_id = company;
+  if (user) currentExpensesFilters.user_id = user;
+  if (status) currentExpensesFilters.status = status;
+  if (currency) currentExpensesFilters.currency = currency;
+  if (expenseType) currentExpensesFilters.expense_type_id = expenseType;
+  if (dateFrom) currentExpensesFilters.date_from = dateFrom;
+  if (dateTo) currentExpensesFilters.date_to = dateTo;
+  if (paymentMethod) currentExpensesFilters.payment_method = paymentMethod;
+  
+  const filterCount = Object.keys(currentExpensesFilters).length;
+  EXPENSES_LOAD_FILTERED_DATA(filterCount > 0 ? `${filterCount} filtro(s) aplicado(s)` : 'Sin filtros');
+}
+
+function EXPENSES_CLEAR_ALL() {
+  console.log('🧹 LIMPIANDO TODOS LOS FILTROS');
+  
+  // Limpiar dropdowns
+  const filterIds = [
+    'filter-company', 'filter-user', 'filter-status', 'filter-currency',
+    'filter-expense-type', 'filter-date-from', 'filter-date-to', 'filter-payment-method'
+  ];
+  
+  filterIds.forEach(id => {
+    const element = document.getElementById(id);
+    if (element) element.value = '';
+  });
+  
+  currentExpensesFilters = {};
+  EXPENSES_LOAD_FILTERED_DATA('Filtros limpiados - Mostrando todos los gastos');
+}
+
+// Función global para limpiar filtros de María desde cualquier lugar
+function QUITAR_MARIA() {
+  console.log('🧹 QUITANDO FILTRO DE MARÍA');
+  document.getElementById('filter-user').value = '';
+  currentExpensesFilters = {};
+  EXPENSES_LOAD_FILTERED_DATA('María removida - Mostrando todos los gastos');
+}
+
+function EXPENSES_TEST_MARIA() {
+  console.log('🧪 PRUEBA RÁPIDA: MARÍA LÓPEZ');
+  document.getElementById('filter-user').value = '2';
+  EXPENSES_FILTER_USER('2');
+}
+
+function EXPENSES_TEST_PENDING() {
+  console.log('🧪 PRUEBA RÁPIDA: SOLO PENDIENTES');
+  document.getElementById('filter-status').value = 'pending';
+  EXPENSES_FILTER_STATUS('pending');
+}
+
+function EXPENSES_LOAD_FILTERED_DATA(description) {
+  console.log('📊 CARGANDO DATOS FILTRADOS:', currentExpensesFilters);
+  
+  // Construir query string
+  const params = new URLSearchParams(currentExpensesFilters);
+  const url = params.toString() ? `/api/expenses?${params.toString()}` : '/api/expenses';
+  
+  console.log('🔗 URL:', url);
+  
+  fetch(url)
+    .then(response => response.json())
+    .then(data => {
+      console.log('✅ DATOS RECIBIDOS:', data);
+      
+      // Actualizar contador y total
+      const count = data.expenses?.length || 0;
+      const total = data.expenses?.reduce((sum, e) => sum + parseFloat(e.amount_mxn || 0), 0) || 0;
+      
+      document.getElementById('expenses-count').textContent = `${count} gastos`;
+      document.getElementById('expenses-total').textContent = `$${total.toLocaleString('es-MX')}`;
+      
+      // Actualizar tabla
+      EXPENSES_UPDATE_TABLE(data.expenses || []);
+      
+      // Mostrar mensaje
+      window.expensesApp.showSuccess(`✅ ${description} - ${count} gastos encontrados ($${total.toLocaleString('es-MX')})`);
+    })
+    .catch(error => {
+      console.error('❌ ERROR:', error);
+      window.expensesApp.showMessage('Error al cargar gastos filtrados', 'error');
+    });
+}
+
+function EXPENSES_UPDATE_TABLE(expenses) {
+  const tableBody = document.getElementById('expenses-table');
+  if (!tableBody) return;
+  
+  if (expenses.length === 0) {
+    tableBody.innerHTML = `
+      <tr>
+        <td colspan="10" class="px-6 py-4 text-center text-gray-500">
+          No se encontraron gastos con los filtros aplicados
+        </td>
+      </tr>
+    `;
+    return;
+  }
+  
+  const rows = expenses.map(expense => {
+    const statusColors = {
+      'pending': 'bg-yellow-100 text-yellow-800',
+      'approved': 'bg-green-100 text-green-800',
+      'rejected': 'bg-red-100 text-red-800',
+      'reimbursed': 'bg-blue-100 text-blue-800',
+      'invoiced': 'bg-purple-100 text-purple-800'
+    };
+    
+    const statusIcons = {
+      'pending': '⏳',
+      'approved': '✅',
+      'rejected': '❌',
+      'reimbursed': '💰',
+      'invoiced': '📄'
+    };
+    
+    return `
+      <tr class="hover:bg-gray-50">
+        <td class="px-6 py-4 whitespace-nowrap">
+          <input type="checkbox" class="expense-checkbox" value="${expense.id}" />
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+          #${expense.id}
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+          ${expense.expense_date}
+        </td>
+        <td class="px-6 py-4 text-sm text-gray-900">
+          <div class="max-w-xs truncate">${expense.description}</div>
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+          ${expense.company_name || 'N/A'}
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+          ${expense.user_name || 'N/A'}
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+          ${expense.currency} $${parseFloat(expense.amount || 0).toLocaleString('es-MX')}
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+          $${parseFloat(expense.amount_mxn || 0).toLocaleString('es-MX')}
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap">
+          <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full ${statusColors[expense.status] || 'bg-gray-100 text-gray-800'}">
+            ${statusIcons[expense.status] || '❓'} ${expense.status}
+          </span>
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+          <button onclick="viewExpense(${expense.id})" class="text-blue-600 hover:text-blue-900 mr-2">Ver</button>
+          <button onclick="editExpense(${expense.id})" class="text-indigo-600 hover:text-indigo-900">Editar</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+  
+  tableBody.innerHTML = rows;
+}
+
+// ===== FUNCIONES DIRECTAS DE FILTRADO =====
+
+function FILTER_BY_USER(userId) {
+  console.log('🎯 FILTRO DIRECTO POR USUARIO:', userId);
+  
+  if (!userId) {
+    FORCE_CLEAR_ALL();
+    return;
+  }
+  
+  const userNames = {
+    '1': 'Alejandro Rodríguez',
+    '2': 'María López', 
+    '3': 'Carlos Martínez',
+    '4': 'Ana García',
+    '5': 'Pedro Sánchez',
+    '6': 'Elena Torres'
+  };
+  
+  fetch(`/api/dashboard/metrics?user_id=${userId}`)
+    .then(response => response.json())
+    .then(data => {
+      updateDashboardWithData(data, `Usuario: ${userNames[userId]}`);
+    })
+    .catch(error => {
+      console.error('❌ ERROR:', error);
+      window.expensesApp.showMessage('Error al filtrar por usuario', 'error');
+    });
+}
+
+function FILTER_BY_STATUS(status) {
+  console.log('🎯 FILTRO DIRECTO POR STATUS:', status);
+  
+  if (!status) {
+    FORCE_CLEAR_ALL();
+    return;
+  }
+  
+  const statusNames = {
+    'pending': 'Pendientes',
+    'approved': 'Aprobados',
+    'rejected': 'Rechazados', 
+    'reimbursed': 'Reembolsados',
+    'invoiced': 'Facturados'
+  };
+  
+  fetch(`/api/dashboard/metrics?status=${status}`)
+    .then(response => response.json())
+    .then(data => {
+      updateDashboardWithData(data, `Estado: ${statusNames[status]}`);
+    })
+    .catch(error => {
+      console.error('❌ ERROR:', error);
+      window.expensesApp.showMessage('Error al filtrar por estado', 'error');
+    });
+}
+
+function updateDashboardWithData(data, filterDescription) {
+  console.log('📊 ACTUALIZANDO DASHBOARD:', data);
+  
+  // Calcular totales
+  const totalAmount = data.status_metrics.reduce((sum, m) => sum + parseFloat(m.total_mxn || 0), 0);
+  const pendingCount = data.status_metrics.find(m => m.status === 'pending')?.count || 0;
+  const totalCount = data.status_metrics.reduce((sum, m) => sum + m.count, 0);
+  
+  // Actualizar métricas principales
+  const totalExpensesEl = document.getElementById('total-expenses');
+  const pendingExpensesEl = document.getElementById('pending-expenses');
+  
+  if (totalExpensesEl) {
+    totalExpensesEl.textContent = `$${totalAmount.toLocaleString('es-MX')}`;
+  }
+  
+  if (pendingExpensesEl) {
+    pendingExpensesEl.textContent = pendingCount;
+  }
+  
+  // Mostrar mensaje de éxito
+  window.expensesApp.showSuccess(`FILTRO APLICADO: ${filterDescription} - ${totalCount} gastos ($${totalAmount.toLocaleString('es-MX')})`);
+  
+  // Actualizar gráficas
+  updateChartsWithData(data);
+}
+
+// ===== FUNCIONES BRUTALES QUE SÍ FUNCIONAN =====
+
+function FORCE_TEST_MARIA() {
+  console.log('🚀 FORZANDO FILTRO DE MARÍA');
+  
+  // Hacer llamada directa al API
+  fetch('/api/dashboard/metrics?user_id=2')
+    .then(response => response.json())
+    .then(data => {
+      console.log('✅ DATOS DE MARÍA:', data);
+      
+      // Actualizar métricas manualmente
+      const totalAmount = data.status_metrics.reduce((sum, m) => sum + parseFloat(m.total_mxn || 0), 0);
+      const pendingCount = data.status_metrics.find(m => m.status === 'pending')?.count || 0;
+      
+      // Actualizar interfaz
+      document.getElementById('total-expenses').textContent = `$${totalAmount.toLocaleString('es-MX')}`;
+      document.getElementById('pending-expenses').textContent = pendingCount;
+      
+      // Mostrar mensaje
+      window.expensesApp.showSuccess(`FILTRO APLICADO: Solo gastos de María López ($${totalAmount.toLocaleString('es-MX')})`);
+      
+      // Actualizar gráficas
+      updateChartsWithData(data);
+    })
+    .catch(error => {
+      console.error('❌ ERROR:', error);
+      window.expensesApp.showMessage('Error al filtrar por María', 'error');
+    });
+}
+
+function FORCE_TEST_PENDING() {
+  console.log('🚀 FORZANDO FILTRO DE PENDIENTES');
+  
+  fetch('/api/dashboard/metrics?status=pending')
+    .then(response => response.json())
+    .then(data => {
+      console.log('✅ DATOS PENDIENTES:', data);
+      
+      const totalAmount = data.status_metrics.reduce((sum, m) => sum + parseFloat(m.total_mxn || 0), 0);
+      const pendingCount = data.status_metrics.reduce((sum, m) => sum + m.count, 0);
+      
+      document.getElementById('total-expenses').textContent = `$${totalAmount.toLocaleString('es-MX')}`;
+      document.getElementById('pending-expenses').textContent = pendingCount;
+      
+      window.expensesApp.showSuccess(`FILTRO APLICADO: Solo gastos PENDIENTES ($${totalAmount.toLocaleString('es-MX')})`);
+      updateChartsWithData(data);
+    })
+    .catch(error => {
+      console.error('❌ ERROR:', error);
+      window.expensesApp.showMessage('Error al filtrar pendientes', 'error');
+    });
+}
+
+function FORCE_CLEAR_ALL() {
+  console.log('🚀 FORZANDO LIMPIAR TODO');
+  
+  fetch('/api/dashboard/metrics')
+    .then(response => response.json())
+    .then(data => {
+      console.log('✅ TODOS LOS DATOS:', data);
+      
+      const totalAmount = data.status_metrics.reduce((sum, m) => sum + parseFloat(m.total_mxn || 0), 0);
+      const pendingCount = data.status_metrics.find(m => m.status === 'pending')?.count || 0;
+      
+      document.getElementById('total-expenses').textContent = `$${totalAmount.toLocaleString('es-MX')}`;
+      document.getElementById('pending-expenses').textContent = pendingCount;
+      
+      window.expensesApp.showSuccess(`FILTROS LIMPIADOS: Mostrando todos los datos ($${totalAmount.toLocaleString('es-MX')})`);
+      updateChartsWithData(data);
+    })
+    .catch(error => {
+      console.error('❌ ERROR:', error);
+      window.expensesApp.showMessage('Error al limpiar filtros', 'error');
+    });
+}
+
+function updateChartsWithData(data) {
+  // Actualizar gráfica de empresas
+  if (window.companyChart && data.company_metrics) {
+    const labels = data.company_metrics.map(m => m.company);
+    const values = data.company_metrics.map(m => parseFloat(m.total_mxn || 0));
+    
+    window.companyChart.data.labels = labels;
+    window.companyChart.data.datasets[0].data = values;
+    window.companyChart.update();
+  }
+  
+  // Actualizar gráfica de estados
+  if (window.statusChart && data.status_metrics) {
+    const labels = data.status_metrics.map(m => m.status);
+    const values = data.status_metrics.map(m => m.count);
+    
+    window.statusChart.data.labels = labels;
+    window.statusChart.data.datasets[0].data = values;
+    window.statusChart.update();
+  }
+}
+
+// Test filters now - NUEVA FUNCIÓN PARA DEPURACIÓN
+function testFiltersNow() {
+  console.log('🚀 TESTING FILTERS NOW!');
+  
+  // Get all filter values
+  const filters = {
+    user: document.getElementById('analytics-user-filter')?.value || 'none',
+    status: document.getElementById('analytics-status-filter')?.value || 'none',
+    company: document.getElementById('analytics-company-filter-main')?.value || 'none',
+    currency: document.getElementById('analytics-currency-filter-main')?.value || 'none',
+    period: document.getElementById('analytics-period-filter-main')?.value || 'none'
+  };
+  
+  console.log('🔍 Current filter values:', filters);
+  
+  // Simulate a filter test - apply user filter for María López
+  document.getElementById('analytics-user-filter').value = '2';
+  console.log('🎯 Set user filter to María López (ID: 2)');
+  
+  // Trigger the change event programmatically
+  const userFilter = document.getElementById('analytics-user-filter');
+  userFilter.dispatchEvent(new Event('change', { bubbles: true }));
+  
+  // Show success message
+  window.expensesApp.showSuccess('¡Filtro de prueba aplicado! Usuario: María López');
+}
+
 // Clear all analytics filters
 function clearAllAnalyticsFilters() {
   // Reset all filter dropdowns
   const filterIds = [
     'analytics-user-filter',
-    'analytics-status-filter', 
+    'analytics-user-filter-trend',
+    'analytics-status-filter',
+    'analytics-status-filter-chart', 
     'analytics-company-filter',
     'analytics-company-filter-main',
     'analytics-currency-filter',
