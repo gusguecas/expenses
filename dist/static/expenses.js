@@ -301,40 +301,75 @@ function displayExpenses() {
 
 // FUNCIÓN - ACTUALIZAR TOTALES
 function updateExpenseTotals() {
+    // Elementos KPI originales
     const totalCountEl = document.getElementById('total-count');
     const totalAmountEl = document.getElementById('total-amount');
+    
+    // Elementos KPI nuevos
+    const pendingCountEl = document.getElementById('pending-count');
+    const approvedCountEl = document.getElementById('approved-count');
+    const companiesCountEl = document.getElementById('companies-count');
+    const mainCurrencyEl = document.getElementById('main-currency');
     
     if (!totalCountEl || !totalAmountEl) {
         console.warn('⚠️ Elementos de totales no encontrados');
         return;
     }
     
-    // Calcular totales
+    // Calcular totales básicos
     const totalCount = filteredExpenses.length;
     let totalMXN = 0;
     let totalUSD = 0;
     let totalEUR = 0;
     
+    // Calcular KPIs avanzados
+    let pendingCount = 0;
+    let approvedCount = 0;
+    const uniqueCompanies = new Set();
+    const currencyStats = { MXN: 0, USD: 0, EUR: 0 };
+    
     filteredExpenses.forEach(expense => {
         const amount = parseFloat(expense.amount) || 0;
+        
+        // Calcular totales por moneda
         if (expense.currency === 'USD') {
             totalUSD += amount;
             totalMXN += amount * 18.25; // Conversión aproximada
+            currencyStats.USD += amount;
         } else if (expense.currency === 'EUR') {
             totalEUR += amount;
             totalMXN += amount * 20.15; // Conversión aproximada
+            currencyStats.EUR += amount;
         } else {
             totalMXN += amount;
+            currencyStats.MXN += amount;
+        }
+        
+        // Contar por status
+        if (expense.status === 'pending') {
+            pendingCount++;
+        } else if (expense.status === 'approved') {
+            approvedCount++;
+        }
+        
+        // Contar empresas únicas
+        if (expense.company_id) {
+            uniqueCompanies.add(expense.company_id);
         }
     });
     
-    // Actualizar elementos
+    // Determinar moneda principal
+    let mainCurrency = 'MXN';
+    if (currencyStats.USD > currencyStats.MXN && currencyStats.USD > currencyStats.EUR) {
+        mainCurrency = 'USD';
+    } else if (currencyStats.EUR > currencyStats.MXN && currencyStats.EUR > currencyStats.USD) {
+        mainCurrency = 'EUR';
+    }
+    
+    // Actualizar KPIs básicos
     totalCountEl.textContent = totalCount.toLocaleString();
     
     // Mostrar totales organizados por moneda - FORMATO VERTICAL CON LETRA PEQUEÑA
-    let amountText = '';
-    
-    // Separar cada moneda en filas separadas
     const currencyRows = [];
     
     // Agregar MXN (siempre presente, incluso si es 0)
@@ -354,15 +389,35 @@ function updateExpenseTotals() {
         currencyRows.push(`<div class="text-sm"><span class="font-medium">💶 EUR:</span> €${totalEUR.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>`);
     }
     
-    amountText = `<div class="space-y-1">${currencyRows.join('')}</div>`;
-    
+    const amountText = `<div class="space-y-1">${currencyRows.join('')}</div>`;
     totalAmountEl.innerHTML = amountText;
+    
+    // Actualizar KPIs nuevos si existen los elementos
+    if (pendingCountEl) {
+        pendingCountEl.textContent = pendingCount.toLocaleString();
+    }
+    
+    if (approvedCountEl) {
+        approvedCountEl.textContent = approvedCount.toLocaleString();
+    }
+    
+    if (companiesCountEl) {
+        companiesCountEl.textContent = uniqueCompanies.size.toLocaleString();
+    }
+    
+    if (mainCurrencyEl) {
+        mainCurrencyEl.textContent = mainCurrency;
+    }
     
     // Actualizar fila de totales en tabla
     updateTableTotalsRow(totalCount, totalMXN, totalUSD, totalEUR);
     
-    console.log('📊 Totales actualizados:', {
+    console.log('📊 Todos los KPIs actualizados:', {
         count: totalCount,
+        pending: pendingCount,
+        approved: approvedCount,
+        companies: uniqueCompanies.size,
+        mainCurrency: mainCurrency,
         totalMXN: totalMXN,
         totalUSD: totalUSD,
         totalEUR: totalEUR

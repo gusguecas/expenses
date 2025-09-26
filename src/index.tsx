@@ -3677,16 +3677,16 @@ app.get('/expenses', (c) => {
                     <div class="text-xs text-text-secondary">activas</div>
                 </div>
 
-                <!-- Moneda Principal -->
+                <!-- Total por Reembolsar -->
                 <div class="glass-panel p-4">
                     <div class="flex items-center justify-between mb-2">
-                        <i class="fas fa-coins text-gold text-lg"></i>
-                        <span class="text-xs text-text-secondary">Principal</span>
+                        <i class="fas fa-money-bill-wave text-purple-400 text-lg"></i>
+                        <span class="text-xs text-text-secondary">Reembolsar</span>
                     </div>
-                    <div class="text-lg font-bold text-gold" id="main-currency">
-                        MXN
+                    <div class="text-lg font-bold text-purple-400" id="reimbursed-amount">
+                        $0.00
                     </div>
-                    <div class="text-xs text-text-secondary">moneda</div>
+                    <div class="text-xs text-text-secondary">por reembolsar</div>
                 </div>
             </div>
 
