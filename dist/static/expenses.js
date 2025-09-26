@@ -331,16 +331,30 @@ function updateExpenseTotals() {
     // Actualizar elementos
     totalCountEl.textContent = totalCount.toLocaleString();
     
-    // Mostrar total principal en MXN y desglose si hay otras monedas
-    let amountText = `$${totalMXN.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MXN`;
+    // Mostrar totales organizados por moneda
+    let amountText = '';
     
-    if (totalUSD > 0 || totalEUR > 0) {
-        amountText += ' (';
-        const breakdowns = [];
-        if (totalUSD > 0) breakdowns.push(`$${totalUSD.toLocaleString('en-US', { minimumFractionDigits: 2 })} USD`);
-        if (totalEUR > 0) breakdowns.push(`€${totalEUR.toLocaleString('de-DE', { minimumFractionDigits: 2 })} EUR`);
-        amountText += breakdowns.join(' + ') + ')';
+    // Separar cada moneda con su total
+    const currencyTotals = [];
+    
+    // Agregar MXN (siempre presente, incluso si es 0)
+    const totalMXNPesos = filteredExpenses
+        .filter(expense => expense.currency === 'MXN' || !expense.currency)
+        .reduce((sum, expense) => sum + (parseFloat(expense.amount) || 0), 0);
+    
+    currencyTotals.push(`💰 MXN: $${totalMXNPesos.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+    
+    // Agregar USD si hay gastos en dólares
+    if (totalUSD > 0) {
+        currencyTotals.push(`💵 USD: $${totalUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
     }
+    
+    // Agregar EUR si hay gastos en euros
+    if (totalEUR > 0) {
+        currencyTotals.push(`💶 EUR: €${totalEUR.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+    }
+    
+    amountText = currencyTotals.join(' • ');
     
     totalAmountEl.innerHTML = amountText;
     
