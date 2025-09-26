@@ -800,27 +800,17 @@ function applyFilters() {
         // Filtro por usuario
         if (currentFilters.user && expense.user_id != currentFilters.user) return false;
         
-        // Filtro por tipo de gasto (extraer de notes o usar campo específico)
+        // Filtro por tipo de gasto (G = Gastos, V = Viáticos)
         if (currentFilters.type) {
             const notes = expense.notes?.toLowerCase() || '';
-            let expenseType = '';
             
-            // Mapear valores del filtro a texto en notes
-            const typeMapping = {
-                'comida_trabajo': 'comidas',
-                'transporte_terrestre': 'transporte',
-                'combustible': 'combustible',
-                'hospedaje': 'hospedaje',
-                'vuelos': 'vuelos',
-                'material_oficina': 'material',
-                'software_licencias': 'software',
-                'capacitacion': 'capacitación',
-                'marketing': 'marketing',
-                'otros_gastos': 'otros'
-            };
-            
-            const searchTerm = typeMapping[currentFilters.type];
-            if (searchTerm && !notes.includes(searchTerm)) return false;
+            if (currentFilters.type === 'G') {
+                // Filtrar por Gastos - buscar "tipo: g (gasto)" en las notas
+                if (!notes.includes('tipo: g') && !notes.includes('(gasto)')) return false;
+            } else if (currentFilters.type === 'V') {
+                // Filtrar por Viáticos - buscar "tipo: v (viático)" en las notas  
+                if (!notes.includes('tipo: v') && !notes.includes('(viático)')) return false;
+            }
         }
         
         // Filtro por categoría (si está disponible en el expense)

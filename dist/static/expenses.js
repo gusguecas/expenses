@@ -9,8 +9,12 @@ let allCompanies = []; // NUEVO: Cache de empresas para mostrar nombres
 
 // Filtros aplicados
 let currentFilters = {
+    dateFrom: '',
+    dateTo: '',
     company: '',
     user: '',
+    type: '',
+    category: '',
     status: '',
     currency: ''
 };
@@ -769,24 +773,97 @@ async function submitExpenseGusbit(event) {
     }
 }
 
-// FUNCIÓN - APLICAR FILTROS
+// FUNCIÓN - APLICAR FILTROS AVANZADOS
 function applyFilters() {
+    // Recopilar todos los valores de filtros
+    currentFilters.dateFrom = document.getElementById('filter-date-from')?.value || '';
+    currentFilters.dateTo = document.getElementById('filter-date-to')?.value || '';
     currentFilters.company = document.getElementById('filter-company')?.value || '';
     currentFilters.user = document.getElementById('filter-user')?.value || '';
+    currentFilters.type = document.getElementById('filter-type')?.value || '';
+    currentFilters.category = document.getElementById('filter-category')?.value || '';
     currentFilters.status = document.getElementById('filter-status')?.value || '';
     currentFilters.currency = document.getElementById('filter-currency')?.value || '';
     
+    // Aplicar filtros
     filteredExpenses = allExpenses.filter(expense => {
+        // Filtro por fecha (rango)
+        if (currentFilters.dateFrom || currentFilters.dateTo) {
+            const expenseDate = expense.expense_date;
+            if (currentFilters.dateFrom && expenseDate < currentFilters.dateFrom) return false;
+            if (currentFilters.dateTo && expenseDate > currentFilters.dateTo) return false;
+        }
+        
+        // Filtro por empresa
         if (currentFilters.company && expense.company_id != currentFilters.company) return false;
+        
+        // Filtro por usuario
         if (currentFilters.user && expense.user_id != currentFilters.user) return false;
+        
+        // Filtro por tipo de gasto (extraer de notes o usar campo específico)
+        if (currentFilters.type) {
+            const notes = expense.notes?.toLowerCase() || '';
+            let expenseType = '';
+            
+            // Mapear valores del filtro a texto en notes
+            const typeMapping = {
+                'comida_trabajo': 'comidas',
+                'transporte_terrestre': 'transporte',
+                'combustible': 'combustible',
+                'hospedaje': 'hospedaje',
+                'vuelos': 'vuelos',
+                'material_oficina': 'material',
+                'software_licencias': 'software',
+                'capacitacion': 'capacitación',
+                'marketing': 'marketing',
+                'otros_gastos': 'otros'
+            };
+            
+            const searchTerm = typeMapping[currentFilters.type];
+            if (searchTerm && !notes.includes(searchTerm)) return false;
+        }
+        
+        // Filtro por categoría (si está disponible en el expense)
+        if (currentFilters.category) {
+            // Mapear expense_type_id a categorías
+            const categoryMapping = {
+                1: 'meals',        // Comidas de Trabajo
+                2: 'transport',    // Transporte Terrestre
+                3: 'transport',    // Combustible
+                4: 'accommodation', // Hospedaje
+                5: 'travel',       // Vuelos
+                6: 'supplies',     // Material de Oficina
+                7: 'services',     // Software y Licencias
+                8: 'services',     // Capacitación
+                9: 'services',     // Marketing
+                10: 'general'      // Otros Gastos
+            };
+            
+            const expenseCategory = categoryMapping[expense.expense_type_id];
+            if (expenseCategory !== currentFilters.category) return false;
+        }
+        
+        // Filtro por status
         if (currentFilters.status && expense.status !== currentFilters.status) return false;
+        
+        // Filtro por moneda
         if (currentFilters.currency && expense.currency !== currentFilters.currency) return false;
+        
         return true;
     });
     
     displayExpenses();
     updateExpenseTotals();
-    console.log('🔍 Filtros aplicados, mostrando', filteredExpenses.length, 'de', allExpenses.length, 'gastos');
+    console.log('🔍 Filtros avanzados aplicados:', {
+        dateRange: currentFilters.dateFrom || currentFilters.dateTo ? `${currentFilters.dateFrom} - ${currentFilters.dateTo}` : 'Sin filtro',
+        company: currentFilters.company || 'Todas',
+        user: currentFilters.user || 'Todos',
+        type: currentFilters.type || 'Todos',
+        category: currentFilters.category || 'Todas',
+        status: currentFilters.status || 'Todos',
+        currency: currentFilters.currency || 'Todas',
+        results: `${filteredExpenses.length} de ${allExpenses.length} gastos`
+    });
 }
 
 // FUNCIÓN HELPER: Mapear forma de pago GUSBit a sistema
@@ -919,8 +996,12 @@ function clearAllFilters() {
     
     // Limpiar filtros en la interfaz
     const filters = [
+        'filter-date-from',
+        'filter-date-to',
         'filter-company',
         'filter-user', 
+        'filter-type',
+        'filter-category',
         'filter-status',
         'filter-currency'
     ];
@@ -934,8 +1015,12 @@ function clearAllFilters() {
     
     // Resetear filtros globales
     currentFilters = {
+        dateFrom: '',
+        dateTo: '',
         company: '',
         user: '',
+        type: '',
+        category: '',
         status: '',
         currency: ''
     };

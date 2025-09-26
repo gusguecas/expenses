@@ -970,7 +970,21 @@ ID VIAJE: 1234-5678-9012`,confidence:.89}};let i="ticket";return r&&(r.toLowerCa
                     </button>
                 </div>
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- Primera fila de filtros -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                    <!-- Filtro por Fecha (PRIMERO) -->
+                    <div>
+                        <label class="block text-sm font-semibold text-accent-gold mb-2">📅 Fecha</label>
+                        <div class="flex gap-2">
+                            <input type="date" id="filter-date-from" onchange="applyFilters()" 
+                                   class="flex-1 p-3 rounded-lg border border-glass-border bg-glass text-text-primary focus:border-accent-gold focus:outline-none text-sm"
+                                   placeholder="Desde">
+                            <input type="date" id="filter-date-to" onchange="applyFilters()" 
+                                   class="flex-1 p-3 rounded-lg border border-glass-border bg-glass text-text-primary focus:border-accent-gold focus:outline-none text-sm"
+                                   placeholder="Hasta">
+                        </div>
+                    </div>
+                    
                     <!-- Filtro por Empresa -->
                     <div>
                         <label class="block text-sm font-semibold text-accent-gold mb-2">🏢 Empresa</label>
@@ -992,6 +1006,44 @@ ID VIAJE: 1234-5678-9012`,confidence:.89}};let i="ticket";return r&&(r.toLowerCa
                             <option value="4">✏️ Ana García</option>
                             <option value="5">⭐ Pedro Sánchez</option>
                             <option value="6">✏️ Elena Torres</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Filtro por Tipo de Gasto -->
+                    <div>
+                        <label class="block text-sm font-semibold text-accent-gold mb-2">🏷️ Tipo</label>
+                        <select id="filter-type" onchange="applyFilters()" 
+                                class="w-full p-3 rounded-lg border border-glass-border bg-glass text-text-primary focus:border-accent-gold focus:outline-none">
+                            <option value="">Todos los Tipos</option>
+                            <option value="comida_trabajo">🍽️ Comidas de Trabajo</option>
+                            <option value="transporte_terrestre">🚗 Transporte Terrestre</option>
+                            <option value="combustible">⛽ Combustible</option>
+                            <option value="hospedaje">🏨 Hospedaje</option>
+                            <option value="vuelos">✈️ Vuelos</option>
+                            <option value="material_oficina">📋 Material de Oficina</option>
+                            <option value="software_licencias">💻 Software y Licencias</option>
+                            <option value="capacitacion">📚 Capacitación</option>
+                            <option value="marketing">📢 Marketing</option>
+                            <option value="otros_gastos">📦 Otros Gastos</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Segunda fila de filtros -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Filtro por Categoría -->
+                    <div>
+                        <label class="block text-sm font-semibold text-accent-gold mb-2">📂 Categoría</label>
+                        <select id="filter-category" onchange="applyFilters()" 
+                                class="w-full p-3 rounded-lg border border-glass-border bg-glass text-text-primary focus:border-accent-gold focus:outline-none">
+                            <option value="">Todas las Categorías</option>
+                            <option value="meals">🍽️ Comidas</option>
+                            <option value="transport">🚗 Transporte</option>
+                            <option value="accommodation">🏨 Hospedaje</option>
+                            <option value="travel">✈️ Viajes</option>
+                            <option value="supplies">📋 Suministros</option>
+                            <option value="services">💻 Servicios</option>
+                            <option value="general">📦 General</option>
                         </select>
                     </div>
                     
