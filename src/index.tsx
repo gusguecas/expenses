@@ -4675,7 +4675,7 @@ app.get('/companies', (c) => {
     </style>
 </head>
 <body>
-    <!-- Navigation Header (estilo gastos) -->
+    <!-- Navigation Header -->
     <div class="container mx-auto px-6 py-8">
         <div class="glass-panel p-8 mb-8">
             <div class="flex justify-between items-center">
@@ -4708,36 +4708,305 @@ app.get('/companies', (c) => {
             </div>
         </div>
     </div>
-    
-    <!-- Contenido Principal -->
+
+    <!-- Main Content -->
     <div class="container mx-auto px-6 pb-8">
-        <!-- Header -->
-        <div class="text-center mb-12">
-            <h2 class="text-4xl font-bold text-accent-gold mb-3">
-                <i class="fas fa-building-columns mr-3"></i>
-                Portfolio Corporativo
-            </h2>
-            <p class="text-text-secondary text-lg">Gestión multiempresa internacional • MX + ES</p>
-            <div class="flex justify-center mt-4">
-                <div class="flex items-center space-x-6 text-sm text-text-secondary">
-                    <span class="flex items-center">
-                        <div class="w-2 h-2 bg-accent-emerald rounded-full mr-2 animate-pulse"></div>
-                        6 empresas activas
-                    </span>
-                    <span class="flex items-center">
-                        <div class="w-2 h-2 bg-accent-gold rounded-full mr-2 animate-pulse"></div>
-                        Operaciones globales
-                    </span>
-                    <span class="flex items-center">
-                        <div class="w-2 h-2 bg-accent-sapphire rounded-full mr-2 animate-pulse"></div>
-                        Multimoneda: MXN • USD • EUR
-                    </span>
-                </div>
+        <!-- Header with Add Button -->
+        <div class="flex justify-between items-center mb-8">
+            <div>
+                <h2 class="text-3xl font-bold text-accent-gold mb-2">
+                    <i class="fas fa-building-columns mr-3"></i>
+                    Portfolio Corporativo
+                </h2>
+                <p class="text-text-secondary">Gestión multiempresa internacional • MX + ES + US + CA</p>
+            </div>
+            <button onclick="showAddCompanyModal()" class="premium-button">
+                <i class="fas fa-plus mr-3"></i>Nueva Empresa
+            </button>
+        </div>
+
+        <!-- Company Statistics -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="glass-panel p-6 text-center">
+                <div class="text-2xl font-bold text-accent-emerald mb-2" id="total-companies">0</div>
+                <div class="text-sm text-text-secondary">Empresas Activas</div>
+            </div>
+            <div class="glass-panel p-6 text-center">
+                <div class="text-2xl font-bold text-accent-gold mb-2" id="total-employees">0</div>
+                <div class="text-sm text-text-secondary">Empleados Totales</div>
+            </div>
+            <div class="glass-panel p-6 text-center">
+                <div class="text-2xl font-bold text-accent-sapphire mb-2" id="countries-count">0</div>
+                <div class="text-sm text-text-secondary">Países</div>
+            </div>
+            <div class="glass-panel p-6 text-center">
+                <div class="text-2xl font-bold text-accent-emerald mb-2" id="currencies-count">0</div>
+                <div class="text-sm text-text-secondary">Monedas</div>
             </div>
         </div>
 
-        <!-- Companies Grid (ORIGINAL COMPLETO) -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <!-- Companies Grid -->
+        <div id="companies-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <!-- Companies will be loaded here dynamically -->
+            <div class="col-span-full text-center py-12">
+                <i class="fas fa-spinner fa-spin text-4xl text-accent-gold mb-4"></i>
+                <p class="text-text-secondary">Cargando empresas...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal - Agregar/Editar Empresa -->
+    <div id="company-modal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div class="p-8">
+                <!-- Modal Header -->
+                <div class="flex justify-between items-center mb-8">
+                    <h2 id="modal-title" class="text-3xl font-bold text-accent-gold">
+                        <i class="fas fa-building mr-3"></i>Nueva Empresa
+                    </h2>
+                    <button onclick="closeCompanyModal()" class="text-text-secondary hover:text-accent-gold transition-colors text-2xl">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+
+                <!-- Company Form -->
+                <form id="company-form" onsubmit="saveCompany(event)" class="space-y-8">
+                    
+                    <!-- Sección 1: Información Básica -->
+                    <div class="glass-panel p-6">
+                        <h3 class="text-xl font-bold text-accent-emerald mb-6 flex items-center">
+                            <i class="fas fa-info-circle mr-3"></i>Información Básica
+                        </h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-text-primary mb-2">
+                                    <i class="fas fa-building mr-2"></i>Razón Social *
+                                </label>
+                                <input type="text" id="razon-social" required
+                                    class="w-full p-3 bg-glass border border-glass-border rounded-lg text-text-primary focus:ring-2 focus:ring-accent-gold focus:border-transparent"
+                                    placeholder="Ej: TechMX Solutions S.A. de C.V.">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-text-primary mb-2">
+                                    <i class="fas fa-tag mr-2"></i>Nombre Comercial *
+                                </label>
+                                <input type="text" id="commercial-name" required
+                                    class="w-full p-3 bg-glass border border-glass-border rounded-lg text-text-primary focus:ring-2 focus:ring-accent-gold focus:border-transparent"
+                                    placeholder="Ej: TechMX">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-text-primary mb-2">
+                                    <i class="fas fa-globe mr-2"></i>País *
+                                </label>
+                                <select id="country" required onchange="updateCountryFields()"
+                                    class="w-full p-3 bg-glass border border-glass-border rounded-lg text-text-primary focus:ring-2 focus:ring-accent-gold focus:border-transparent">
+                                    <option value="">Seleccionar país...</option>
+                                    <option value="MX">🇲🇽 México</option>
+                                    <option value="ES">🇪🇸 España</option>
+                                    <option value="US">🇺🇸 Estados Unidos</option>
+                                    <option value="CA">🇨🇦 Canadá</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-text-primary mb-2">
+                                    <i class="fas fa-id-card mr-2"></i><span id="tax-id-label">RFC/NIF *</span>
+                                </label>
+                                <input type="text" id="tax-id" required
+                                    class="w-full p-3 bg-glass border border-glass-border rounded-lg text-text-primary focus:ring-2 focus:ring-accent-gold focus:border-transparent"
+                                    placeholder="RFC, NIF, EIN, BN">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-text-primary mb-2">
+                                    <i class="fas fa-money-bill-wave mr-2"></i>Moneda Principal *
+                                </label>
+                                <select id="primary-currency" required
+                                    class="w-full p-3 bg-glass border border-glass-border rounded-lg text-text-primary focus:ring-2 focus:ring-accent-gold focus:border-transparent">
+                                    <option value="">Seleccionar moneda...</option>
+                                    <option value="MXN">💲 Peso Mexicano (MXN)</option>
+                                    <option value="EUR">💶 Euro (EUR)</option>
+                                    <option value="USD">💵 Dólar USD</option>
+                                    <option value="CAD">💴 Dólar Canadiense (CAD)</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-text-primary mb-2">
+                                    <i class="fas fa-users mr-2"></i>Número de Empleados
+                                </label>
+                                <input type="number" id="employees-count" min="1"
+                                    class="w-full p-3 bg-glass border border-glass-border rounded-lg text-text-primary focus:ring-2 focus:ring-accent-gold focus:border-transparent"
+                                    placeholder="Ej: 25">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sección 2: Información Comercial -->
+                    <div class="glass-panel p-6">
+                        <h3 class="text-xl font-bold text-accent-sapphire mb-6 flex items-center">
+                            <i class="fas fa-briefcase mr-3"></i>Información Comercial
+                        </h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-text-primary mb-2">
+                                    <i class="fas fa-industry mr-2"></i>Giro Empresarial
+                                </label>
+                                <select id="business-category"
+                                    class="w-full p-3 bg-glass border border-glass-border rounded-lg text-text-primary focus:ring-2 focus:ring-accent-sapphire focus:border-transparent">
+                                    <option value="">Seleccionar giro...</option>
+                                    <option value="technology">💻 Tecnología</option>
+                                    <option value="consulting">📊 Consultoría</option>
+                                    <option value="finance">💰 Financiero</option>
+                                    <option value="healthcare">🏥 Salud</option>
+                                    <option value="education">🎓 Educación</option>
+                                    <option value="retail">🏪 Comercio</option>
+                                    <option value="manufacturing">🏭 Manufactura</option>
+                                    <option value="services">🔧 Servicios</option>
+                                    <option value="other">📁 Otros</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-text-primary mb-2">
+                                    <i class="fas fa-globe-americas mr-2"></i>Sitio Web
+                                </label>
+                                <input type="url" id="website"
+                                    class="w-full p-3 bg-glass border border-glass-border rounded-lg text-text-primary focus:ring-2 focus:ring-accent-sapphire focus:border-transparent"
+                                    placeholder="https://www.empresa.com">
+                            </div>
+                        </div>
+                        
+                        <div class="mt-6">
+                            <label class="block text-sm font-medium text-text-primary mb-2">
+                                <i class="fas fa-file-alt mr-2"></i>Descripción del Negocio
+                            </label>
+                            <textarea id="business-description" rows="3"
+                                class="w-full p-3 bg-glass border border-glass-border rounded-lg text-text-primary focus:ring-2 focus:ring-accent-sapphire focus:border-transparent resize-none"
+                                placeholder="Breve descripción de la actividad comercial de la empresa..."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Sección 3: Dirección Fiscal -->
+                    <div class="glass-panel p-6">
+                        <h3 class="text-xl font-bold text-accent-gold mb-6 flex items-center">
+                            <i class="fas fa-map-marker-alt mr-3"></i>Dirección Fiscal
+                        </h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-medium text-text-primary mb-2">
+                                    <i class="fas fa-road mr-2"></i>Calle y Número
+                                </label>
+                                <input type="text" id="address-street"
+                                    class="w-full p-3 bg-glass border border-glass-border rounded-lg text-text-primary focus:ring-2 focus:ring-accent-gold focus:border-transparent"
+                                    placeholder="Ej: Av. Insurgentes Sur 1234, Col. Del Valle">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-text-primary mb-2">
+                                    <i class="fas fa-city mr-2"></i>Ciudad
+                                </label>
+                                <input type="text" id="address-city"
+                                    class="w-full p-3 bg-glass border border-glass-border rounded-lg text-text-primary focus:ring-2 focus:ring-accent-gold focus:border-transparent"
+                                    placeholder="Ej: Ciudad de México">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-text-primary mb-2">
+                                    <i class="fas fa-map mr-2"></i><span id="state-label">Estado/Provincia</span>
+                                </label>
+                                <input type="text" id="address-state"
+                                    class="w-full p-3 bg-glass border border-glass-border rounded-lg text-text-primary focus:ring-2 focus:ring-accent-gold focus:border-transparent"
+                                    placeholder="Ej: CDMX, Madrid, California">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-text-primary mb-2">
+                                    <i class="fas fa-mail-bulk mr-2"></i><span id="postal-code-label">Código Postal</span>
+                                </label>
+                                <input type="text" id="address-postal"
+                                    class="w-full p-3 bg-glass border border-glass-border rounded-lg text-text-primary focus:ring-2 focus:ring-accent-gold focus:border-transparent"
+                                    placeholder="Ej: 03100, 28001, 90210">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-text-primary mb-2">
+                                    <i class="fas fa-phone mr-2"></i>Teléfono Principal
+                                </label>
+                                <input type="tel" id="phone"
+                                    class="w-full p-3 bg-glass border border-glass-border rounded-lg text-text-primary focus:ring-2 focus:ring-accent-gold focus:border-transparent"
+                                    placeholder="Ej: +52 555 123 4567">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sección 4: Branding Corporativo -->
+                    <div class="glass-panel p-6">
+                        <h3 class="text-xl font-bold text-accent-emerald mb-6 flex items-center">
+                            <i class="fas fa-palette mr-3"></i>Branding Corporativo
+                        </h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Logo Upload -->
+                            <div>
+                                <label class="block text-sm font-medium text-text-primary mb-2">
+                                    <i class="fas fa-image mr-2"></i>Logo Corporativo
+                                </label>
+                                <div id="logo-dropzone" class="border-2 border-dashed border-glass-border rounded-lg p-6 text-center cursor-pointer hover:border-accent-emerald transition-colors bg-glass">
+                                    <div id="logo-preview" class="hidden">
+                                        <img id="logo-img" src="" alt="Logo preview" class="max-h-20 mx-auto mb-2">
+                                        <p class="text-sm text-text-secondary">Click para cambiar</p>
+                                    </div>
+                                    <div id="logo-placeholder">
+                                        <i class="fas fa-cloud-upload-alt text-3xl text-accent-emerald mb-2"></i>
+                                        <p class="text-text-primary font-medium">Arrastra tu logo aquí</p>
+                                        <p class="text-sm text-text-secondary">PNG, JPG, SVG hasta 5MB</p>
+                                    </div>
+                                    <input type="file" id="logo-file" accept="image/*" class="hidden">
+                                </div>
+                            </div>
+                            
+                            <!-- Color Corporativo -->
+                            <div>
+                                <label class="block text-sm font-medium text-text-primary mb-2">
+                                    <i class="fas fa-fill-drip mr-2"></i>Color Corporativo
+                                </label>
+                                <div class="space-y-4">
+                                    <input type="color" id="brand-color" value="#D4AF37"
+                                        class="w-full h-12 bg-glass border border-glass-border rounded-lg cursor-pointer">
+                                    <div class="grid grid-cols-6 gap-2">
+                                        <button type="button" onclick="setBrandColor('#D4AF37')" class="w-8 h-8 rounded-full bg-yellow-500 border-2 border-transparent hover:border-white"></button>
+                                        <button type="button" onclick="setBrandColor('#10B981')" class="w-8 h-8 rounded-full bg-emerald-500 border-2 border-transparent hover:border-white"></button>
+                                        <button type="button" onclick="setBrandColor('#3B82F6')" class="w-8 h-8 rounded-full bg-blue-500 border-2 border-transparent hover:border-white"></button>
+                                        <button type="button" onclick="setBrandColor('#8B5CF6')" class="w-8 h-8 rounded-full bg-purple-500 border-2 border-transparent hover:border-white"></button>
+                                        <button type="button" onclick="setBrandColor('#EF4444')" class="w-8 h-8 rounded-full bg-red-500 border-2 border-transparent hover:border-white"></button>
+                                        <button type="button" onclick="setBrandColor('#F59E0B')" class="w-8 h-8 rounded-full bg-amber-500 border-2 border-transparent hover:border-white"></button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Form Actions -->
+                    <div class="flex justify-end space-x-4 pt-6">
+                        <button type="button" onclick="closeCompanyModal()" 
+                            class="px-6 py-3 border border-glass-border rounded-lg text-text-secondary hover:text-text-primary transition-colors">
+                            <i class="fas fa-times mr-2"></i>Cancelar
+                        </button>
+                        <button type="submit" 
+                            class="premium-button">
+                            <i class="fas fa-save mr-2"></i>Guardar Empresa
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
           
             <!-- TechMX Solutions -->
             <div class="glass-panel p-6 hover:shadow-xl transition-all group cursor-pointer" onclick="window.location.href='/company/1'">
@@ -4967,38 +5236,313 @@ app.get('/companies', (c) => {
                 </div>
             </div>
 
-        </div>
-
-        <!-- Summary Stats -->
-        <div class="mt-16 glass-panel p-8">
-            <div class="text-center mb-8">
-                <h3 class="text-2xl font-bold text-accent-gold mb-2">Resumen Consolidado</h3>
-                <p class="text-text-secondary">Vista general del portfolio corporativo</p>
-            </div>
-            
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div class="text-center">
-                    <div class="text-3xl font-bold text-accent-emerald mb-2">136</div>
-                    <div class="text-sm text-text-secondary">Total Empleados</div>
-                </div>
-                <div class="text-center">
-                    <div class="text-3xl font-bold text-accent-gold mb-2">$1,120K</div>
-                    <div class="text-sm text-text-secondary">Gastos Totales MXN</div>
-                </div>
-                <div class="text-center">
-                    <div class="text-3xl font-bold text-accent-gold mb-2">€215K</div>
-                    <div class="text-sm text-text-secondary">Gastos Totales EUR</div>
-                </div>
-                <div class="text-center">
-                    <div class="text-3xl font-bold text-accent-emerald mb-2">6</div>
-                    <div class="text-sm text-text-secondary">Empresas Activas</div>
-                </div>
-            </div>
-        </div>
-        
-    </div>
     
-    <script src="/static/app.js"></script>
+    <!-- JavaScript -->
+    <script>
+        let companies = [];
+        let currentEditingCompany = null;
+
+        // Load companies on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCompanies();
+            setupLogoUpload();
+        });
+
+        // Load companies from API
+        async function loadCompanies() {
+            try {
+                const token = localStorage.getItem('auth_token');
+                const headers = token ? { 'Authorization': \`Bearer \${token}\` } : {};
+                
+                const response = await fetch('/api/companies', { headers });
+                if (response.ok) {
+                    const data = await response.json();
+                    companies = data.companies || [];
+                    displayCompanies();
+                    updateStatistics();
+                } else {
+                    throw new Error('Error al cargar empresas');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('Error al cargar empresas: ' + error.message, 'error');
+            }
+        }
+
+        // Display companies in grid
+        function displayCompanies() {
+            const grid = document.getElementById('companies-grid');
+            
+            if (companies.length === 0) {
+                grid.innerHTML = \`
+                    <div class="col-span-full text-center py-12">
+                        <i class="fas fa-building text-6xl text-text-secondary mb-4"></i>
+                        <h3 class="text-xl font-bold text-text-primary mb-2">No hay empresas registradas</h3>
+                        <p class="text-text-secondary mb-6">Comienza agregando tu primera empresa al sistema</p>
+                        <button onclick="showAddCompanyModal()" class="premium-button">
+                            <i class="fas fa-plus mr-2"></i>Agregar Primera Empresa
+                        </button>
+                    </div>
+                \`;
+                return;
+            }
+
+            grid.innerHTML = companies.map(company => {
+                const countryFlag = {
+                    'MX': '🇲🇽',
+                    'ES': '🇪🇸', 
+                    'US': '🇺🇸',
+                    'CA': '🇨🇦'
+                }[company.country] || '🏢';
+
+                const currencySymbol = {
+                    'MXN': '$',
+                    'EUR': '€',
+                    'USD': '$',
+                    'CAD': 'C$'
+                }[company.primary_currency] || '';
+
+                return \`
+                    <div class="glass-panel p-6 hover:shadow-xl transition-all group cursor-pointer">
+                        <div class="flex items-center justify-between mb-6">
+                            <div class="flex items-center space-x-4">
+                                <div class="p-4 rounded-xl bg-glass group-hover:bg-glass-hover transition-all">
+                                    \${company.logo_url ? 
+                                        \`<img src="\${company.logo_url}" alt="\${company.name}" class="w-8 h-8 object-contain">\` :
+                                        \`<span class="text-2xl">\${countryFlag}</span>\`
+                                    }
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-bold text-accent-gold group-hover:text-accent-emerald transition-colors">\${company.name}</h3>
+                                    <p class="text-sm text-text-secondary">\${company.country}</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="premium-badge mb-2">
+                                    <i class="fas fa-check-circle mr-1"></i>
+                                    \${company.active ? 'Activa' : 'Inactiva'}
+                                </div>
+                                <p class="text-xs text-text-secondary">\${company.primary_currency}</p>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4 mb-6">
+                            <div class="text-center p-3 bg-glass rounded-lg">
+                                <div class="text-xl font-bold text-accent-emerald">\${company.employees || 0}</div>
+                                <div class="text-xs text-text-secondary">Empleados</div>
+                            </div>
+                            <div class="text-center p-3 bg-glass rounded-lg">
+                                <div class="text-xl font-bold text-accent-gold">\${currencySymbol}0</div>
+                                <div class="text-xs text-text-secondary">Gastos</div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center justify-between pt-4 border-t border-glass-border">
+                            <button onclick="editCompany(\${company.id})" class="text-sm text-accent-sapphire hover:text-accent-gold transition-colors">
+                                <i class="fas fa-edit mr-1"></i>Editar
+                            </button>
+                            <button onclick="viewCompany(\${company.id})" class="text-sm text-accent-gold hover:text-accent-emerald transition-colors">
+                                Ver detalles <i class="fas fa-arrow-right ml-1"></i>
+                            </button>
+                        </div>
+                    </div>
+                \`;
+            }).join('');
+        }
+
+        // Update statistics
+        function updateStatistics() {
+            document.getElementById('total-companies').textContent = companies.length;
+            document.getElementById('countries-count').textContent = new Set(companies.map(c => c.country)).size;
+            document.getElementById('currencies-count').textContent = new Set(companies.map(c => c.primary_currency)).size;
+        }
+
+        // Show add company modal
+        function showAddCompanyModal() {
+            currentEditingCompany = null;
+            document.getElementById('modal-title').innerHTML = '<i class="fas fa-building mr-3"></i>Nueva Empresa';
+            document.getElementById('company-form').reset();
+            document.getElementById('company-modal').classList.remove('hidden');
+            resetLogoPreview();
+        }
+
+        // Close modal
+        function closeCompanyModal() {
+            document.getElementById('company-modal').classList.add('hidden');
+            currentEditingCompany = null;
+        }
+
+        // Save company
+        async function saveCompany(event) {
+            event.preventDefault();
+            
+            const formData = new FormData();
+            const companyData = {
+                razon_social: document.getElementById('razon-social').value,
+                commercial_name: document.getElementById('commercial-name').value,
+                country: document.getElementById('country').value,
+                tax_id: document.getElementById('tax-id').value,
+                primary_currency: document.getElementById('primary-currency').value,
+                employees_count: parseInt(document.getElementById('employees-count').value) || null,
+                business_category: document.getElementById('business-category').value,
+                website: document.getElementById('website').value,
+                business_description: document.getElementById('business-description').value,
+                address_street: document.getElementById('address-street').value,
+                address_city: document.getElementById('address-city').value,
+                address_state: document.getElementById('address-state').value,
+                address_postal: document.getElementById('address-postal').value,
+                phone: document.getElementById('phone').value,
+                brand_color: document.getElementById('brand-color').value
+            };
+
+            try {
+                const token = localStorage.getItem('auth_token');
+                const headers = {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': \`Bearer \${token}\` } : {})
+                };
+
+                const url = currentEditingCompany ? \`/api/companies/\${currentEditingCompany}\` : '/api/companies';
+                const method = currentEditingCompany ? 'PUT' : 'POST';
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: headers,
+                    body: JSON.stringify(companyData)
+                });
+
+                if (response.ok) {
+                    showMessage(\`Empresa \${currentEditingCompany ? 'actualizada' : 'creada'} exitosamente\`, 'success');
+                    closeCompanyModal();
+                    await loadCompanies();
+                } else {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Error desconocido');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('Error al guardar empresa: ' + error.message, 'error');
+            }
+        }
+
+        // Update country-specific fields
+        function updateCountryFields() {
+            const country = document.getElementById('country').value;
+            const taxIdLabel = document.getElementById('tax-id-label');
+            const stateLabel = document.getElementById('state-label');
+            const postalLabel = document.getElementById('postal-code-label');
+            const currencySelect = document.getElementById('primary-currency');
+
+            switch(country) {
+                case 'MX':
+                    taxIdLabel.textContent = 'RFC *';
+                    stateLabel.textContent = 'Estado';
+                    postalLabel.textContent = 'Código Postal';
+                    currencySelect.value = 'MXN';
+                    break;
+                case 'ES':
+                    taxIdLabel.textContent = 'NIF/CIF *';
+                    stateLabel.textContent = 'Provincia';
+                    postalLabel.textContent = 'Código Postal';
+                    currencySelect.value = 'EUR';
+                    break;
+                case 'US':
+                    taxIdLabel.textContent = 'EIN *';
+                    stateLabel.textContent = 'State';
+                    postalLabel.textContent = 'ZIP Code';
+                    currencySelect.value = 'USD';
+                    break;
+                case 'CA':
+                    taxIdLabel.textContent = 'BN *';
+                    stateLabel.textContent = 'Province';
+                    postalLabel.textContent = 'Postal Code';
+                    currencySelect.value = 'CAD';
+                    break;
+            }
+        }
+
+        // Setup logo upload
+        function setupLogoUpload() {
+            const dropzone = document.getElementById('logo-dropzone');
+            const fileInput = document.getElementById('logo-file');
+
+            dropzone.addEventListener('click', () => fileInput.click());
+            dropzone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropzone.classList.add('border-accent-emerald');
+            });
+            dropzone.addEventListener('dragleave', () => {
+                dropzone.classList.remove('border-accent-emerald');
+            });
+            dropzone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropzone.classList.remove('border-accent-emerald');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) handleLogoFile(files[0]);
+            });
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) handleLogoFile(e.target.files[0]);
+            });
+        }
+
+        // Handle logo file
+        function handleLogoFile(file) {
+            if (file.size > 5 * 1024 * 1024) {
+                showMessage('El archivo es muy grande. Máximo 5MB.', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('logo-img').src = e.target.result;
+                document.getElementById('logo-preview').classList.remove('hidden');
+                document.getElementById('logo-placeholder').classList.add('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Reset logo preview
+        function resetLogoPreview() {
+            document.getElementById('logo-preview').classList.add('hidden');
+            document.getElementById('logo-placeholder').classList.remove('hidden');
+            document.getElementById('logo-file').value = '';
+        }
+
+        // Set brand color
+        function setBrandColor(color) {
+            document.getElementById('brand-color').value = color;
+        }
+
+        // View company details
+        function viewCompany(companyId) {
+            window.location.href = \`/company/\${companyId}\`;
+        }
+
+        // Edit company
+        function editCompany(companyId) {
+            // TODO: Implement edit functionality
+            showMessage('Función de edición en desarrollo', 'info');
+        }
+
+        // Show message helper
+        function showMessage(message, type) {
+            // Simple alert for now, can be enhanced with toast notifications
+            if (type === 'error') {
+                alert('❌ ' + message);
+            } else if (type === 'success') {
+                alert('✅ ' + message);
+            } else {
+                alert('ℹ️ ' + message);
+            }
+        }
+
+        // Close modal on escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeCompanyModal();
+            }
+        });
+    </script>
     
 </body>
 </html>`);
