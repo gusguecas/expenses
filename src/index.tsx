@@ -3615,27 +3615,78 @@ app.get('/expenses', (c) => {
                 </div>
             </div>
 
-            <!-- Estadísticas Generales -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                <div class="glass-panel p-6">
-                    <h4 class="text-lg font-bold text-accent-emerald mb-3 flex items-center">
-                        <i class="fas fa-chart-bar mr-3"></i>
-                        Total de Gastos
-                    </h4>
-                    <div class="text-3xl font-bold text-accent-gold">
-                        <span id="total-count">0</span>
-                        <span class="text-sm text-text-secondary ml-2">registros</span>
+            <!-- Estadísticas KPI Compactas -->
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
+                <!-- Total Gastos -->
+                <div class="glass-panel p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <i class="fas fa-chart-bar text-accent-emerald text-lg"></i>
+                        <span class="text-xs text-text-secondary">Total</span>
                     </div>
+                    <div class="text-xl font-bold text-accent-gold">
+                        <span id="total-count">0</span>
+                    </div>
+                    <div class="text-xs text-text-secondary">gastos</div>
                 </div>
                 
-                <div class="glass-panel p-6">
-                    <h4 class="text-lg font-bold text-accent-emerald mb-3 flex items-center">
-                        <i class="fas fa-calculator mr-3"></i>
-                        Monto Total
-                    </h4>
-                    <div class="text-2xl font-bold text-accent-emerald" id="total-amount">
-                        $0.00 MXN
+                <!-- Monto Total -->
+                <div class="glass-panel p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <i class="fas fa-calculator text-accent-emerald text-lg"></i>
+                        <span class="text-xs text-text-secondary">Monto</span>
                     </div>
+                    <div class="text-lg font-bold text-accent-emerald" id="total-amount">
+                        $0.00
+                    </div>
+                    <div class="text-xs text-text-secondary">total</div>
+                </div>
+
+                <!-- Pendientes por Autorizar -->
+                <div class="glass-panel p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <i class="fas fa-clock text-yellow-400 text-lg"></i>
+                        <span class="text-xs text-text-secondary">Pendientes</span>
+                    </div>
+                    <div class="text-xl font-bold text-yellow-400">
+                        <span id="pending-count">0</span>
+                    </div>
+                    <div class="text-xs text-text-secondary">por autorizar</div>
+                </div>
+
+                <!-- Aprobados -->
+                <div class="glass-panel p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <i class="fas fa-check-circle text-green-400 text-lg"></i>
+                        <span class="text-xs text-text-secondary">Aprobados</span>
+                    </div>
+                    <div class="text-xl font-bold text-green-400">
+                        <span id="approved-count">0</span>
+                    </div>
+                    <div class="text-xs text-text-secondary">gastos</div>
+                </div>
+
+                <!-- Empresas Activas -->
+                <div class="glass-panel p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <i class="fas fa-building text-sapphire text-lg"></i>
+                        <span class="text-xs text-text-secondary">Empresas</span>
+                    </div>
+                    <div class="text-xl font-bold text-sapphire">
+                        <span id="companies-count">0</span>
+                    </div>
+                    <div class="text-xs text-text-secondary">activas</div>
+                </div>
+
+                <!-- Moneda Principal -->
+                <div class="glass-panel p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <i class="fas fa-coins text-gold text-lg"></i>
+                        <span class="text-xs text-text-secondary">Principal</span>
+                    </div>
+                    <div class="text-lg font-bold text-gold" id="main-currency">
+                        MXN
+                    </div>
+                    <div class="text-xs text-text-secondary">moneda</div>
                 </div>
             </div>
 
