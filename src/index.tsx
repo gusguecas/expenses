@@ -2035,779 +2035,486 @@ function getPaymentMethodText(method) {
 
 // ===== FRONTEND ROUTES =====
 
-// Main dashboard
+// Main dashboard - DASHBOARD MORADO SUSTITUIDO
 app.get('/', (c) => {
-  return c.render(
-    <div className="min-h-screen" style="background: linear-gradient(135deg, #0a0b0d 0%, #12141a 50%, #1a1d25 100%);">
-      {/* Premium Navigation */}
-      <nav className="nav-premium border-b" style="border-color: rgba(255, 255, 255, 0.1);">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            {/* Logo & Branding */}
-            <div className="flex items-center space-x-6">
-              <div className="flex items-center space-x-3">
-                <div className="relative">
-                  <i className="fas fa-gem text-3xl text-gold animate-pulse-gold"></i>
-                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full animate-ping"></div>
-                </div>
-                <div>
-                  <h1 className="nav-logo text-3xl">Lyra Expenses</h1>
-                  <p className="text-xs text-secondary opacity-75 font-medium">Executive Financial Management</p>
-                </div>
-              </div>
-              <span className="nav-badge">
-                Sistema 4-D Premium
-              </span>
-            </div>
-
-            {/* Navigation Menu */}
-            <div className="flex items-center space-x-8">
-              {/* Main Navigation Links */}
-              <nav className="flex space-x-6">
-                <a href="/" className="nav-link text-gold active flex items-center space-x-2">
-                  <i className="fas fa-chart-pie"></i>
-                  <span>Dashboard</span>
-                </a>
-                <a href="/companies" className="nav-link text-secondary hover:text-gold transition-colors duration-200 flex items-center space-x-2">
-                  <i className="fas fa-building"></i>
-                  <span>Empresas</span>
-                </a>
-                <a href="/expenses" className="nav-link text-secondary hover:text-gold transition-colors duration-200 flex items-center space-x-2">
-                  <i className="fas fa-receipt"></i>
-                  <span>Gastos</span>
-                </a>
-                <a href="/analytics" className="nav-link text-secondary hover:text-gold transition-colors duration-200 flex items-center space-x-2">
-                  <i className="fas fa-chart-line"></i>
-                  <span>Analytics</span>
-                </a>
-              </nav>
-              
-              {/* Right Side Actions */}
-              <div className="flex items-center space-x-4 border-l border-glass-border pl-6">
-                <div id="auth-indicator" className="mr-2">
-                  {/* Authentication status will be inserted here */}
-                </div>
-                
-                {/* Currency Selector Premium */}
-                <select id="currency-selector" className="form-input-premium bg-glass border-0 text-sm min-w-[120px]" style="background: #1a1d25 !important; color: #ffffff !important; border: 1px solid rgba(255, 255, 255, 0.1) !important;">
-                  <option value="MXN" style="background: #12141a !important; color: #ffffff !important;">💎 MXN</option>
-                  <option value="USD" style="background: #12141a !important; color: #ffffff !important;">🔹 USD</option>
-                  <option value="EUR" style="background: #12141a !important; color: #ffffff !important;">🔸 EUR</option>
-                </select>
-                
-                {/* Quick Action Button */}
-                <button onclick="showExpenseForm()" className="btn-premium btn-emerald text-sm">
-                  <i className="fas fa-plus mr-1"></i>
-                  Nuevo
-                </button>
-                
-                <button id="login-btn" onclick="showLoginModal()" className="btn-premium btn-gold text-sm" style="display: none;">
-                  <i className="fas fa-crown mr-1"></i>
-                  Login
-                </button>
-                
-                <button id="logout-btn" onclick="logout()" className="btn-premium btn-ruby text-sm" style="display: none;">
-                  <i className="fas fa-sign-out-alt mr-1"></i>
-                  Salir
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </nav>
-      
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div id="app" className="animate-fade-scale">
-          
-          {/* Executive Header */}
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold gradient-text-gold mb-3">Dashboard Ejecutivo</h2>
-            <p className="text-secondary text-lg">Visión completa de tus operaciones financieras corporativas</p>
-            <div className="flex justify-center mt-4">
-              <div className="flex items-center space-x-6 text-sm text-tertiary">
-                <span className="flex items-center">
-                  <div className="w-2 h-2 bg-emerald rounded-full mr-2 animate-pulse"></div>
-                  Sistema en línea
-                </span>
-                <span className="flex items-center">
-                  <div className="w-2 h-2 bg-gold rounded-full mr-2 animate-pulse"></div>
-                  Datos en tiempo real
-                </span>
-                <span className="flex items-center">
-                  <div className="w-2 h-2 bg-sapphire rounded-full mr-2 animate-pulse"></div>
-                  Multimoneda activa
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Premium KPI Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
-            
-            {/* Total Expenses Card */}
-            <div className="metric-card-premium animate-slide-up" style="animation-delay: 0.1s">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-3">
-                  <div className="p-3 rounded-xl bg-glass">
-                    <i className="fas fa-chart-line text-emerald text-xl"></i>
-                  </div>
-                  <div>
-                    <p className="metric-label text-emerald">Total Gastos</p>
-                    <p className="text-xs text-tertiary">Este mes</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="status-badge-premium status-approved-premium">
-                    <i className="fas fa-trending-up mr-1"></i>+12.5%
-                  </div>
-                </div>
-              </div>
-              <div className="metric-value text-emerald" id="total-expenses">$0</div>
-              <div className="text-xs text-tertiary mt-2" id="total-expenses-period">Actualizado hace 2 min</div>
-            </div>
-
-            {/* Pending Expenses Card */}
-            <div className="metric-card-premium animate-slide-up" style="animation-delay: 0.2s">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-3">
-                  <div className="p-3 rounded-xl bg-glass">
-                    <i className="fas fa-hourglass-half text-gold text-xl animate-pulse"></i>
-                  </div>
-                  <div>
-                    <p className="metric-label text-gold">Pendientes</p>
-                    <p className="text-xs text-tertiary">Por aprobar</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="status-badge-premium status-pending-premium">
-                    <i className="fas fa-clock mr-1"></i>Urgente
-                  </div>
-                </div>
-              </div>
-              <div className="metric-value text-gold" id="pending-expenses">0</div>
-              <div className="text-xs text-tertiary mt-2">Revisión requerida</div>
-            </div>
-
-            {/* Companies Card */}
-            <div className="metric-card-premium animate-slide-up" style="animation-delay: 0.3s">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-3">
-                  <div className="p-3 rounded-xl bg-glass">
-                    <i className="fas fa-building text-sapphire text-xl"></i>
-                  </div>
-                  <div>
-                    <p className="metric-label text-sapphire">Empresas</p>
-                    <p className="text-xs text-tertiary">MX + ES activas</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="flex space-x-1">
-                    <span className="text-lg">🇲🇽</span>
-                    <span className="text-lg">🇪🇸</span>
-                  </div>
-                </div>
-              </div>
-              <div className="metric-value text-sapphire" id="companies-count">0</div>
-              <div className="text-xs text-tertiary mt-2">Operaciones globales</div>
-            </div>
-
-            {/* Users Card */}
-            <div className="metric-card-premium animate-slide-up" style="animation-delay: 0.4s">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-3">
-                  <div className="p-3 rounded-xl bg-glass">
-                    <i className="fas fa-users-crown text-ruby text-xl"></i>
-                  </div>
-                  <div>
-                    <p className="metric-label text-ruby">Usuarios</p>
-                    <p className="text-xs text-tertiary">Multirol premium</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="flex space-x-1 text-xs text-tertiary">
-                    <span title="Administradores">👑</span>
-                    <span title="Editores">✏️</span>
-                    <span title="Visualizadores">👁️</span>
-                  </div>
-                </div>
-              </div>
-              <div className="metric-value text-ruby" id="users-count">0</div>
-              <div className="text-xs text-tertiary mt-2">Accesos controlados</div>
-            </div>
-
-          </div>
-
-          {/* Premium Exchange Rates Widget */}
-          <div className="mb-12 animate-slide-up" style="animation-delay: 0.5s">
-            <div className="glass-panel p-8">
-              <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center space-x-4">
-                  <div className="p-3 rounded-xl bg-glass">
-                    <i className="fas fa-coins text-gold text-2xl"></i>
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-bold gradient-text-gold">Mercados Financieros</h2>
-                    <p className="text-secondary text-sm">Tipos de cambio en tiempo real</p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-4">
-                  <span className="text-xs text-tertiary" id="exchange-rates-updated">
-                    <i className="fas fa-clock mr-1 text-gold"></i>
-                    Actualizado: --
-                  </span>
-                  <button onclick="refreshExchangeRates()" className="btn-premium btn-gold text-sm">
-                    <i className="fas fa-sync-alt mr-2"></i>
-                    Actualizar Tasas
-                  </button>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6" id="exchange-rates-container">
-                
-                {/* USD to MXN Premium */}
-                <div className="exchange-rate-card-premium group">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="currency-flag text-3xl">🇺🇸</div>
-                      <div>
-                        <p className="text-emerald font-semibold">USD → MXN</p>
-                        <p className="text-xs text-tertiary">Dólar Americano</p>
-                      </div>
-                    </div>
-                    <div className="p-2 rounded-lg bg-glass group-hover:bg-glass-hover transition-all">
-                      <i className="fas fa-arrow-trend-up text-emerald"></i>
-                    </div>
-                  </div>
-                  
-                  <div className="text-right">
-                    <div className="exchange-rate-value text-emerald text-2xl mb-1" id="rate-usd-mxn">$18.25</div>
-                    <div className="metric-change rate-positive text-xs" id="change-usd-mxn">+0.15 (0.8%)</div>
-                  </div>
-                  
-                  <div className="mt-4 pt-4 border-t border-glass-border">
-                    <div className="flex justify-between text-xs text-tertiary">
-                      <span>24h Vol: $2.1M</span>
-                      <span>Volatilidad: Baja</span>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* EUR to MXN Premium */}
-                <div className="exchange-rate-card-premium group">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="currency-flag text-3xl">🇪🇺</div>
-                      <div>
-                        <p className="text-sapphire font-semibold">EUR → MXN</p>
-                        <p className="text-xs text-tertiary">Euro Europeo</p>
-                      </div>
-                    </div>
-                    <div className="p-2 rounded-lg bg-glass group-hover:bg-glass-hover transition-all">
-                      <i className="fas fa-arrow-trend-down text-ruby"></i>
-                    </div>
-                  </div>
-                  
-                  <div className="text-right">
-                    <div className="exchange-rate-value text-sapphire text-2xl mb-1" id="rate-eur-mxn">$20.15</div>
-                    <div className="metric-change rate-negative text-xs" id="change-eur-mxn">-0.25 (1.2%)</div>
-                  </div>
-                  
-                  <div className="mt-4 pt-4 border-t border-glass-border">
-                    <div className="flex justify-between text-xs text-tertiary">
-                      <span>24h Vol: $1.8M</span>
-                      <span>Volatilidad: Media</span>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* USD to EUR Premium */}
-                <div className="exchange-rate-card-premium group">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="currency-flag text-3xl">💎</div>
-                      <div>
-                        <p className="text-gold font-semibold">USD → EUR</p>
-                        <p className="text-xs text-tertiary">Par Cruzado</p>
-                      </div>
-                    </div>
-                    <div className="p-2 rounded-lg bg-glass group-hover:bg-glass-hover transition-all">
-                      <i className="fas fa-arrow-trend-up text-emerald"></i>
-                    </div>
-                  </div>
-                  
-                  <div className="text-right">
-                    <div className="exchange-rate-value text-gold text-2xl mb-1" id="rate-usd-eur">€0.91</div>
-                    <div className="metric-change rate-positive text-xs" id="change-usd-eur">+0.02 (2.1%)</div>
-                  </div>
-                  
-                  <div className="mt-4 pt-4 border-t border-glass-border">
-                    <div className="flex justify-between text-xs text-tertiary">
-                      <span>24h Vol: $3.2M</span>
-                      <span>Volatilidad: Alta</span>
-                    </div>
-                  </div>
-                </div>
-                
-              </div>
-              
-              {/* Market Info Footer */}
-              <div className="mt-8 pt-6 border-t border-glass-border">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-6 text-sm text-tertiary">
-                    <span className="flex items-center">
-                      <i className="fas fa-shield-check mr-2 text-emerald"></i>
-                      Datos certificados Banxico / BCE
-                    </span>
-                    <span className="flex items-center">
-                      <i className="fas fa-clock mr-2 text-gold"></i>
-                      Actualización cada 30 segundos
-                    </span>
-                    <span className="flex items-center">
-                      <i className="fas fa-globe mr-2 text-sapphire"></i>
-                      Mercados globales 24/7
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <div className="status-badge-premium status-approved-premium">
-                      <i className="fas fa-wifi mr-1"></i>
-                      Conectado
-                    </div>
-                    <div className="flex items-center text-xs text-emerald">
-                      <div className="w-2 h-2 bg-emerald rounded-full mr-2 animate-pulse"></div>
-                      Mercados abiertos
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Premium Companies Portfolio */}
-          <div className="mb-12 animate-slide-up" style="animation-delay: 0.6s">
-            <div className="flex justify-between items-center mb-8">
-              <div className="flex items-center space-x-4">
-                <div className="p-3 rounded-xl bg-glass">
-                  <i className="fas fa-building-columns text-sapphire text-2xl"></i>
-                </div>
-                <div>
-                  <h2 className="text-2xl font-bold gradient-text-gold">Portfolio Corporativo</h2>
-                  <p className="text-secondary text-sm">Gestión multiempresa internacional</p>
-                </div>
-              </div>
-              <button onclick="toggleCompanyView()" className="btn-premium btn-sapphire text-sm">
-                <i className="fas fa-expand mr-2"></i>
-                Vista Analítica
-              </button>
-            </div>
-            <div id="companies-mosaic" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {/* Companies will be loaded here dynamically */}
-            </div>
-          </div>
-          
-          {/* Analytics Filters Panel */}
-          <div className="mb-8 animate-slide-up" style="animation-delay: 0.65s">
-            <div className="glass-panel p-6">
-              <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 rounded-lg bg-glass">
-                    <i className="fas fa-filter text-sapphire text-xl"></i>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-primary">Filtros Avanzados de Analytics</h3>
-                    <p className="text-xs text-tertiary">Personaliza tu análisis con filtros multidimensionales</p>
-                  </div>
-                </div>
-                <button onclick="FORCE_TEST_MARIA()" className="btn-premium btn-emerald text-sm">
-                  <i className="fas fa-user mr-2"></i>
-                  FILTRAR MARÍA
-                </button>
-                <button onclick="FORCE_TEST_PENDING()" className="btn-premium btn-gold text-sm">
-                  <i className="fas fa-clock mr-2"></i>
-                  SOLO PENDIENTES
-                </button>
-                <button onclick="FORCE_CLEAR_ALL()" className="btn-premium btn-ruby text-sm">
-                  <i className="fas fa-eraser mr-2"></i>
-                  LIMPIAR TODO
-                </button>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-secondary mb-2">👤 Usuario Responsable</label>
-                  <select id="analytics-user-filter" className="form-input-premium text-sm bg-glass border-0 w-full" style="background: #1a1d25 !important; color: #ffffff !important; border: 1px solid rgba(255, 255, 255, 0.1) !important;" onchange="FILTER_BY_USER(this.value)">
-                    <option value="" style="background: #12141a !important; color: #ffffff !important;">Todos los Usuarios</option>
-                    <option value="1" style="background: #12141a !important; color: #ffffff !important;">👑 Alejandro Rodríguez (Admin)</option>
-                    <option value="2" style="background: #12141a !important; color: #ffffff !important;">✏️ María López (Editor)</option>
-                    <option value="3" style="background: #12141a !important; color: #ffffff !important;">⭐ Carlos Martínez (Advanced)</option>
-                    <option value="4" style="background: #12141a !important; color: #ffffff !important;">✏️ Ana García (Editor)</option>
-                    <option value="5" style="background: #12141a !important; color: #ffffff !important;">⭐ Pedro Sánchez (Advanced)</option>
-                    <option value="6" style="background: #12141a !important; color: #ffffff !important;">✏️ Elena Torres (Editor)</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-secondary mb-2">📊 Estado del Gasto</label>
-                  <select id="analytics-status-filter" className="form-input-premium text-sm bg-glass border-0 w-full" style="background: #1a1d25 !important; color: #ffffff !important; border: 1px solid rgba(255, 255, 255, 0.1) !important;" onchange="FILTER_BY_STATUS(this.value)">
-                    <option value="" style="background: #12141a !important; color: #ffffff !important;">Todos los Estados</option>
-                    <option value="pending" style="background: #12141a !important; color: #ffffff !important;">⏳ Pendiente</option>
-                    <option value="approved" style="background: #12141a !important; color: #ffffff !important;">✅ Aprobado</option>
-                    <option value="rejected" style="background: #12141a !important; color: #ffffff !important;">❌ Rechazado</option>
-                    <option value="reimbursed" style="background: #12141a !important; color: #ffffff !important;">💰 Reembolsado</option>
-                    <option value="invoiced" style="background: #12141a !important; color: #ffffff !important;">📄 Facturado</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-secondary mb-2">🏢 Empresa</label>
-                  <select id="analytics-company-filter-main" className="form-input-premium text-sm bg-glass border-0 w-full" style="background: #1a1d25 !important; color: #ffffff !important; border: 1px solid rgba(255, 255, 255, 0.1) !important;">
-                    <option value="" style="background: #12141a !important; color: #ffffff !important;">Todas las Empresas</option>
-                    <option value="1" style="background: #12141a !important; color: #ffffff !important;">🇲🇽 TechMX Solutions</option>
-                    <option value="2" style="background: #12141a !important; color: #ffffff !important;">🇲🇽 Innovación Digital MX</option>
-                    <option value="3" style="background: #12141a !important; color: #ffffff !important;">🇲🇽 Consultoría Estratégica MX</option>
-                    <option value="4" style="background: #12141a !important; color: #ffffff !important;">🇪🇸 TechES Barcelona</option>
-                    <option value="5" style="background: #12141a !important; color: #ffffff !important;">🇪🇸 Innovación Madrid SL</option>
-                    <option value="6" style="background: #12141a !important; color: #ffffff !important;">🇪🇸 Digital Valencia S.A.</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-secondary mb-2">💰 Moneda</label>
-                  <select id="analytics-currency-filter-main" className="form-input-premium text-sm bg-glass border-0 w-full" style="background: #1a1d25 !important; color: #ffffff !important; border: 1px solid rgba(255, 255, 255, 0.1) !important;">
-                    <option value="" style="background: #12141a !important; color: #ffffff !important;">Todas las Monedas</option>
-                    <option value="MXN" style="background: #12141a !important; color: #ffffff !important;">🇲🇽 MXN (Peso)</option>
-                    <option value="USD" style="background: #12141a !important; color: #ffffff !important;">🇺🇸 USD (Dólar)</option>
-                    <option value="EUR" style="background: #12141a !important; color: #ffffff !important;">🇪🇺 EUR (Euro)</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-secondary mb-2">📅 Período</label>
-                  <select id="analytics-period-filter-main" className="form-input-premium text-sm bg-glass border-0 w-full" style="background: #1a1d25 !important; color: #ffffff !important; border: 1px solid rgba(255, 255, 255, 0.1) !important;">
-                    <option value="" style="background: #12141a !important; color: #ffffff !important;">Todo el Tiempo</option>
-                    <option value="week" style="background: #12141a !important; color: #ffffff !important;">Esta Semana</option>
-                    <option value="month" style="background: #12141a !important; color: #ffffff !important;">Este Mes</option>
-                    <option value="quarter" style="background: #12141a !important; color: #ffffff !important;">Trimestre</option>
-                    <option value="year" style="background: #12141a !important; color: #ffffff !important;">Este Año</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Premium Analytics Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12 animate-slide-up" style="animation-delay: 0.7s">
-            
-            {/* Company Analytics Chart */}
-            <div className="glass-panel p-8">
-              <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 rounded-lg bg-glass">
-                    <i className="fas fa-chart-pie text-emerald text-xl"></i>
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-primary">Performance Empresarial</h3>
-                    <p className="text-xs text-tertiary">Análisis comparativo de gastos</p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <select id="analytics-company-filter" className="form-input-premium text-sm bg-glass border-0 min-w-[140px]" style="background: #1a1d25 !important; color: #ffffff !important; border: 1px solid rgba(255, 255, 255, 0.1) !important;">
-                    <option value="" style="background: #12141a !important; color: #ffffff !important;">Todas las Empresas</option>
-                    <option value="1" style="background: #12141a !important; color: #ffffff !important;">🇲🇽 TechMX Solutions</option>
-                    <option value="2" style="background: #12141a !important; color: #ffffff !important;">🇲🇽 Innovación Digital MX</option>
-                    <option value="3" style="background: #12141a !important; color: #ffffff !important;">🇲🇽 Consultoría Estratégica MX</option>
-                    <option value="4" style="background: #12141a !important; color: #ffffff !important;">🇪🇸 TechES Barcelona</option>
-                    <option value="5" style="background: #12141a !important; color: #ffffff !important;">🇪🇸 Innovación Madrid SL</option>
-                    <option value="6" style="background: #12141a !important; color: #ffffff !important;">🇪🇸 Digital Valencia S.A.</option>
-                  </select>
-                  <select id="period-selector" className="form-input-premium text-sm bg-glass border-0 min-w-[120px]" style="background: #1a1d25 !important; color: #ffffff !important; border: 1px solid rgba(255, 255, 255, 0.1) !important;">
-                    <option value="month" style="background: #12141a !important; color: #ffffff !important;">Este Mes</option>
-                    <option value="quarter" style="background: #12141a !important; color: #ffffff !important;">Trimestre</option>
-                    <option value="year" style="background: #12141a !important; color: #ffffff !important;">Este Año</option>
-                  </select>
-                </div>
-              </div>
-              
-              <div id="company-chart" className="h-64 rounded-lg bg-glass p-4"></div>
-              
-              <div className="mt-4 flex items-center justify-between text-xs text-tertiary">
-                <span className="flex items-center">
-                  <div className="w-2 h-2 bg-emerald rounded-full mr-2"></div>
-                  Datos actualizados
-                </span>
-                <span>Período fiscal 2024</span>
-              </div>
-            </div>
-            
-            {/* Currency Distribution Chart */}
-            <div className="glass-panel p-8">
-              <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 rounded-lg bg-glass">
-                    <i className="fas fa-globe-americas text-gold text-xl"></i>
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-primary">Exposición Multimoneda</h3>
-                    <p className="text-xs text-tertiary">Distribución por divisa en tiempo real</p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <select id="analytics-currency-filter" className="form-input-premium text-sm bg-glass border-0 min-w-[120px]" style="background: #1a1d25 !important; color: #ffffff !important; border: 1px solid rgba(255, 255, 255, 0.1) !important;">
-                    <option value="" style="background: #12141a !important; color: #ffffff !important;">Todas las Monedas</option>
-                    <option value="MXN" style="background: #12141a !important; color: #ffffff !important;">🇲🇽 MXN</option>
-                    <option value="USD" style="background: #12141a !important; color: #ffffff !important;">🇺🇸 USD</option>
-                    <option value="EUR" style="background: #12141a !important; color: #ffffff !important;">🇪🇺 EUR</option>
-                  </select>
-                  <div className="flex items-center space-x-2 text-xs text-tertiary">
-                    <div className="w-2 h-2 bg-gold rounded-full animate-pulse"></div>
-                    <span>Tasas live</span>
-                  </div>
-                </div>
-              </div>
-              
-              <div id="currency-chart" className="h-64 rounded-lg bg-glass p-4"></div>
-              
-              <div className="mt-4 flex items-center justify-between text-xs text-tertiary">
-                <div className="flex items-center space-x-4">
-                  <span className="flex items-center">
-                    <span className="text-emerald mr-1">🇲🇽</span> MXN
-                  </span>
-                  <span className="flex items-center">
-                    <span className="text-sapphire mr-1">🇺🇸</span> USD
-                  </span>
-                  <span className="flex items-center">
-                    <span className="text-gold mr-1">🇪🇺</span> EUR
-                  </span>
-                </div>
-                <span>Conversión automática</span>
-              </div>
-            </div>
-            
-          </div>
-
-          {/* Advanced Analytics Section - Trend Analysis & Status Overview */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12 animate-slide-up" style="animation-delay: 0.8s">
-            
-            {/* Trend Analysis Chart */}
-            <div className="glass-panel p-8">
-              <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 rounded-lg bg-glass">
-                    <i className="fas fa-chart-line text-sapphire text-xl"></i>
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-primary">Análisis de Tendencias</h3>
-                    <p className="text-xs text-tertiary">Evolución temporal de gastos y promedios móviles</p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <select id="analytics-user-filter-trend" className="form-input-premium text-sm bg-glass border-0 min-w-[140px]" style="background: #1a1d25 !important; color: #ffffff !important; border: 1px solid rgba(255, 255, 255, 0.1) !important;">
-                    <option value="" style="background: #12141a !important; color: #ffffff !important;">Todos los Usuarios</option>
-                    <option value="1" style="background: #12141a !important; color: #ffffff !important;">👑 Alejandro Rodríguez (Admin)</option>
-                    <option value="2" style="background: #12141a !important; color: #ffffff !important;">✏️ María López (Editor)</option>
-                    <option value="3" style="background: #12141a !important; color: #ffffff !important;">⭐ Carlos Martínez (Advanced)</option>
-                    <option value="4" style="background: #12141a !important; color: #ffffff !important;">✏️ Ana García (Editor)</option>
-                    <option value="5" style="background: #12141a !important; color: #ffffff !important;">⭐ Pedro Sánchez (Advanced)</option>
-                    <option value="6" style="background: #12141a !important; color: #ffffff !important;">✏️ Elena Torres (Editor)</option>
-                  </select>
-                  <div className="flex items-center space-x-2 text-xs text-tertiary">
-                    <div className="w-2 h-2 bg-sapphire rounded-full animate-pulse"></div>
-                    <span>Tiempo real</span>
-                  </div>
-                </div>
-              </div>
-              
-              <div id="trend-chart" className="h-64 rounded-lg bg-glass p-4"></div>
-              
-              <div className="mt-4 flex items-center justify-between text-xs text-tertiary">
-                <span className="flex items-center">
-                  <div className="w-2 h-2 bg-emerald rounded-full mr-2"></div>
-                  Gastos totales
-                </span>
-                <span className="flex items-center">
-                  <div className="w-2 h-2 bg-gold rounded-full mr-2"></div>
-                  Promedio móvil
-                </span>
-              </div>
-            </div>
-            
-            {/* Status Overview Chart */}
-            <div className="glass-panel p-8">
-              <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 rounded-lg bg-glass">
-                    <i className="fas fa-chart-radar text-emerald text-xl"></i>
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-primary">Status Overview</h3>
-                    <p className="text-xs text-tertiary">Distribución de estados de gastos por volumen</p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <select id="analytics-status-filter-chart" className="form-input-premium text-sm bg-glass border-0 min-w-[140px]" style="background: #1a1d25 !important; color: #ffffff !important; border: 1px solid rgba(255, 255, 255, 0.1) !important;">
-                    <option value="" style="background: #12141a !important; color: #ffffff !important;">Todos los Estados</option>
-                    <option value="pending" style="background: #12141a !important; color: #ffffff !important;">⏳ Pendientes</option>
-                    <option value="approved" style="background: #12141a !important; color: #ffffff !important;">✅ Aprobados</option>
-                    <option value="rejected" style="background: #12141a !important; color: #ffffff !important;">❌ Rechazados</option>
-                    <option value="reimbursed" style="background: #12141a !important; color: #ffffff !important;">💰 Reembolsados</option>
-                    <option value="invoiced" style="background: #12141a !important; color: #ffffff !important;">📄 Facturados</option>
-                  </select>
-                  <button className="btn-premium btn-emerald text-xs" onclick="refreshStatusMetrics()">
-                    <i className="fas fa-sync-alt mr-1"></i>
-                    Actualizar
-                  </button>
-                </div>
-              </div>
-              
-              <div id="status-chart" className="h-64 rounded-lg bg-glass p-4"></div>
-              
-              <div className="mt-4 grid grid-cols-2 gap-4 text-xs text-tertiary">
-                <div className="flex items-center">
-                  <div className="w-2 h-2 bg-yellow-500 rounded-full mr-2"></div>
-                  <span>Pendientes</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                  <span>Aprobados</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
-                  <span>Reembolsados</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-2 h-2 bg-red-500 rounded-full mr-2"></div>
-                  <span>Rechazados</span>
-                </div>
-              </div>
-            </div>
-            
-          </div>
-
-          {/* Recent Activity */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-            <div className="bg-white rounded-lg shadow-sm border">
-              <div className="px-6 py-4 border-b">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  <i className="fas fa-receipt mr-2 text-orange-600"></i>
-                  Actividad Reciente
-                </h3>
-              </div>
-              <div className="p-6">
-                <div id="recent-activity" className="space-y-4">
-                  {/* Activity items will be loaded here */}
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-sm border">
-              <div className="px-6 py-4 border-b">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  <i className="fas fa-exclamation-triangle mr-2 text-yellow-600"></i>
-                  Acciones Requeridas
-                </h3>
-              </div>
-              <div className="p-6">
-                <div id="pending-actions" className="space-y-4">
-                  {/* Pending actions will be loaded here */}
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Detailed Recent Expenses Table */}
-          <div className="bg-white rounded-lg shadow-sm border">
-            <div className="px-6 py-4 border-b">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  <i className="fas fa-table mr-2 text-gray-600"></i>
-                  Últimos Gastos Registrados
-                </h3>
-                <a href="/expenses" className="text-blue-600 hover:text-blue-800 text-sm">
-                  Ver todos los gastos →
-                </a>
-              </div>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descripción</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Empresa</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuario</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Monto</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Adjuntos</th>
-                  </tr>
-                </thead>
-                <tbody id="recent-expenses-table" className="bg-white divide-y divide-gray-200">
-                  <tr>
-                    <td colspan="7" className="px-6 py-4 text-center text-gray-500">
-                      <i className="fas fa-spinner fa-spin mr-2"></i>
-                      Cargando gastos recientes...
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      {/* FIXED: Inline JavaScript for filter functionality */}
-      <script dangerouslySetInnerHTML={{__html: `
-        console.log('✅ FILTERS INITIALIZED - Dropdowns should work now!');
-        
-        // Simple filter change handler
-        function handleFilterChange(selectElement) {
-          const selectedValue = selectElement.value;
-          const selectedText = selectElement.options[selectElement.selectedIndex].text;
-          
-          console.log('Filter changed:', selectedText, 'Value:', selectedValue);
-          
-          // Visual feedback
-          if (selectedValue) {
-            selectElement.style.borderColor = '#f59e0b';
-            selectElement.style.boxShadow = '0 0 0 3px rgba(245, 158, 11, 0.1)';
-          } else {
-            selectElement.style.borderColor = 'rgba(255, 255, 255, 0.1)';
-            selectElement.style.boxShadow = 'none';
-          }
+  return c.html(`<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📊 Dashboard Analítico - Lyra Expenses</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .purple-gradient { 
+            background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 50%, #c084fc 100%); 
         }
-        
-        // Setup event listeners when DOM is ready
-        document.addEventListener('DOMContentLoaded', function() {
-          console.log('✅ DOM ready - setting up filter listeners');
-          
-          const filterIds = [
-            'analytics-user-filter',
-            'analytics-status-filter', 
-            'analytics-company-filter-main',
-            'analytics-currency-filter-main',
-            'analytics-period-filter-main',
-            'analytics-company-filter',
-            'period-selector',
-            'analytics-currency-filter',
-            'analytics-user-filter-trend',
-            'analytics-status-filter-chart'
-          ];
-          
-          filterIds.forEach(id => {
-            const element = document.getElementById(id);
-            if (element) {
-              element.addEventListener('change', function() {
-                handleFilterChange(this);
-              });
-              console.log('✅ Listener added to:', id);
-            } else {
-              console.log('❌ Element not found:', id);
-            }
-          });
-        });
-      `}}>
-      </script>
+        .purple-glass { 
+            background: rgba(139, 92, 246, 0.1); 
+            backdrop-filter: blur(10px); 
+            border: 1px solid rgba(139, 92, 246, 0.2);
+        }
+        .purple-card {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.05), rgba(168, 85, 247, 0.05));
+            border: 1px solid rgba(139, 92, 246, 0.15);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+    <!-- Navigation Header -->
+    <header class="purple-gradient shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-4">
+                    <div class="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-chart-line text-white text-xl"></i>
+                    </div>
+                    <h1 class="text-2xl font-bold text-white">Lyra Expenses</h1>
+                </div>
+                <nav class="flex space-x-6">
+                    <a href="/" class="text-white font-medium px-3 py-2 rounded-md bg-white bg-opacity-20">
+                        <i class="fas fa-chart-pie mr-2"></i>Dashboard
+                    </a>
+                    <a href="/companies" class="text-white hover:text-purple-200 font-medium px-3 py-2 rounded-md hover:bg-white hover:bg-opacity-10 transition">
+                        <i class="fas fa-building mr-2"></i>Empresas
+                    </a>
+                    <a href="/expenses" class="text-white hover:text-purple-200 font-medium px-3 py-2 rounded-md hover:bg-white hover:bg-opacity-10 transition">
+                        <i class="fas fa-receipt mr-2"></i>Gastos
+                    </a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex h-screen pt-0">
+        <!-- Sidebar: Ficha de Gasto -->
+        <div class="w-80 purple-glass shadow-xl overflow-y-auto">
+            <div class="p-6">
+                <h2 class="text-xl font-bold text-purple-900 mb-6">
+                    <i class="fas fa-filter mr-2"></i>Ficha de Gasto
+                </h2>
+                
+                <!-- Filters -->
+                <div class="space-y-4">
+                    <!-- Company Filter -->
+                    <div>
+                        <label class="block text-sm font-medium text-purple-800 mb-2">Empresa</label>
+                        <select id="companyFilter" class="w-full px-3 py-2 border border-purple-200 rounded-md bg-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                            <option value="">Todas las empresas</option>
+                        </select>
+                    </div>
+
+                    <!-- Status Filter -->
+                    <div>
+                        <label class="block text-sm font-medium text-purple-800 mb-2">Estado</label>
+                        <select id="statusFilter" class="w-full px-3 py-2 border border-purple-200 rounded-md bg-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                            <option value="">Todos los estados</option>
+                            <option value="pending">Pendiente</option>
+                            <option value="approved">Aprobado</option>
+                            <option value="rejected">Rechazado</option>
+                            <option value="reimbursed">Reembolsado</option>
+                        </select>
+                    </div>
+
+                    <!-- Currency Filter -->
+                    <div>
+                        <label class="block text-sm font-medium text-purple-800 mb-2">Moneda</label>
+                        <select id="currencyFilter" class="w-full px-3 py-2 border border-purple-200 rounded-md bg-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                            <option value="">Todas las monedas</option>
+                            <option value="MXN">MXN - Peso Mexicano</option>
+                            <option value="USD">USD - Dólar</option>
+                            <option value="EUR">EUR - Euro</option>
+                        </select>
+                    </div>
+
+                    <!-- Apply Filters Button -->
+                    <button id="applyFilters" class="w-full bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700 transition font-medium">
+                        <i class="fas fa-search mr-2"></i>Aplicar Filtros
+                    </button>
+                    
+                    <!-- Clear Filters Button -->
+                    <button id="clearFilters" class="w-full bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600 transition font-medium">
+                        <i class="fas fa-eraser mr-2"></i>Limpiar Filtros
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 overflow-auto bg-gray-50">
+            <div class="p-6">
+                <!-- KPI Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                    <!-- Total Amount -->
+                    <div class="purple-card rounded-xl p-6 shadow-sm">
+                        <div class="flex items-center">
+                            <div class="p-3 bg-purple-100 rounded-full mr-4">
+                                <i class="fas fa-euro-sign text-purple-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-purple-600">Total Gastos</p>
+                                <p id="totalAmount" class="text-2xl font-bold text-purple-900">4,563 €</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Total Companies -->
+                    <div class="purple-card rounded-xl p-6 shadow-sm">
+                        <div class="flex items-center">
+                            <div class="p-3 bg-purple-100 rounded-full mr-4">
+                                <i class="fas fa-building text-purple-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-purple-600">Empresas</p>
+                                <p id="totalCompanies" class="text-2xl font-bold text-purple-900">1</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pending Authorization -->
+                    <div class="purple-card rounded-xl p-6 shadow-sm">
+                        <div class="flex items-center">
+                            <div class="p-3 bg-orange-100 rounded-full mr-4">
+                                <i class="fas fa-clock text-orange-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-purple-600">Pend. Autorización</p>
+                                <p id="pendingAuth" class="text-2xl font-bold text-purple-900">1</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Approved Expenses -->
+                    <div class="purple-card rounded-xl p-6 shadow-sm">
+                        <div class="flex items-center">
+                            <div class="p-3 bg-green-100 rounded-full mr-4">
+                                <i class="fas fa-check-circle text-green-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-purple-600">Aprobados</p>
+                                <p id="approvedCount" class="text-2xl font-bold text-purple-900">6</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Section -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                    <!-- Donut Chart -->
+                    <div class="bg-white rounded-xl p-6 shadow-sm border border-purple-100">
+                        <h3 class="text-lg font-semibold text-purple-900 mb-4">
+                            <i class="fas fa-chart-pie mr-2 text-purple-600"></i>Gastos por Estado
+                        </h3>
+                        <div class="relative" style="height: 300px;">
+                            <canvas id="statusChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Bar Chart -->
+                    <div class="bg-white rounded-xl p-6 shadow-sm border border-purple-100">
+                        <h3 class="text-lg font-semibold text-purple-900 mb-4">
+                            <i class="fas fa-chart-bar mr-2 text-purple-600"></i>Gastos por Empresa
+                        </h3>
+                        <div class="relative" style="height: 300px;">
+                            <canvas id="companyChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Expenses Table -->
+                <div class="bg-white rounded-xl shadow-sm border border-purple-100">
+                    <div class="px-6 py-4 border-b border-purple-100">
+                        <h3 class="text-lg font-semibold text-purple-900">
+                            <i class="fas fa-table mr-2 text-purple-600"></i>Gastos Recientes
+                        </h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-purple-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-purple-600 uppercase tracking-wider">Fecha</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-purple-600 uppercase tracking-wider">Descripción</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-purple-600 uppercase tracking-wider">Empresa</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-purple-600 uppercase tracking-wider">Monto</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-purple-600 uppercase tracking-wider">Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="expensesTableBody" class="bg-white divide-y divide-gray-200">
+                                <!-- Table rows will be populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-  );
-})
+
+    <script>
+        // Dashboard variables
+        let currentFilters = {};
+        let dashboardData = {};
+        let statusChart, companyChart;
+
+        // Initialize dashboard on load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCompanies();
+            loadDashboardData();
+            initializeEventListeners();
+        });
+
+        // Load companies for filter
+        async function loadCompanies() {
+            try {
+                const response = await axios.get('/api/companies');
+                const companies = response.data.companies;
+                
+                const select = document.getElementById('companyFilter');
+                companies.forEach(company => {
+                    const option = document.createElement('option');
+                    option.value = company.id;
+                    option.textContent = company.name + ' (' + company.country + ')';
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading companies:', error);
+            }
+        }
+
+        // Load dashboard data
+        async function loadDashboardData() {
+            try {
+                const response = await axios.get('/api/dashboard/metrics', {
+                    params: currentFilters
+                });
+                
+                dashboardData = response.data;
+                updateKPIs();
+                updateCharts();
+                updateTable();
+            } catch (error) {
+                console.error('Error loading dashboard data:', error);
+            }
+        }
+
+        // Update KPI cards
+        function updateKPIs() {
+            const statusMetrics = dashboardData.status_metrics || [];
+            const companyMetrics = dashboardData.company_metrics || [];
+            
+            // Calculate totals
+            const totalAmount = statusMetrics.reduce((sum, metric) => sum + (metric.total_mxn || 0), 0);
+            const totalCompanies = companyMetrics.length;
+            const pendingCount = statusMetrics.find(m => m.status === 'pending')?.count || 0;
+            const approvedCount = statusMetrics.find(m => m.status === 'approved')?.count || 0;
+            
+            // Update KPI displays (convert to EUR for display)
+            document.getElementById('totalAmount').textContent = Math.round(totalAmount / 20.15).toLocaleString() + ' €';
+            document.getElementById('totalCompanies').textContent = totalCompanies;
+            document.getElementById('pendingAuth').textContent = pendingCount;
+            document.getElementById('approvedCount').textContent = approvedCount;
+        }
+
+        // Update charts
+        function updateCharts() {
+            updateStatusChart();
+            updateCompanyChart();
+        }
+
+        // Update status donut chart with purple theme
+        function updateStatusChart() {
+            const ctx = document.getElementById('statusChart').getContext('2d');
+            
+            if (statusChart) {
+                statusChart.destroy();
+            }
+            
+            const statusMetrics = dashboardData.status_metrics || [];
+            const labels = statusMetrics.map(m => getStatusLabel(m.status));
+            const data = statusMetrics.map(m => m.count);
+            
+            statusChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: [
+                            '#8b5cf6', // Purple
+                            '#a855f7', // Purple variant
+                            '#c084fc', // Light purple
+                            '#e879f9', // Pink purple
+                            '#f3e8ff'  // Very light purple
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: '#6b21a8',
+                                font: {
+                                    weight: 'bold'
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update company bar chart with purple theme
+        function updateCompanyChart() {
+            const ctx = document.getElementById('companyChart').getContext('2d');
+            
+            if (companyChart) {
+                companyChart.destroy();
+            }
+            
+            const companyMetrics = dashboardData.company_metrics || [];
+            const labels = companyMetrics.map(m => m.company);
+            const data = companyMetrics.map(m => Math.round((m.total_mxn || 0) / 20.15)); // Convert to EUR
+            
+            companyChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Gastos (EUR)',
+                        data: data,
+                        backgroundColor: 'rgba(139, 92, 246, 0.7)',
+                        borderColor: '#8b5cf6',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#6b21a8',
+                                font: {
+                                    weight: 'bold'
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                color: '#6b21a8'
+                            },
+                            grid: {
+                                color: 'rgba(139, 92, 246, 0.1)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#6b21a8'
+                            },
+                            grid: {
+                                color: 'rgba(139, 92, 246, 0.1)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update expenses table
+        function updateTable() {
+            const tableBody = document.getElementById('expensesTableBody');
+            const expenses = dashboardData.recent_expenses || [];
+            
+            tableBody.innerHTML = '';
+            
+            expenses.forEach(expense => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-purple-50 transition-colors';
+                row.innerHTML = 
+                    '<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">' + formatDate(expense.expense_date) + '</td>' +
+                    '<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">' + expense.description + '</td>' +
+                    '<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">' + expense.company_name + '</td>' +
+                    '<td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">' + expense.currency + ' ' + parseFloat(expense.amount).toLocaleString() + '</td>' +
+                    '<td class="px-6 py-4 whitespace-nowrap">' +
+                        '<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full ' + getStatusBadgeClass(expense.status) + '">' +
+                            getStatusLabel(expense.status) +
+                        '</span>' +
+                    '</td>';
+                tableBody.appendChild(row);
+            });
+        }
+
+        // Event listeners for filters
+        function initializeEventListeners() {
+            document.getElementById('applyFilters').addEventListener('click', applyFilters);
+            document.getElementById('clearFilters').addEventListener('click', clearFilters);
+        }
+
+        // Apply filters
+        function applyFilters() {
+            currentFilters = {
+                company_id: document.getElementById('companyFilter').value,
+                status: document.getElementById('statusFilter').value,
+                currency: document.getElementById('currencyFilter').value
+            };
+            
+            // Remove empty filters
+            Object.keys(currentFilters).forEach(key => {
+                if (!currentFilters[key]) {
+                    delete currentFilters[key];
+                }
+            });
+            
+            loadDashboardData();
+        }
+
+        // Clear all filters
+        function clearFilters() {
+            document.getElementById('companyFilter').value = '';
+            document.getElementById('statusFilter').value = '';
+            document.getElementById('currencyFilter').value = '';
+            
+            currentFilters = {};
+            loadDashboardData();
+        }
+
+        // Utility functions
+        function formatDate(dateString) {
+            return new Date(dateString).toLocaleDateString('es-ES');
+        }
+
+        function getStatusLabel(status) {
+            const labels = {
+                'pending': 'Pendiente',
+                'approved': 'Aprobado',
+                'rejected': 'Rechazado',
+                'reimbursed': 'Reembolsado'
+            };
+            return labels[status] || status;
+        }
+
+        function getStatusBadgeClass(status) {
+            const classes = {
+                'pending': 'bg-yellow-100 text-yellow-800',
+                'approved': 'bg-green-100 text-green-800',
+                'rejected': 'bg-red-100 text-red-800',
+                'reimbursed': 'bg-blue-100 text-blue-800'
+            };
+            return classes[status] || 'bg-gray-100 text-gray-800';
+        }
+    </script>
+</body>
+</html>`);
+})})
 
 // Companies page - List all companies
 app.get('/companies', (c) => {

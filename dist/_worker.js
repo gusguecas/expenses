@@ -1015,16 +1015,8 @@ ID VIAJE: 1234-5678-9012`,confidence:.89}};let i="ticket";return r&&(r.toLowerCa
                         <select id="filter-type" onchange="applyFilters()" 
                                 class="w-full p-3 rounded-lg border border-glass-border bg-glass text-text-primary focus:border-accent-gold focus:outline-none">
                             <option value="">Todos los Tipos</option>
-                            <option value="comida_trabajo">🍽️ Comidas de Trabajo</option>
-                            <option value="transporte_terrestre">🚗 Transporte Terrestre</option>
-                            <option value="combustible">⛽ Combustible</option>
-                            <option value="hospedaje">🏨 Hospedaje</option>
-                            <option value="vuelos">✈️ Vuelos</option>
-                            <option value="material_oficina">📋 Material de Oficina</option>
-                            <option value="software_licencias">💻 Software y Licencias</option>
-                            <option value="capacitacion">📚 Capacitación</option>
-                            <option value="marketing">📢 Marketing</option>
-                            <option value="otros_gastos">📦 Otros Gastos</option>
+                            <option value="G">💼 Gastos</option>
+                            <option value="V">✈️ Viáticos</option>
                         </select>
                     </div>
                 </div>
