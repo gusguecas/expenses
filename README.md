@@ -23,6 +23,50 @@ Crear una aplicación centralizada donde se puedan:
 - **Gestión de Gastos (GUSBit)**: https://3000-ial41s29t0kzpd2ozwkwe-6532622b.e2b.dev/expenses
 - **API Health Check**: https://3000-ial41s29t0kzpd2ozwkwe-6532622b.e2b.dev/api/health
 
+## 🔐 Sistema RBAC (Control de Acceso Basado en Roles)
+
+### **Arquitectura de Permisos de 3 Niveles**
+
+El sistema implementa control de acceso granular con **3 roles principales** y **permisos por empresa**:
+
+#### **📊 Roles y Capacidades**
+
+| Rol | Descripción | Permisos Globales | Acceso por Empresa |
+|-----|-------------|------------------|-------------------|
+| **👑 CFO** | Control Total | ✅ Ver todas las empresas<br>✅ Crear/editar cualquier gasto<br>✅ Aprobar/rechazar gastos<br>✅ Gestionar usuarios | ✅ Acceso completo a todas las empresas |
+| **🤝 Partner/Associate** | Acceso Limitado | ✅ Ver empresas asignadas<br>✅ Crear gastos en empresas específicas<br>❌ Gestión de usuarios<br>🟡 Aprobación según configuración | 🟡 Permisos configurables por empresa |
+| **👤 Employee** | Solo Lectura | ✅ Ver gastos propios<br>❌ Crear gastos<br>❌ Aprobar gastos<br>❌ Gestión de usuarios | 🟡 Solo empresas asignadas (read-only) |
+
+#### **🏢 Permisos Granulares por Empresa**
+
+Cada usuario puede tener diferentes niveles de acceso en diferentes empresas:
+
+```sql
+user_permissions:
+├── can_view_all     - Ver todos los gastos de la empresa
+├── can_create       - Crear nuevos gastos en la empresa  
+├── can_approve      - Aprobar/rechazar gastos
+└── can_manage_users - Gestionar usuarios de la empresa
+```
+
+#### **🔒 Middleware de Seguridad**
+
+Todas las APIs están protegidas con **validación automática de permisos**:
+
+- **Autenticación JWT**: Tokens de 7 días con refresh automático
+- **Validación por Endpoint**: Cada ruta verifica permisos específicos
+- **Filtrado de Datos**: Solo se devuelven datos que el usuario puede ver
+- **Logs de Auditoría**: Registro completo de accesos y acciones
+
+#### **🎨 UI Adaptativa**
+
+La interfaz se adapta dinámicamente según los permisos del usuario:
+
+- **Navegación Contextual**: Solo se muestran secciones accesibles
+- **Botones Inteligentes**: Crear/Editar/Aprobar según permisos
+- **Filtros de Empresa**: Solo empresas con acceso autorizado
+- **Alertas de Permisos**: Feedback claro sobre restricciones
+
 ## 🏗️ Arquitectura de Datos
 
 ### **Modelo Multiempresa/Multiusuario/Multimoneda**
@@ -56,8 +100,9 @@ El sistema implementa 4 pilares fundamentales:
 | Tabla | Descripción | Campos Clave |
 |-------|-------------|--------------|
 | `companies` | Empresas MX/ES | name, country, primary_currency, logo_url, tax_id, address |
-| `users` | Usuarios del sistema | email, name, role, active |
-| `user_companies` | Permisos usuario-empresa | can_view, can_edit, can_admin |
+| `users` | Usuarios del sistema | email, name, role, is_cfo, password_hash, active |
+| `user_permissions` | Permisos granulares | user_id, company_id, can_view_all, can_create, can_approve, can_manage_users |
+| `user_sessions` | Sesiones JWT | user_id, session_token, expires_at, is_active |
 | `expenses` | Gastos principales | amount, currency, exchange_rate, amount_mxn |
 | `expense_types` | Categorías de gastos | meals, transport, accommodation, etc. |
 | `attachments` | Archivos adjuntos | tickets, facturas, OCR data |
@@ -118,10 +163,17 @@ POST /api/companies                 - Crear nueva empresa (NUEVO)
 GET  /api/users                     - Listado de usuarios  
 GET  /api/expense-types             - Tipos de gastos
 
-# Gastos y Filtros
-GET  /api/expenses                  - Gastos con filtros avanzados
-POST /api/expenses                  - Crear nuevo gasto
+# Gastos y Filtros (Protegidos por RBAC)
+GET  /api/expenses                  - Gastos con filtros avanzados (filtrado por permisos)
+POST /api/expenses                  - Crear nuevo gasto (validación de permisos por empresa)
 GET  /api/expenses/:id/attachments  - Adjuntos de un gasto
+
+# Autenticación y Permisos
+POST /api/auth/login                - Login con JWT y carga de permisos
+POST /api/auth/register             - Registro de nuevos usuarios
+POST /api/auth/logout               - Logout y limpieza de sesión
+GET  /api/auth/profile              - Perfil del usuario con permisos
+GET  /api/auth/permissions          - Permisos detallados del usuario por empresa
 
 # Tipos de Cambio
 GET  /api/exchange-rates            - Tasas actuales
@@ -221,8 +273,15 @@ GET  /api/dashboard/metrics         - Métricas completas
 - **API Completa**: POST /api/companies con validaciones robustas
 - **UX Premium**: Glassmorphism, animaciones, feedback visual
 
-### 🟡 **Siguientes Optimizaciones (Prioridad Media)**  
-8. **Roles y Permisos Granulares** - Control de acceso por empresa y funcionalidad
+#### 8. ✅ **Sistema RBAC (Control de Acceso Basado en Roles)** - **COMPLETADO**
+- **Arquitectura de Permisos**: 3 niveles jerárquicos (CFO → Partner/Associate → Employee)
+- **Permisos Granulares**: Control por empresa con 4 flags específicos de acceso
+- **Middleware de Seguridad**: Protección automática de APIs con validación de permisos
+- **UI Responsiva a Roles**: Navegación y botones que se adaptan a los permisos del usuario
+- **Autenticación JWT**: Sistema completo con refresh tokens y gestión de sesiones
+- **Multi-Empresa**: Usuarios pueden tener diferentes permisos en diferentes empresas
+
+### 🟡 **Siguientes Optimizaciones (Prioridad Media)**
 9. **Descarga en Lote (ZIP)** - Múltiples adjuntos en un archivo
 10. **Importación Excel Avanzada** - Mapeo inteligente y validaciones extendidas
 
@@ -241,6 +300,7 @@ GET  /api/dashboard/metrics         - Métricas completas
 - ✅ **API REST Completa** - Todos los endpoints especificados
 - ✅ **Tipos de Cambio** - Integración automática MXN/USD/EUR
 - ✅ **Sistema de Adjuntos** - Upload, preview, gestión completa
+- ✅ **Control RBAC** - Sistema completo de permisos por roles y empresas
 
 ## 🏃‍♂️ Guía de Inicio Rápido
 
@@ -331,7 +391,7 @@ npm run deploy:prod
 - **UX/UI Profesional**: Responsive + mobile-friendly + iconografía
 - **Sistema de Adjuntos**: Upload + preview + gestión completa
 
-### ✅ **COMPLETADO - LAS 7 CARACTERÍSTICAS AVANZADAS**
+### ✅ **COMPLETADO - LAS 8 CARACTERÍSTICAS AVANZADAS**
 - ✅ **OCR Inteligente**: Extracción automática de datos desde tickets/facturas
 - ✅ **Validación CFDI**: Sistema fiscal mexicano completo (XML/PDF)  
 - ✅ **Autenticación JWT**: Sistema completo con roles y sesiones
@@ -339,6 +399,7 @@ npm run deploy:prod
 - ✅ **Analytics Premium Charts.js**: 4 tipos de gráficas interactivas
 - ✅ **Sistema de Exportación Ejecutivo**: PDFs premium con logos corporativos
 - ✅ **Gestión Completa de Empresas**: Modal avanzado con 4 secciones organizadas
+- ✅ **Control RBAC Empresarial**: Sistema completo de permisos granulares por roles
 
 ### 🎯 **Cumplimiento del Modelo 4-D**
 - ✅ **💰 Dinero**: Control multimoneda granular con conversión automática
@@ -365,7 +426,7 @@ npm run deploy:prod
 5. **UX Premium** - Glassmorphism, animaciones, feedback visual profesional
 
 ### 🚀 **CARACTERÍSTICAS COMPLETAS IMPLEMENTADAS**
-**✅ Las primeras 7 características avanzadas han sido completadas exitosamente:**
+**✅ Las primeras 8 características avanzadas han sido completadas exitosamente:**
 1. **OCR Inteligente** con extracción automática de datos
 2. **Validación CFDI** para cumplimiento fiscal mexicano
 3. **Autenticación JWT** con roles y gestión de sesiones  
@@ -373,6 +434,7 @@ npm run deploy:prod
 5. **Analytics Premium Charts.js** con 4 tipos de gráficas interactivas
 6. **Sistema de Exportación Ejecutivo** con PDFs premium y logos corporativos
 7. **Gestión Completa de Empresas** con modal avanzado de 4 secciones
+8. **Control RBAC Empresarial** con permisos granulares por empresa y roles
 
 **Última Actualización**: 26 de septiembre de 2024 - **Versión Limpia con Dashboard Analítico Morado + GUSBit Completo**
 
@@ -393,6 +455,15 @@ npm run deploy:prod
 - **Estados de Flujo**: Pendiente, aprobado, rechazado, reembolsado, facturado
 - **Tema Original**: Mantiene diseño dark/black como se solicitó
 
+### ✅ **Sistema de Control de Acceso Basado en Roles - COMPLETADO**
+- **Arquitectura RBAC**: Sistema completo de control de acceso con 3 niveles jerárquicos
+- **Roles Definidos**: CFO (control total), Partner/Associate (acceso limitado), Employee (solo lectura)
+- **Permisos Granulares**: Por empresa con flags específicos (can_view_all, can_create, can_approve, can_manage_users)
+- **Middleware de Seguridad**: Protección a nivel API con validación automática de permisos
+- **UI Adaptativa**: Interfaz que se adapta dinámicamente según los permisos del usuario
+- **Autenticación JWT**: Tokens seguros con 7 días de expiración y refresh automático
+- **Base de Datos Segura**: Tabla user_permissions para control granular de acceso
+
 ### ✅ **Limpieza de Producción Completada**
 - **Código Limpio**: Eliminados console.log de desarrollo que aparecían en UI
 - **Display Profesional**: Sin código debug visible en la interfaz de usuario
@@ -408,7 +479,32 @@ npm run deploy:prod
 - **Validaciones Robustas**: Campos requeridos, formatos específicos por país
 - **UX Premium**: Glassmorphism, animaciones, drag & drop para logos
 
-### URLs de Prueba de la Funcionalidad
+### 🧪 Casos de Prueba del Sistema RBAC
+
+#### **Usuarios de Prueba Configurados**
+
+1. **👑 Gus (CFO)**
+   - **Email**: gus@lyraexpenses.com
+   - **Password**: admin123
+   - **Permisos**: Control total de todas las empresas
+   - **Puede**: Ver todo, crear gastos, aprobar, gestionar usuarios
+
+2. **🤝 María (Partner)**  
+   - **Email**: maria@lyraexpenses.com
+   - **Password**: partner123
+   - **Empresas**: LYRA México (crear gastos) + LYRA España (solo ver)
+   - **Puede**: Ver gastos de ambas empresas, crear solo en México
+
+3. **👤 Carlos (Employee)**
+   - **Email**: carlos@lyraexpenses.com  
+   - **Password**: employee123
+   - **Empresa**: Solo LYRA México (read-only)
+   - **Puede**: Ver únicamente gastos propios en México
+
+#### **URLs de Prueba de la Funcionalidad**
+- **Login**: https://3000-ial41s29t0kzpd2ozwkwe-6532622b.e2b.dev/login.html
+- **Dashboard Principal**: https://3000-ial41s29t0kzpd2ozwkwe-6532622b.e2b.dev/
 - **Página de Empresas**: https://3000-ial41s29t0kzpd2ozwkwe-6532622b.e2b.dev/companies
-- **API de Empresas**: https://3000-ial41s29t0kzpd2ozwkwe-6532622b.e2b.dev/api/companies
+- **Sistema de Gastos**: https://3000-ial41s29t0kzpd2ozwkwe-6532622b.e2b.dev/expenses
+- **API de Permisos**: https://3000-ial41s29t0kzpd2ozwkwe-6532622b.e2b.dev/api/auth/permissions
 - **Health Check**: https://3000-ial41s29t0kzpd2ozwkwe-6532622b.e2b.dev/api/health

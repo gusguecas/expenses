@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "lyra-expenses",
+  "compatibility_date": "2025-09-24",
+  "pages_build_output_dir": "./dist",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  // Temporarily disabled for initial deployment
+  // Will be enabled once D1 permissions are configured
+  // "d1_databases": [
+  //   {
+  //     "binding": "DB", 
+  //     "database_name": "lyra-expenses-production",
+  //     "database_id": "TBD"
+  //   }
+  // ],
+  "vars": {
+    "ENVIRONMENT": "production"
+  }
+}

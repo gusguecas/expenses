@@ -132,8 +132,8 @@ body {
 }
 
 /* === PREMIUM BUTTONS === */
-.btn-premium {
-  background: var(--gradient-primary);
+.btn-premium,
+.premium-button {
   color: var(--color-text-primary);
   border: 1px solid var(--color-glass-border);
   border-radius: var(--radius-md);
@@ -145,6 +145,14 @@ body {
   backdrop-filter: blur(8px);
   position: relative;
   overflow: hidden;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-premium {
+  background: var(--gradient-primary);
 }
 
 .btn-premium::before {
@@ -159,11 +167,19 @@ body {
   transition: transform 0.6s;
 }
 
-.btn-premium:hover::before {
+.btn-premium:hover::before,
+.premium-button:hover::before {
   transform: translateX(100%);
 }
 
 .btn-premium:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-glow);
+  border-color: var(--color-accent-gold);
+}
+
+/* Base hover para premium-button (sin colores específicos) */
+.premium-button:not(.bg-green-600):not(.bg-red-600):not(.bg-blue-600):not(.bg-yellow-600):hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-glow);
   border-color: var(--color-accent-gold);
@@ -183,6 +199,63 @@ body {
 
 .btn-ruby {
   background: var(--gradient-ruby);
+}
+
+/* === PREMIUM BUTTON COLORS (ESPECÍFICOS) === */
+/* Verde - Autorizar */
+.premium-button.bg-green-600 {
+  background: #059669 !important;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+}
+
+.premium-button.bg-green-600:hover,
+.premium-button.bg-green-700:hover {
+  background: #047857 !important;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+}
+
+/* Rojo - Rechazar */
+.premium-button.bg-red-600 {
+  background: #dc2626 !important;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+}
+
+.premium-button.bg-red-600:hover,
+.premium-button.bg-red-700:hover {
+  background: #b91c1c !important;
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
+}
+
+/* Azul - Pedir Info */
+.premium-button.bg-blue-600 {
+  background: #2563eb !important;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+}
+
+.premium-button.bg-blue-600:hover,
+.premium-button.bg-blue-700:hover {
+  background: #1d4ed8 !important;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+}
+
+/* Amarillo - Dejar Pendiente */
+.premium-button.bg-yellow-600 {
+  background: #d97706 !important;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+}
+
+.premium-button.bg-yellow-600:hover,
+.premium-button.bg-yellow-700:hover {
+  background: #b45309 !important;
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4);
 }
 
 /* === METRIC CARDS PREMIUM === */
@@ -633,7 +706,8 @@ select[id="period-selector"] option {
 }
 
 /* === STATUS BADGES PREMIUM === */
-.status-badge-premium {
+.status-badge-premium,
+.status-badge {
   padding: 6px 12px;
   border-radius: var(--radius-sm);
   font-size: 11px;
@@ -641,8 +715,55 @@ select[id="period-selector"] option {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   backdrop-filter: blur(8px);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
+/* Estilos específicos por estatus (UNIFORME Dashboard + Gastos) */
+.status-pending,
+.status-badge.status-pending {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--color-accent-gold);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.status-approved,
+.status-badge.status-approved {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--color-accent-emerald);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.status-rejected,
+.status-badge.status-rejected {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--color-accent-ruby);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.status-more_info,
+.status-badge.status-more_info {
+  background: rgba(147, 51, 234, 0.15);
+  color: #a855f7;
+  border: 1px solid rgba(147, 51, 234, 0.3);
+}
+
+.status-reimbursed,
+.status-badge.status-reimbursed {
+  background: rgba(59, 130, 246, 0.15);
+  color: var(--color-accent-sapphire);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.status-invoiced,
+.status-badge.status-invoiced {
+  background: rgba(99, 102, 241, 0.15);
+  color: #6366f1;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+/* Compatibilidad con estilos premium anteriores */
 .status-pending-premium {
   background: rgba(245, 158, 11, 0.15);
   color: var(--color-accent-gold);

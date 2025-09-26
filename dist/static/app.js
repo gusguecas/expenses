@@ -9,11 +9,10 @@ class ExpensesApp {
     this.users = [];
     this.expenseTypes = [];
     
-    // Authentication state
+    // Authentication state - Updated for new auth system
     this.currentUser = null;
-    this.accessToken = localStorage.getItem('lyra_access_token');
-    this.refreshToken = localStorage.getItem('lyra_refresh_token');
-    this.sessionId = localStorage.getItem('lyra_session_id');
+    this.authToken = localStorage.getItem('auth_token');
+    this.userPermissions = null;
     
     this.init();
   }
@@ -68,22 +67,21 @@ class ExpensesApp {
 
   async init() {
     try {
-      // Load basic data first (needed for forms)
-      await this.loadCompanies();
-      await this.loadUsers();
-      await this.loadExpenseTypes();
-      
-      // Load exchange rates (always visible)
-      if (this.isDashboardPage()) {
-        await this.loadExchangeRates();
-      }
-      
-      // Check authentication for protected features
-      const isAuthenticated = await this.checkAuthStatus();
+      // Check authentication first (new auth system)
+      const isAuthenticated = this.authToken && await this.checkAuthStatus();
       
       if (isAuthenticated) {
-        // Load dashboard metrics if on dashboard page and authenticated
+        // Load user permissions first (critical for data filtering)
+        await this.loadUserPermissions();
+        
+        // Load basic data with permission filtering
+        await this.loadCompanies();
+        await this.loadUsers();
+        await this.loadExpenseTypes();
+        
+        // Load exchange rates (always visible)
         if (this.isDashboardPage()) {
+          await this.loadExchangeRates();
           await this.loadDashboardMetrics();
         }
         
@@ -91,6 +89,11 @@ class ExpensesApp {
         if (this.isExpensesPage()) {
           await this.loadExpenses();
           this.setupFilters();
+        }
+        
+        // Initialize permissions-based UI
+        if (typeof window.PermissionsUI !== 'undefined') {
+          await window.PermissionsUI.initPermissionsUI();
         }
       } else {
         // User not authenticated - show basic interface but allow form usage
@@ -175,9 +178,9 @@ class ExpensesApp {
         ...options.headers
       };
       
-      // Add authorization header if token exists
-      if (this.accessToken) {
-        headers['Authorization'] = `Bearer ${this.accessToken}`;
+      // Add authorization header if token exists (updated for new auth system)
+      if (this.authToken) {
+        headers['Authorization'] = `Bearer ${this.authToken}`;
       }
       
       const response = await fetch(`${this.apiBase}${endpoint}`, {
@@ -185,23 +188,13 @@ class ExpensesApp {
         ...options
       });
 
-      // Handle 401 (unauthorized) by trying to refresh token
-      if (response.status === 401 && this.accessToken) {
-        const refreshed = await this.refreshAccessToken();
-        if (refreshed) {
-          // Retry the original request with new token
-          headers['Authorization'] = `Bearer ${this.accessToken}`;
-          const retryResponse = await fetch(`${this.apiBase}${endpoint}`, {
-            headers,
-            ...options
-          });
-          
-          if (!retryResponse.ok) {
-            throw new Error(`HTTP error! status: ${retryResponse.status}`);
-          }
-          
-          return await retryResponse.json();
-        }
+      // Handle 401 (unauthorized) - redirect to login
+      if (response.status === 401) {
+        console.log('🔒 Authentication required, redirecting to login');
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user_data');
+        window.location.href = '/login';
+        return;
       }
 
       if (!response.ok) {
@@ -270,6 +263,28 @@ class ExpensesApp {
   }
 
   // ===== DATA LOADING METHODS =====
+
+  async loadUserPermissions() {
+    try {
+      const response = await this.apiCall('/user/permissions');
+      this.currentUser = response.user;
+      this.userPermissions = response.permissions;
+      this.userCapabilities = response.capabilities;
+      
+      console.log('✅ User permissions loaded:', this.userCapabilities);
+      
+      // Store in global variables for PermissionsUI
+      if (typeof window.PermissionsUI !== 'undefined') {
+        window.currentUserPermissions = this.userPermissions;
+        window.userCapabilities = this.userCapabilities;
+        window.currentUser = this.currentUser;
+      }
+      
+    } catch (error) {
+      console.error('❌ Error loading user permissions:', error);
+      this.showMessage('Error cargando permisos de usuario', 'error');
+    }
+  }
 
   async loadCompanies() {
     try {
@@ -2044,15 +2059,17 @@ class ExpensesApp {
   // ===== AUTHENTICATION METHODS =====
 
   async checkAuthStatus() {
-    if (!this.accessToken) {
-      this.showLoginModal();
+    if (!this.authToken) {
+      console.log('🔒 No auth token found, redirecting to login');
+      window.location.href = '/login';
       return false;
     }
 
     try {
-      const response = await fetch('/api/auth/profile', {
+      const response = await fetch('/api/auth/verify', {
+        method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.accessToken}`,
+          'Authorization': `Bearer ${this.authToken}`,
           'Content-Type': 'application/json'
         }
       });
@@ -2060,7 +2077,7 @@ class ExpensesApp {
       if (response.ok) {
         const result = await response.json();
         this.currentUser = result.user;
-        this.updateAuthUI();
+        localStorage.setItem('user_data', JSON.stringify(result.user));
         return true;
       } else if (response.status === 401) {
         // Token expired, try to refresh

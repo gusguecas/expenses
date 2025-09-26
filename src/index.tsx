@@ -21,7 +21,474 @@ app.use(renderer)
 // Serve static files
 app.use('/static/*', serveStatic({ root: './public' }))
 
+// ===== AUTHENTICATION UTILITIES =====
+
+// Generate UUID function compatible with Cloudflare Workers
+function generateUUID(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+// Simple JWT implementation for Cloudflare Workers
+async function createJWT(payload: any, secret: string): Promise<string> {
+  const header = { alg: 'HS256', typ: 'JWT' };
+  
+  const encodedHeader = btoa(JSON.stringify(header)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+  const encodedPayload = btoa(JSON.stringify(payload)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+  
+  const message = `${encodedHeader}.${encodedPayload}`;
+  
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  
+  const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(message));
+  const encodedSignature = btoa(String.fromCharCode(...new Uint8Array(signature)))
+    .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+  
+  return `${message}.${encodedSignature}`;
+}
+
+async function verifyJWT(token: string, secret: string): Promise<any> {
+  const parts = token.split('.');
+  if (parts.length !== 3) throw new Error('Invalid token');
+  
+  const [encodedHeader, encodedPayload, encodedSignature] = parts;
+  const message = `${encodedHeader}.${encodedPayload}`;
+  
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['verify']
+  );
+  
+  const signature = Uint8Array.from(atob(encodedSignature.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+  
+  const isValid = await crypto.subtle.verify('HMAC', key, signature, new TextEncoder().encode(message));
+  
+  if (!isValid) throw new Error('Invalid signature');
+  
+  return JSON.parse(atob(encodedPayload.replace(/-/g, '+').replace(/_/g, '/')));
+}
+
+// Simple password hashing using Web Crypto API
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password + 'LYRA_SALT_2024'); // Simple salt
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return hashHex;
+}
+
+async function verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
+  try {
+    const newHash = await hashPassword(password);
+    return newHash === hashedPassword;
+  } catch (error) {
+    return false;
+  }
+}
+
+// Authentication middleware with permissions
+async function authenticateUser(c: any): Promise<any> {
+  const authHeader = c.req.header('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return null;
+  }
+  
+  const token = authHeader.substring(7);
+  const JWT_SECRET = 'lyra-jwt-secret-key-2024'; // In production, use env variable
+  
+  try {
+    const payload = await verifyJWT(token, JWT_SECRET);
+    
+    // Verify session in database
+    const { env } = c;
+    const session = await env.DB.prepare(`
+      SELECT s.*, u.id, u.name, u.email, u.is_cfo, u.created_at
+      FROM user_sessions s
+      JOIN users u ON s.user_id = u.id
+      WHERE s.id = ? AND s.expires_at > datetime('now')
+    `).bind(payload.sessionId).first();
+    
+    if (!session) {
+      return null;
+    }
+    
+    // Load user permissions
+    const permissions = await env.DB.prepare(`
+      SELECT p.*, c.name as company_name, c.country, c.primary_currency
+      FROM user_permissions p
+      JOIN companies c ON p.company_id = c.id
+      WHERE p.user_id = ? AND c.active = 1
+    `).bind(session.id).all();
+    
+    return {
+      id: session.id,
+      name: session.name,
+      email: session.email,
+      is_cfo: session.is_cfo,
+      sessionId: session.sessionId,
+      created_at: session.created_at,
+      permissions: permissions.results || []
+    };
+  } catch (error) {
+    return null;
+  }
+}
+
+// Permission checking functions
+function hasCompanyAccess(user: any, companyId: number): boolean {
+  // CFO always has access to all companies
+  if (user.is_cfo) return true;
+  
+  // Check if user has specific company permissions
+  return user.permissions.some((perm: any) => 
+    perm.company_id === companyId && perm.can_view_all
+  );
+}
+
+function canCreateInCompany(user: any, companyId: number): boolean {
+  if (user.is_cfo) return true;
+  
+  return user.permissions.some((perm: any) => 
+    perm.company_id === companyId && perm.can_create
+  );
+}
+
+function canApproveInCompany(user: any, companyId: number): boolean {
+  if (user.is_cfo) return true;
+  
+  return user.permissions.some((perm: any) => 
+    perm.company_id === companyId && perm.can_approve
+  );
+}
+
+function canManageUsers(user: any, companyId?: number): boolean {
+  if (user.is_cfo) return true;
+  
+  if (!companyId) {
+    // Global user management - only CFO
+    return false;
+  }
+  
+  return user.permissions.some((perm: any) => 
+    perm.company_id === companyId && perm.can_manage_users
+  );
+}
+
+function getUserAccessibleCompanies(user: any): number[] {
+  if (user.is_cfo) {
+    // CFO has access to all companies - we'll need to fetch all active company IDs
+    return []; // Will be handled separately for CFO
+  }
+  
+  return user.permissions
+    .filter((perm: any) => perm.can_view_all)
+    .map((perm: any) => perm.company_id);
+}
+
+// Enhanced permission middleware for different access levels
+async function requirePermission(level: 'read' | 'create' | 'approve' | 'manage', companyId?: number) {
+  return async (c: any, next: () => Promise<void>) => {
+    const user = await authenticateUser(c);
+    
+    if (!user) {
+      return c.json({ error: 'No autorizado' }, 401);
+    }
+    
+    // Check specific permission level
+    switch (level) {
+      case 'read':
+        if (companyId && !hasCompanyAccess(user, companyId)) {
+          return c.json({ error: 'No tienes acceso a esta empresa' }, 403);
+        }
+        break;
+        
+      case 'create':
+        if (companyId && !canCreateInCompany(user, companyId)) {
+          return c.json({ error: 'No tienes permisos para crear en esta empresa' }, 403);
+        }
+        break;
+        
+      case 'approve':
+        if (companyId && !canApproveInCompany(user, companyId)) {
+          return c.json({ error: 'No tienes permisos para aprobar en esta empresa' }, 403);
+        }
+        break;
+        
+      case 'manage':
+        if (!canManageUsers(user, companyId)) {
+          return c.json({ error: 'No tienes permisos para gestionar usuarios' }, 403);
+        }
+        break;
+    }
+    
+    // Add user to context
+    c.set('user', user);
+    await next();
+  };
+}
+
 // ===== API ROUTES =====
+
+// Authentication routes
+app.post('/api/auth/register', async (c) => {
+  const { env } = c;
+  
+  try {
+    const { name, email, password } = await c.req.json();
+    
+    if (!name || !email || !password) {
+      return c.json({ error: 'Todos los campos son requeridos' }, 400);
+    }
+    
+    if (password.length < 6) {
+      return c.json({ error: 'La contraseña debe tener al menos 6 caracteres' }, 400);
+    }
+    
+    // Check if user already exists
+    const existingUser = await env.DB.prepare(`
+      SELECT id FROM users WHERE email = ?
+    `).bind(email).first();
+    
+    if (existingUser) {
+      return c.json({ error: 'Este correo ya está registrado' }, 400);
+    }
+    
+    // Hash password
+    const hashedPassword = await hashPassword(password);
+    
+    // Check if this is the first user (will be CFO)
+    const userCount = await env.DB.prepare(`SELECT COUNT(*) as count FROM users`).first();
+    const isCFO = userCount.count === 0;
+    
+    // Create user
+    const result = await env.DB.prepare(`
+      INSERT INTO users (name, email, password_hash, is_cfo, created_at)
+      VALUES (?, ?, ?, ?, datetime('now'))
+    `).bind(name, email, hashedPassword, isCFO ? 1 : 0).run();
+    
+    const userId = result.meta.last_row_id;
+    
+    // Create session
+    const sessionId = generateUUID();
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(); // 7 days
+    
+    await env.DB.prepare(`
+      INSERT INTO user_sessions (id, user_id, expires_at, created_at)
+      VALUES (?, ?, ?, datetime('now'))
+    `).bind(sessionId, userId, expiresAt).run();
+    
+    // Create JWT token
+    const JWT_SECRET = 'lyra-jwt-secret-key-2024';
+    const token = await createJWT({ sessionId }, JWT_SECRET);
+    
+    return c.json({
+      token,
+      user: {
+        id: userId,
+        name,
+        email,
+        is_cfo: isCFO
+      }
+    });
+    
+  } catch (error) {
+    console.error('Registration error:', error);
+    return c.json({ error: 'Error interno del servidor' }, 500);
+  }
+})
+
+app.post('/api/auth/login', async (c) => {
+  const { env } = c;
+  const { email, password } = await c.req.json();
+  
+  if (!email || !password) {
+    return c.json({ error: 'Email y contraseña son requeridos' }, 400);
+  }
+  
+  try {
+    // Find user by email
+    const user = await env.DB.prepare(`
+      SELECT id, name, email, password_hash, is_cfo, created_at
+      FROM users WHERE email = ?
+    `).bind(email).first();
+    
+    if (!user) {
+      return c.json({ error: 'Credenciales inválidas' }, 401);
+    }
+    
+    // Verify password
+    const isValidPassword = await verifyPassword(password, user.password_hash);
+    if (!isValidPassword) {
+      return c.json({ error: 'Credenciales inválidas' }, 401);
+    }
+    
+    // Create new session
+    const sessionId = generateUUID();
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(); // 7 days
+    
+    await env.DB.prepare(`
+      INSERT INTO user_sessions (id, user_id, expires_at, created_at)
+      VALUES (?, ?, ?, datetime('now'))
+    `).bind(sessionId, user.id, expiresAt).run();
+    
+    // Create JWT token
+    const JWT_SECRET = 'lyra-jwt-secret-key-2024';
+    const token = await createJWT({ sessionId }, JWT_SECRET);
+    
+    return c.json({
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        is_cfo: user.is_cfo
+      }
+    });
+    
+  } catch (error) {
+    console.error('Login error:', error);
+    return c.json({ error: 'Error interno del servidor' }, 500);
+  }
+})
+
+app.post('/api/auth/verify', async (c) => {
+  const user = await authenticateUser(c);
+  
+  if (!user) {
+    return c.json({ error: 'Token inválido o expirado' }, 401);
+  }
+  
+  return c.json({ user });
+})
+
+app.post('/api/auth/logout', async (c) => {
+  const user = await authenticateUser(c);
+  
+  if (user) {
+    const { env } = c;
+    // Delete session
+    await env.DB.prepare(`
+      DELETE FROM user_sessions WHERE id = ?
+    `).bind(user.sessionId).run();
+  }
+  
+  return c.json({ success: true });
+})
+
+// Check if user needs setup
+app.get('/api/user/needs-setup', async (c) => {
+  const user = await authenticateUser(c);
+  
+  if (!user) {
+    return c.json({ error: 'No autorizado' }, 401);
+  }
+  
+  try {
+    const { env } = c;
+    
+    // Check if user has any permissions configured
+    const permissions = await env.DB.prepare(`
+      SELECT COUNT(*) as count FROM user_permissions WHERE user_id = ?
+    `).bind(user.id).first();
+    
+    const needsSetup = permissions.count === 0;
+    
+    return c.json({ needsSetup, user });
+    
+  } catch (error) {
+    console.error('Check setup error:', error);
+    return c.json({ error: 'Error interno del servidor' }, 500);
+  }
+})
+
+// Get current user permissions - useful for frontend
+app.get('/api/user/permissions', async (c) => {
+  const user = await authenticateUser(c);
+  
+  if (!user) {
+    return c.json({ error: 'No autorizado' }, 401);
+  }
+  
+  try {
+    return c.json({
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        is_cfo: user.is_cfo
+      },
+      permissions: user.permissions,
+      capabilities: {
+        can_view_all_expenses: user.is_cfo || user.permissions.some((p: any) => p.can_view_all),
+        can_create_expenses: user.is_cfo || user.permissions.some((p: any) => p.can_create),
+        can_approve_expenses: user.is_cfo || user.permissions.some((p: any) => p.can_approve),
+        can_manage_users: user.is_cfo || user.permissions.some((p: any) => p.can_manage_users),
+        accessible_companies: user.is_cfo ? 'all' : user.permissions.map((p: any) => p.company_id)
+      }
+    });
+    
+  } catch (error) {
+    console.error('User permissions error:', error);
+    return c.json({ error: 'Error interno del servidor' }, 500);
+  }
+})
+
+// User setup permissions endpoint
+app.post('/api/user/setup-permissions', async (c) => {
+  const user = await authenticateUser(c);
+  
+  if (!user) {
+    return c.json({ error: 'No autorizado' }, 401);
+  }
+  
+  try {
+    const { env } = c;
+    const { permissions } = await c.req.json();
+    
+    if (!permissions || !Array.isArray(permissions) || permissions.length === 0) {
+      return c.json({ error: 'Debe especificar al menos una empresa' }, 400);
+    }
+    
+    // Delete existing permissions for this user
+    await env.DB.prepare(`
+      DELETE FROM user_permissions WHERE user_id = ?
+    `).bind(user.id).run();
+    
+    // Insert new permissions
+    for (const perm of permissions) {
+      await env.DB.prepare(`
+        INSERT INTO user_permissions (user_id, company_id, can_view_all, can_create, can_approve, can_manage_users, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+      `).bind(
+        user.id,
+        perm.company_id,
+        perm.can_view_all ? 1 : 0,
+        perm.can_create ? 1 : 0,
+        perm.can_approve ? 1 : 0,
+        perm.can_manage_users ? 1 : 0
+      ).run();
+    }
+    
+    return c.json({ success: true, message: 'Permisos configurados exitosamente' });
+    
+  } catch (error) {
+    console.error('Setup permissions error:', error);
+    return c.json({ error: 'Error interno del servidor' }, 500);
+  }
+})
 
 // Health check
 app.get('/api/health', async (c) => {
@@ -115,7 +582,7 @@ app.post('/api/init-db', async (c) => {
         payment_method TEXT CHECK (payment_method IN ('cash', 'credit_card', 'debit_card', 'bank_transfer', 'company_card', 'petty_cash')),
         vendor TEXT,
         invoice_number TEXT,
-        status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'reimbursed', 'invoiced')),
+        status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'more_info', 'reimbursed', 'invoiced')),
         approved_by INTEGER,
         approved_at DATETIME,
         notes TEXT,
@@ -181,6 +648,27 @@ app.post('/api/init-db', async (c) => {
         ip_address TEXT,
         user_agent TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`,
+      
+      `CREATE TABLE IF NOT EXISTS employees (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        email TEXT,
+        phone TEXT,
+        rfc TEXT,
+        birthdate DATE,
+        address TEXT,
+        company_id INTEGER NOT NULL,
+        position TEXT NOT NULL,
+        department TEXT NOT NULL CHECK (department IN ('it', 'sales', 'hr', 'finance', 'operations', 'management')),
+        employee_number TEXT,
+        hire_date DATE,
+        manager_id INTEGER,
+        active BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (company_id) REFERENCES companies(id),
+        FOREIGN KEY (manager_id) REFERENCES employees(id)
       )`
     ];
 
@@ -230,6 +718,23 @@ app.post('/api/init-db', async (c) => {
         (1, 4, TRUE, TRUE, TRUE), (1, 5, TRUE, TRUE, TRUE), (1, 6, TRUE, TRUE, TRUE),
         (2, 1, TRUE, TRUE, FALSE), (3, 2, TRUE, TRUE, FALSE), (4, 3, TRUE, TRUE, FALSE),
         (5, 4, TRUE, TRUE, FALSE), (6, 5, TRUE, TRUE, FALSE)
+    `).run();
+
+    await env.DB.prepare(`
+      INSERT OR IGNORE INTO employees (
+        id, name, email, phone, rfc, birthdate, address,
+        company_id, position, department, employee_number, hire_date, manager_id, active
+      ) VALUES 
+        (1, 'Alejandro Rodríguez', 'alejandro@techmx.com', '+52 555 123 4567', 'ROGA850101ABC', '1985-01-01', 'Av. Reforma 123, CDMX', 1, 'Director General', 'management', 'EMP001', '2020-01-15', NULL, TRUE),
+        (2, 'María López García', 'maria.lopez@techmx.com', '+52 555 234 5678', 'LOGM880215DEF', '1988-02-15', 'Calle Insurgentes 456, CDMX', 1, 'Gerente de Finanzas', 'finance', 'EMP002', '2020-03-01', 1, TRUE),
+        (3, 'Carlos Martínez Ruiz', 'carlos@innovacion.mx', '+52 555 345 6789', 'MARC920310GHI', '1992-03-10', 'Col. Roma Norte 789, CDMX', 2, 'Developer Senior', 'it', 'EMP003', '2021-06-15', NULL, TRUE),
+        (4, 'Ana García Hernández', 'ana@consultoria.mx', '+52 555 456 7890', 'GAHA900520JKL', '1990-05-20', 'Polanco 321, CDMX', 3, 'Coordinadora de RH', 'hr', 'EMP004', '2021-08-01', NULL, TRUE),
+        (5, 'Pedro Sánchez Vila', 'pedro@techespana.es', '+34 915 123 456', '12345678Z', '1987-07-12', 'Calle Gran Vía 45, Madrid', 4, 'Jefe de Ventas', 'sales', 'EMP005', '2020-11-01', NULL, TRUE),
+        (6, 'Elena Torres López', 'elena@madrid.es', '+34 915 234 567', '87654321Y', '1991-09-25', 'Barrio Salamanca 67, Madrid', 5, 'Especialista en Marketing', 'sales', 'EMP006', '2022-02-15', 5, TRUE),
+        (7, 'Roberto Silva Castro', 'roberto@techmx.com', '+52 555 567 8901', 'SICR890430MNO', '1989-04-30', 'Santa Fe 890, CDMX', 1, 'Analista de Sistemas', 'it', 'EMP007', '2022-07-01', 1, TRUE),
+        (8, 'Sofía Mendoza Ruiz', 'sofia@innovacion.mx', '+52 555 678 9012', 'MERS940615PQR', '1994-06-15', 'Condesa 234, CDMX', 2, 'Coordinadora de Operaciones', 'operations', 'EMP008', '2023-01-10', NULL, TRUE),
+        (9, 'Miguel Ángel Jiménez', 'miguel@consultoria.mx', '+52 555 789 0123', 'JIMM860825STU', '1986-08-25', 'Del Valle 567, CDMX', 3, 'Contador Senior', 'finance', 'EMP009', '2021-12-01', NULL, TRUE),
+        (10, 'Carmen Vega Morales', 'carmen@techespana.es', '+34 915 345 678', '45678912X', '1993-11-08', 'Calle Alcalá 123, Madrid', 4, 'Desarrolladora Frontend', 'it', 'EMP010', '2023-04-01', NULL, TRUE)
     `).run();
 
     await env.DB.prepare(`
@@ -286,49 +791,122 @@ app.post('/api/init-db', async (c) => {
   }
 })
 
-// Companies API
+// Companies API - Protected: Users can only see companies they have access to
 app.get('/api/companies', async (c) => {
   const { env } = c;
+  const user = await authenticateUser(c);
+  
+  if (!user) {
+    return c.json({ error: 'No autorizado' }, 401);
+  }
   
   try {
-    const companies = await env.DB.prepare(`
-      SELECT id, name, country, primary_currency, logo_url, active, created_at
-      FROM companies 
-      WHERE active = TRUE
-      ORDER BY country, name
-    `).all();
+    let companiesQuery;
+    let queryParams = [];
     
-    return c.json({ companies: companies.results });
+    if (user.is_cfo) {
+      // CFO can see all companies
+      companiesQuery = `
+        SELECT id, name, country, primary_currency, logo_url, active, created_at
+        FROM companies 
+        WHERE active = TRUE
+        ORDER BY country, name
+      `;
+    } else {
+      // Regular users can only see companies they have permissions for
+      const accessibleCompanyIds = user.permissions.map((p: any) => p.company_id);
+      
+      if (accessibleCompanyIds.length === 0) {
+        return c.json({ companies: [] });
+      }
+      
+      const placeholders = accessibleCompanyIds.map(() => '?').join(',');
+      companiesQuery = `
+        SELECT id, name, country, primary_currency, logo_url, active, created_at
+        FROM companies 
+        WHERE active = TRUE AND id IN (${placeholders})
+        ORDER BY country, name
+      `;
+      queryParams = accessibleCompanyIds;
+    }
+    
+    const companies = await env.DB.prepare(companiesQuery).bind(...queryParams).all();
+    
+    return c.json({ 
+      companies: companies.results,
+      user_role: user.is_cfo ? 'cfo' : 'user',
+      accessible_count: companies.results.length
+    });
   } catch (error) {
+    console.error('Companies API error:', error);
     return c.json({ error: 'Failed to fetch companies' }, 500);
   }
 })
 
-// Users API
+// Users API - Protected: Only users with management permissions
 app.get('/api/users', async (c) => {
   const { env } = c;
+  const user = await authenticateUser(c);
+  
+  if (!user) {
+    return c.json({ error: 'No autorizado' }, 401);
+  }
+  
+  // Check if user can manage users (CFO or has manage permissions in any company)
+  if (!user.is_cfo && !user.permissions.some((p: any) => p.can_manage_users)) {
+    return c.json({ error: 'No tienes permisos para ver usuarios' }, 403);
+  }
   
   try {
-    const users = await env.DB.prepare(`
-      SELECT u.id, u.email, u.name, u.role, u.active, u.created_at,
-             GROUP_CONCAT(c.name, '|') as companies
+    let usersQuery = `
+      SELECT DISTINCT u.id, u.email, u.name, u.role, u.active, u.created_at, u.is_cfo,
+             GROUP_CONCAT(DISTINCT c.name || ' (' || up.can_view_all || ',' || up.can_create || ',' || up.can_approve || ')') as companies_permissions
       FROM users u
-      LEFT JOIN user_companies uc ON u.id = uc.user_id
-      LEFT JOIN companies c ON uc.company_id = c.id
+      LEFT JOIN user_permissions up ON u.id = up.user_id
+      LEFT JOIN companies c ON up.company_id = c.id
       WHERE u.active = TRUE
-      GROUP BY u.id
-      ORDER BY u.name
-    `).all();
+    `;
     
-    return c.json({ users: users.results });
+    if (!user.is_cfo) {
+      // Non-CFO users can only see users from companies they can manage
+      const managedCompanyIds = user.permissions
+        .filter((p: any) => p.can_manage_users)
+        .map((p: any) => p.company_id);
+      
+      if (managedCompanyIds.length === 0) {
+        return c.json({ users: [] });
+      }
+      
+      const placeholders = managedCompanyIds.map(() => '?').join(',');
+      usersQuery += ` AND u.id IN (
+        SELECT DISTINCT user_id FROM user_permissions 
+        WHERE company_id IN (${placeholders})
+      )`;
+      usersQuery += ` GROUP BY u.id ORDER BY u.name`;
+      
+      const users = await env.DB.prepare(usersQuery).bind(...managedCompanyIds).all();
+      return c.json({ users: users.results });
+    } else {
+      // CFO can see all users
+      usersQuery += ` GROUP BY u.id ORDER BY u.name`;
+      const users = await env.DB.prepare(usersQuery).all();
+      return c.json({ users: users.results });
+    }
   } catch (error) {
+    console.error('Users API error:', error);
     return c.json({ error: 'Failed to fetch users' }, 500);
   }
 })
 
-// Expenses API - List with filters
+// Expenses API - List with filters (PROTECTED: User permissions applied)
 app.get('/api/expenses', async (c) => {
   const { env } = c;
+  const user = await authenticateUser(c);
+  
+  if (!user) {
+    return c.json({ error: 'No autorizado' }, 401);
+  }
+  
   const query = c.req.query();
   
   let sql = `
@@ -343,15 +921,56 @@ app.get('/api/expenses', async (c) => {
   
   const params = [];
   
-  // Filters
+  // **PERMISSION FILTERING - CRITICAL SECURITY**
+  if (user.is_cfo) {
+    // CFO can see all expenses
+    console.log('CFO access: viewing all expenses');
+  } else {
+    // Regular users can only see:
+    // 1. Their own expenses 
+    // 2. Expenses from companies they have view permissions for
+    
+    const accessibleCompanyIds = user.permissions
+      .filter((p: any) => p.can_view_all)
+      .map((p: any) => p.company_id);
+    
+    if (accessibleCompanyIds.length === 0) {
+      // User has no company access, can only see their own expenses
+      sql += ` AND e.user_id = ?`;
+      params.push(user.id);
+    } else {
+      // User can see their own expenses + expenses from accessible companies
+      const companyPlaceholders = accessibleCompanyIds.map(() => '?').join(',');
+      sql += ` AND (e.user_id = ? OR e.company_id IN (${companyPlaceholders}))`;
+      params.push(user.id, ...accessibleCompanyIds);
+    }
+    
+    console.log(`User ${user.email}: accessing expenses with companies [${accessibleCompanyIds.join(',')}]`);
+  }
+  
+  // Apply additional filters
   if (query.company_id) {
+    const companyId = parseInt(query.company_id);
+    
+    // Verify user has access to this specific company
+    if (!user.is_cfo && !hasCompanyAccess(user, companyId)) {
+      return c.json({ error: 'No tienes acceso a esta empresa' }, 403);
+    }
+    
     sql += ` AND e.company_id = ?`;
-    params.push(query.company_id);
+    params.push(companyId);
   }
   
   if (query.user_id) {
+    const requestedUserId = parseInt(query.user_id);
+    
+    // Users can only filter by their own user_id unless they're CFO or have view permissions
+    if (!user.is_cfo && requestedUserId !== user.id) {
+      return c.json({ error: 'No puedes ver gastos de otros usuarios' }, 403);
+    }
+    
     sql += ` AND e.user_id = ?`;
-    params.push(query.user_id);
+    params.push(requestedUserId);
   }
   
   if (query.status) {
@@ -394,9 +1013,14 @@ app.get('/api/expenses', async (c) => {
   }
 })
 
-// Create new expense
+// Create new expense (PROTECTED: User must have create permissions)
 app.post('/api/expenses', async (c) => {
   const { env } = c;
+  const user = await authenticateUser(c);
+  
+  if (!user) {
+    return c.json({ error: 'No autorizado' }, 401);
+  }
   
   try {
     const expense = await c.req.json();
@@ -408,6 +1032,18 @@ app.post('/api/expenses', async (c) => {
         return c.json({ error: `Missing required field: ${field}` }, 400);
       }
     }
+    
+    const companyId = parseInt(expense.company_id);
+    
+    // **PERMISSION CHECK - CRITICAL SECURITY**
+    if (!user.is_cfo && !canCreateInCompany(user, companyId)) {
+      return c.json({ error: 'No tienes permisos para crear gastos en esta empresa' }, 403);
+    }
+    
+    // Set the user_id to the authenticated user (prevent impersonation)
+    expense.user_id = user.id;
+    
+    console.log(`User ${user.email} creating expense in company ${companyId}`);
     
     // Convert amount to MXN (simplified for demo - in production, use real exchange rates)
     let amount_mxn = expense.amount;
@@ -451,6 +1087,83 @@ app.post('/api/expenses', async (c) => {
     });
   } catch (error) {
     return c.json({ error: 'Failed to create expense', details: error.message }, 500);
+  }
+})
+
+// Update expense status (PROTECTED: Requires approval permissions)
+app.put('/api/expenses/:id/status', async (c) => {
+  const { env } = c;
+  const user = await authenticateUser(c);
+  const expenseId = c.req.param('id');
+  
+  if (!user) {
+    return c.json({ error: 'No autorizado' }, 401);
+  }
+  
+  try {
+    const { status } = await c.req.json();
+    
+    // Validate status
+    const validStatuses = ['pending', 'approved', 'rejected', 'more_info', 'reimbursed', 'invoiced'];
+    if (!validStatuses.includes(status)) {
+      return c.json({ error: 'Invalid status' }, 400);
+    }
+    
+    // Get the expense to check company and current owner
+    const expense = await env.DB.prepare(`
+      SELECT e.*, c.name as company_name 
+      FROM expenses e 
+      JOIN companies c ON e.company_id = c.id 
+      WHERE e.id = ?
+    `).bind(expenseId).first();
+    
+    if (!expense) {
+      return c.json({ error: 'Gasto no encontrado' }, 404);
+    }
+    
+    // **PERMISSION CHECKS - CRITICAL SECURITY**
+    const companyId = expense.company_id;
+    
+    // Status changes requiring approval permissions
+    const approvalStatuses = ['approved', 'rejected', 'reimbursed', 'invoiced'];
+    
+    if (approvalStatuses.includes(status)) {
+      // User must have approval permissions in this company
+      if (!user.is_cfo && !canApproveInCompany(user, companyId)) {
+        return c.json({ 
+          error: `No tienes permisos para ${status === 'approved' ? 'aprobar' : 'cambiar estado de'} gastos en ${expense.company_name}` 
+        }, 403);
+      }
+    }
+    
+    // Users can set their own expenses to 'pending' or 'more_info' status
+    const userEditableStatuses = ['pending', 'more_info'];
+    if (userEditableStatuses.includes(status) && expense.user_id !== user.id) {
+      if (!user.is_cfo && !canApproveInCompany(user, companyId)) {
+        return c.json({ error: 'Solo puedes modificar tus propios gastos' }, 403);
+      }
+    }
+    
+    console.log(`User ${user.email} changing expense ${expenseId} status to ${status} in company ${companyId}`);
+    
+    // Update expense status
+    const result = await env.DB.prepare(`
+      UPDATE expenses 
+      SET status = ?, updated_at = CURRENT_TIMESTAMP, updated_by = ? 
+      WHERE id = ?
+    `).bind(status, user.id, expenseId).run();
+    
+    if (result.changes === 0) {
+      return c.json({ error: 'Expense not found' }, 404);
+    }
+    
+    return c.json({ 
+      success: true, 
+      message: 'Status updated successfully',
+      new_status: status 
+    });
+  } catch (error) {
+    return c.json({ error: 'Failed to update status', details: error.message }, 500);
   }
 })
 
@@ -1520,6 +2233,349 @@ app.post('/api/import/excel', async (c) => {
   }
 })
 
+// ===== USERS MANAGEMENT API ENDPOINTS =====
+
+// Get all users
+app.get('/api/users', async (c) => {
+  const { env } = c;
+  
+  try {
+    const users = await env.DB.prepare(`
+      SELECT id, email, name, role, active, created_at, updated_at, last_login
+      FROM users
+      ORDER BY created_at DESC
+    `).all();
+    
+    return c.json({ users: users.results });
+  } catch (error) {
+    return c.json({ error: 'Failed to fetch users', details: error.message }, 500);
+  }
+})
+
+// Get single user
+app.get('/api/users/:id', async (c) => {
+  const { env } = c;
+  const userId = c.req.param('id');
+  
+  try {
+    const user = await env.DB.prepare(`
+      SELECT id, email, name, role, active, created_at, updated_at, last_login
+      FROM users
+      WHERE id = ?
+    `).bind(userId).first();
+    
+    if (!user) {
+      return c.json({ error: 'User not found' }, 404);
+    }
+    
+    // Get user's company permissions
+    const permissions = await env.DB.prepare(`
+      SELECT uc.*, c.name as company_name, c.country
+      FROM user_companies uc
+      JOIN companies c ON uc.company_id = c.id
+      WHERE uc.user_id = ?
+    `).bind(userId).all();
+    
+    return c.json({ 
+      ...user,
+      company_permissions: permissions.results 
+    });
+  } catch (error) {
+    return c.json({ error: 'Failed to fetch user', details: error.message }, 500);
+  }
+})
+
+// Create new user
+app.post('/api/users', async (c) => {
+  const { env } = c;
+  
+  try {
+    const userData = await c.req.json();
+    const { name, email, password, role, active, company_permissions } = userData;
+    
+    // Validate required fields
+    if (!name || !email || !password || !role) {
+      return c.json({ error: 'Name, email, password, and role are required' }, 400);
+    }
+    
+    // Check if email already exists
+    const existingUser = await env.DB.prepare(`
+      SELECT id FROM users WHERE email = ?
+    `).bind(email).first();
+    
+    if (existingUser) {
+      return c.json({ error: 'User with this email already exists' }, 400);
+    }
+    
+    // Create password hash (in production, use proper hashing)
+    const passwordHash = `hash_${password}_${Date.now()}`;
+    
+    // Insert user
+    const result = await env.DB.prepare(`
+      INSERT INTO users (name, email, password_hash, role, active, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    `).bind(name, email, passwordHash, role, active).run();
+    
+    const userId = result.meta.last_row_id;
+    
+    // Insert company permissions if provided
+    if (company_permissions && Array.isArray(company_permissions)) {
+      for (const permission of company_permissions) {
+        await env.DB.prepare(`
+          INSERT INTO user_companies (user_id, company_id, can_view, can_edit, can_admin)
+          VALUES (?, ?, ?, ?, ?)
+        `).bind(
+          userId,
+          permission.company_id,
+          permission.can_view,
+          permission.can_edit,
+          permission.can_admin
+        ).run();
+      }
+    }
+    
+    return c.json({ 
+      id: userId,
+      message: 'User created successfully'
+    });
+  } catch (error) {
+    return c.json({ error: 'Failed to create user', details: error.message }, 500);
+  }
+})
+
+// Update user
+app.put('/api/users/:id', async (c) => {
+  const { env } = c;
+  const userId = c.req.param('id');
+  
+  try {
+    const userData = await c.req.json();
+    const { name, email, password, role, active, company_permissions } = userData;
+    
+    // Build update query
+    let updateFields = [];
+    let params = [];
+    
+    if (name !== undefined) {
+      updateFields.push('name = ?');
+      params.push(name);
+    }
+    if (email !== undefined) {
+      updateFields.push('email = ?');
+      params.push(email);
+    }
+    if (password) {
+      updateFields.push('password_hash = ?');
+      params.push(`hash_${password}_${Date.now()}`);
+    }
+    if (role !== undefined) {
+      updateFields.push('role = ?');
+      params.push(role);
+    }
+    if (active !== undefined) {
+      updateFields.push('active = ?');
+      params.push(active);
+    }
+    
+    updateFields.push('updated_at = CURRENT_TIMESTAMP');
+    params.push(userId);
+    
+    // Update user
+    await env.DB.prepare(`
+      UPDATE users 
+      SET ${updateFields.join(', ')}
+      WHERE id = ?
+    `).bind(...params).run();
+    
+    // Update company permissions if provided
+    if (company_permissions && Array.isArray(company_permissions)) {
+      // Delete existing permissions
+      await env.DB.prepare(`
+        DELETE FROM user_companies WHERE user_id = ?
+      `).bind(userId).run();
+      
+      // Insert new permissions
+      for (const permission of company_permissions) {
+        await env.DB.prepare(`
+          INSERT INTO user_companies (user_id, company_id, can_view, can_edit, can_admin)
+          VALUES (?, ?, ?, ?, ?)
+        `).bind(
+          userId,
+          permission.company_id,
+          permission.can_view,
+          permission.can_edit,
+          permission.can_admin
+        ).run();
+      }
+    }
+    
+    return c.json({ message: 'User updated successfully' });
+  } catch (error) {
+    return c.json({ error: 'Failed to update user', details: error.message }, 500);
+  }
+})
+
+// Update user status
+app.put('/api/users/:id/status', async (c) => {
+  const { env } = c;
+  const userId = c.req.param('id');
+  
+  try {
+    const { active } = await c.req.json();
+    
+    await env.DB.prepare(`
+      UPDATE users 
+      SET active = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(active, userId).run();
+    
+    return c.json({ message: 'User status updated successfully' });
+  } catch (error) {
+    return c.json({ error: 'Failed to update user status', details: error.message }, 500);
+  }
+})
+
+// ===== EMPLOYEES MANAGEMENT API ENDPOINTS =====
+
+// Get all employees
+app.get('/api/employees', async (c) => {
+  const { env } = c;
+  
+  try {
+    const employees = await env.DB.prepare(`
+      SELECT 
+        e.id, e.name, e.email, e.phone, e.rfc, e.birthdate, e.address,
+        e.company_id, e.position, e.department, e.employee_number, 
+        e.hire_date, e.manager_id, e.active, e.created_at,
+        c.name as company_name, c.country,
+        m.name as manager_name,
+        COUNT(ex.id) as expense_count
+      FROM employees e
+      LEFT JOIN companies c ON e.company_id = c.id
+      LEFT JOIN employees m ON e.manager_id = m.id
+      LEFT JOIN expenses ex ON ex.user_id = e.id
+      GROUP BY e.id
+      ORDER BY e.created_at DESC
+    `).all();
+    
+    // Add has_expenses flag
+    const employeesWithExpenses = employees.results.map(emp => ({
+      ...emp,
+      has_expenses: emp.expense_count > 0
+    }));
+    
+    return c.json({ employees: employeesWithExpenses });
+  } catch (error) {
+    return c.json({ error: 'Failed to fetch employees', details: error.message }, 500);
+  }
+})
+
+// Get single employee
+app.get('/api/employees/:id', async (c) => {
+  const { env } = c;
+  const employeeId = c.req.param('id');
+  
+  try {
+    const employee = await env.DB.prepare(`
+      SELECT 
+        e.*,
+        c.name as company_name, c.country,
+        m.name as manager_name
+      FROM employees e
+      LEFT JOIN companies c ON e.company_id = c.id
+      LEFT JOIN employees m ON e.manager_id = m.id
+      WHERE e.id = ?
+    `).bind(employeeId).first();
+    
+    if (!employee) {
+      return c.json({ error: 'Employee not found' }, 404);
+    }
+    
+    return c.json(employee);
+  } catch (error) {
+    return c.json({ error: 'Failed to fetch employee', details: error.message }, 500);
+  }
+})
+
+// Create new employee
+app.post('/api/employees', async (c) => {
+  const { env } = c;
+  
+  try {
+    const employeeData = await c.req.json();
+    const { 
+      name, email, phone, rfc, birthdate, address,
+      company_id, position, department, employee_number,
+      hire_date, manager_id, active
+    } = employeeData;
+    
+    // Validate required fields
+    if (!name || !company_id || !position || !department) {
+      return c.json({ error: 'Name, company, position, and department are required' }, 400);
+    }
+    
+    // Insert employee
+    const result = await env.DB.prepare(`
+      INSERT INTO employees (
+        name, email, phone, rfc, birthdate, address,
+        company_id, position, department, employee_number,
+        hire_date, manager_id, active, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    `).bind(
+      name, email, phone, rfc, birthdate, address,
+      company_id, position, department, employee_number,
+      hire_date, manager_id, active
+    ).run();
+    
+    return c.json({ 
+      id: result.meta.last_row_id,
+      message: 'Employee created successfully'
+    });
+  } catch (error) {
+    return c.json({ error: 'Failed to create employee', details: error.message }, 500);
+  }
+})
+
+// Update employee
+app.put('/api/employees/:id', async (c) => {
+  const { env } = c;
+  const employeeId = c.req.param('id');
+  
+  try {
+    const employeeData = await c.req.json();
+    
+    // Build update query dynamically
+    const fields = [
+      'name', 'email', 'phone', 'rfc', 'birthdate', 'address',
+      'company_id', 'position', 'department', 'employee_number',
+      'hire_date', 'manager_id', 'active'
+    ];
+    
+    let updateFields = [];
+    let params = [];
+    
+    fields.forEach(field => {
+      if (employeeData[field] !== undefined) {
+        updateFields.push(`${field} = ?`);
+        params.push(employeeData[field]);
+      }
+    });
+    
+    updateFields.push('updated_at = CURRENT_TIMESTAMP');
+    params.push(employeeId);
+    
+    await env.DB.prepare(`
+      UPDATE employees 
+      SET ${updateFields.join(', ')}
+      WHERE id = ?
+    `).bind(...params).run();
+    
+    return c.json({ message: 'Employee updated successfully' });
+  } catch (error) {
+    return c.json({ error: 'Failed to update employee', details: error.message }, 500);
+  }
+})
+
 // Helper function for Excel import
 function getMappedValue(row, mapping) {
   if (!mapping) return null;
@@ -2035,6 +3091,337 @@ function getPaymentMethodText(method) {
 
 // ===== FRONTEND ROUTES =====
 
+// Initial setup page for new users
+app.get('/setup', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Configuración Inicial - LYRA</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <link href="/static/styles.css" rel="stylesheet">
+    </head>
+    <body class="bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 min-h-screen flex items-center justify-center p-4">
+        <!-- Setup Container -->
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl p-8 backdrop-blur-sm bg-opacity-95">
+            <!-- Header -->
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-green-600 to-blue-600 rounded-full mb-4">
+                    <i class="fas fa-cogs text-white text-2xl"></i>
+                </div>
+                <h1 class="text-3xl font-bold text-gray-800">¡Bienvenido a LYRA!</h1>
+                <p class="text-gray-600 mt-2">Configuremos tu acceso a las empresas</p>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="mb-8">
+                <div class="flex justify-between text-sm text-gray-600 mb-2">
+                    <span>Cuenta Creada</span>
+                    <span>Configurando Empresas</span>
+                    <span>¡Listo!</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div class="bg-gradient-to-r from-green-600 to-blue-600 h-2 rounded-full" style="width: 60%"></div>
+                </div>
+            </div>
+
+            <!-- User Info -->
+            <div class="bg-gray-50 rounded-lg p-4 mb-6">
+                <div class="flex items-center">
+                    <div class="w-12 h-12 bg-gradient-to-r from-green-600 to-blue-600 rounded-full flex items-center justify-center mr-4">
+                        <i class="fas fa-user text-white"></i>
+                    </div>
+                    <div>
+                        <div id="userName" class="font-semibold text-gray-800">Cargando...</div>
+                        <div id="userEmail" class="text-sm text-gray-600">Cargando...</div>
+                        <div id="userRole" class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full mt-1 inline-block">Cargando...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Company Permissions -->
+            <div class="mb-8">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">
+                    <i class="fas fa-building mr-2"></i>Acceso a Empresas
+                </h2>
+                <p class="text-gray-600 mb-6">Selecciona a qué empresas necesitas acceso y define tus permisos:</p>
+                
+                <div id="companiesContainer" class="space-y-4">
+                    <div class="text-center py-8">
+                        <i class="fas fa-spinner fa-spin text-3xl text-gray-400 mb-4"></i>
+                        <p class="text-gray-500">Cargando empresas disponibles...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex gap-4 justify-between">
+                <button onclick="skipSetup()" class="px-6 py-3 text-gray-600 hover:text-gray-800 font-medium">
+                    Omitir por ahora
+                </button>
+                <div class="flex gap-4">
+                    <button onclick="goBack()" class="px-6 py-3 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 font-medium">
+                        <i class="fas fa-arrow-left mr-2"></i>Volver
+                    </button>
+                    <button onclick="completeSetup()" class="px-8 py-3 bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-lg hover:from-green-700 hover:to-blue-700 font-medium">
+                        <i class="fas fa-check mr-2"></i>Completar Configuración
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scripts -->
+        <script src="/static/login.js"></script>
+        <script>
+            let allCompanies = [];
+            let currentUser = null;
+
+            document.addEventListener('DOMContentLoaded', function() {
+                // Check if user is logged in
+                if (!requireAuth()) return;
+                
+                // Load user data
+                currentUser = getCurrentUser();
+                if (currentUser) {
+                    document.getElementById('userName').textContent = currentUser.name;
+                    document.getElementById('userEmail').textContent = currentUser.email;
+                    document.getElementById('userRole').textContent = currentUser.is_cfo ? 'CFO - Director Financiero' : 'Usuario';
+                }
+                
+                // Load companies
+                loadCompanies();
+            });
+
+            async function loadCompanies() {
+                try {
+                    const response = await fetch('/api/companies', {
+                        headers: getAuthHeader()
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        allCompanies = data.companies || [];
+                        displayCompanies();
+                    } else {
+                        throw new Error('Error cargando empresas');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    document.getElementById('companiesContainer').innerHTML = \`
+                        <div class="text-center py-8">
+                            <i class="fas fa-exclamation-triangle text-3xl text-red-400 mb-4"></i>
+                            <p class="text-red-600">Error cargando empresas. <button onclick="loadCompanies()" class="text-blue-600 underline">Reintentar</button></p>
+                        </div>
+                    \`;
+                }
+            }
+
+            function displayCompanies() {
+                const container = document.getElementById('companiesContainer');
+                
+                if (allCompanies.length === 0) {
+                    container.innerHTML = \`
+                        <div class="text-center py-8">
+                            <i class="fas fa-building text-3xl text-gray-400 mb-4"></i>
+                            <p class="text-gray-600">No hay empresas disponibles aún.</p>
+                            <button onclick="goToDashboard()" class="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                Ir al Dashboard
+                            </button>
+                        </div>
+                    \`;
+                    return;
+                }
+
+                container.innerHTML = allCompanies.map(company => \`
+                    <div class="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center">
+                                <span class="text-2xl mr-3">\${company.country === 'MX' ? '🇲🇽' : '🇪🇸'}</span>
+                                <div>
+                                    <h3 class="font-semibold text-gray-800">\${company.name}</h3>
+                                    <p class="text-sm text-gray-600">\${company.primary_currency} • \${company.country}</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-xs text-gray-500">Empresa \${company.country === 'MX' ? 'Mexicana' : 'Española'}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <p class="text-sm text-gray-600 mb-3">¿Qué tipo de acceso necesitas?</p>
+                            <div class="flex gap-4">
+                                <label class="flex items-center text-sm">
+                                    <input type="checkbox" name="company-\${company.id}-view" class="mr-2 w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2">
+                                    👀 <span class="ml-1">Solo Ver</span>
+                                </label>
+                                <label class="flex items-center text-sm">
+                                    <input type="checkbox" name="company-\${company.id}-edit" class="mr-2 w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2">
+                                    ✏️ <span class="ml-1">Crear/Editar</span>
+                                </label>
+                                \${currentUser && currentUser.is_cfo ? \`
+                                <label class="flex items-center text-sm">
+                                    <input type="checkbox" name="company-\${company.id}-admin" class="mr-2 w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2">
+                                    👑 <span class="ml-1">Administrar</span>
+                                </label>
+                                \` : ''}
+                            </div>
+                        </div>
+                    </div>
+                \`).join('');
+            }
+
+            async function completeSetup() {
+                // Collect selected permissions
+                const permissions = [];
+                
+                allCompanies.forEach(company => {
+                    const canView = document.querySelector(\`input[name="company-\${company.id}-view"]\`)?.checked || false;
+                    const canEdit = document.querySelector(\`input[name="company-\${company.id}-edit"]\`)?.checked || false;
+                    const canAdmin = document.querySelector(\`input[name="company-\${company.id}-admin"]\`)?.checked || false;
+                    
+                    if (canView || canEdit || canAdmin) {
+                        permissions.push({
+                            company_id: company.id,
+                            can_view_all: canView || canEdit || canAdmin,
+                            can_create: canEdit || canAdmin,
+                            can_approve: canAdmin,
+                            can_manage_users: canAdmin
+                        });
+                    }
+                });
+
+                if (permissions.length === 0) {
+                    alert('Debes seleccionar al menos una empresa y permiso para continuar.');
+                    return;
+                }
+
+                try {
+                    const response = await fetch('/api/user/setup-permissions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...getAuthHeader()
+                        },
+                        body: JSON.stringify({ permissions })
+                    });
+
+                    if (response.ok) {
+                        alert('¡Configuración completada exitosamente!');
+                        goToDashboard();
+                    } else {
+                        const error = await response.json();
+                        throw new Error(error.error || 'Error configurando permisos');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Error completando configuración: ' + error.message);
+                }
+            }
+
+            function skipSetup() {
+                if (confirm('¿Estás seguro de omitir la configuración? Podrás configurar el acceso a empresas más tarde desde la sección de Usuarios.')) {
+                    goToDashboard();
+                }
+            }
+
+            function goBack() {
+                window.history.back();
+            }
+
+            function goToDashboard() {
+                window.location.href = '/';
+            }
+        </script>
+    </body>
+    </html>
+  `)
+})
+
+// Login page
+app.get('/login', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Login - LYRA</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <link href="/static/styles.css" rel="stylesheet">
+    </head>
+    <body class="bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 min-h-screen flex items-center justify-center p-4">
+        <!-- Login Container -->
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 backdrop-blur-sm bg-opacity-95">
+            <!-- Logo and Title -->
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full mb-4">
+                    <i class="fas fa-chart-line text-white text-2xl"></i>
+                </div>
+                <h1 id="formTitle" class="text-2xl font-bold text-gray-800">Iniciar Sesión - LYRA</h1>
+                <p class="text-gray-600 mt-2">Sistema de Gestión de Gastos</p>
+            </div>
+
+            <!-- Error Message -->
+            <div id="errorMessage" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            </div>
+
+            <!-- Success Message -->
+            <div id="successMessage" class="hidden bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+            </div>
+
+            <!-- Login Form -->
+            <form onsubmit="handleAuth(event)" class="space-y-6">
+                <!-- Name Field (hidden by default) -->
+                <div id="nameField" style="display: none;">
+                    <label for="name" class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-user mr-2"></i>Nombre Completo
+                    </label>
+                    <input type="text" id="name" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-200" placeholder="Ingresa tu nombre completo">
+                </div>
+
+                <!-- Email Field -->
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-envelope mr-2"></i>Correo Electrónico
+                    </label>
+                    <input type="email" id="email" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-200" placeholder="tu@empresa.com">
+                </div>
+
+                <!-- Password Field -->
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-lock mr-2"></i>Contraseña
+                    </label>
+                    <input type="password" id="password" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-200" placeholder="••••••••">
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" id="submitButton" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-4 rounded-lg hover:from-blue-700 hover:to-indigo-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 font-medium">
+                    <i class="fas fa-sign-in-alt mr-2"></i>Iniciar Sesión
+                </button>
+            </form>
+
+            <!-- Toggle Link -->
+            <div id="toggleLink" class="text-center mt-6 text-sm text-gray-600">
+                ¿No tienes cuenta? <span class="text-blue-600 cursor-pointer hover:text-blue-800" onclick="toggleAuthMode()">Regístrate</span>
+            </div>
+
+            <!-- Footer -->
+            <div class="text-center mt-8 text-xs text-gray-500">
+                LYRA © 2024 - Sistema de Gestión de Gastos Empresarial
+            </div>
+        </div>
+
+        <script src="/static/login.js"></script>
+    </body>
+    </html>
+  `)
+})
+
 // Main dashboard - DASHBOARD MORADO SUSTITUIDO
 app.get('/', (c) => {
   return c.html(`<!DOCTYPE html>
@@ -2079,10 +3466,108 @@ app.get('/', (c) => {
         </style>
     </head>
 <body>
+    <!-- Authentication Check -->
+    <script>
+        // Check authentication on page load
+        const token = localStorage.getItem('auth_token');
+        if (!token) {
+            window.location.href = '/login';
+        } else {
+            // Verify token with server
+            fetch('/api/auth/verify', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    localStorage.removeItem('auth_token');
+                    localStorage.removeItem('user_data');
+                    window.location.href = '/login';
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.user) {
+                    localStorage.setItem('user_data', JSON.stringify(data.user));
+                    // Update UI based on user role
+                    updateUIForUser(data.user);
+                    // Check if user needs setup
+                    checkUserSetup();
+                }
+            })
+            .catch(error => {
+                console.error('Auth verification error:', error);
+                localStorage.removeItem('auth_token');
+                localStorage.removeItem('user_data');
+                window.location.href = '/login';
+            });
+        }
+        
+        function updateUIForUser(user) {
+            // Show user info in header
+            const userInfo = document.getElementById('userInfo');
+            if (userInfo) {
+                userInfo.innerHTML = \`
+                    <div class="flex items-center space-x-4">
+                        <div class="text-right">
+                            <div class="font-semibold text-white">\${user.name}</div>
+                            <div class="text-sm text-gray-300">\${user.is_cfo ? 'CFO' : 'Usuario'}</div>
+                        </div>
+                        <button onclick="logout()" class="bg-red-600 hover:bg-red-700 px-3 py-2 rounded-lg text-white text-sm">
+                            <i class="fas fa-sign-out-alt"></i> Salir
+                        </button>
+                    </div>
+                \`;
+            }
+        }
+        
+        function logout() {
+            const token = localStorage.getItem('auth_token');
+            if (token) {
+                fetch('/api/auth/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    }
+                }).finally(() => {
+                    localStorage.removeItem('auth_token');
+                    localStorage.removeItem('user_data');
+                    window.location.href = '/login';
+                });
+            }
+        }
+        
+        function checkUserSetup() {
+            const token = localStorage.getItem('auth_token');
+            if (!token) return;
+            
+            fetch('/api/user/needs-setup', {
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.needsSetup && !data.user.is_cfo) {
+                    // Non-CFO users who need setup should go to setup page
+                    if (confirm('Necesitas configurar tu acceso a las empresas. ¿Deseas hacerlo ahora?')) {
+                        window.location.href = '/setup';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error checking user setup:', error);
+            });
+        }
+    </script>
+
     <!-- Navigation Header (estilo gastos) -->
     <div class="container mx-auto px-6 py-8">
         <div class="glass-panel p-8 mb-8">
-            <div class="flex justify-between items-center">
+            <div class="flex justify-between items-center mb-6">
                 <div>
                     <h1 class="text-4xl font-bold text-accent-gold">
                         <i class="fas fa-chart-pie mr-4"></i>
@@ -2092,17 +3577,26 @@ app.get('/', (c) => {
                         Sistema ejecutivo de control financiero empresarial
                     </p>
                 </div>
-                <div class="flex gap-4">
-                    <a href="/" class="premium-button style="background: var(--gradient-gold);"">
-                        <i class="fas fa-chart-pie mr-3"></i>Dashboard
-                    </a>
-                    <a href="/companies" class="premium-button ">
-                        <i class="fas fa-building mr-3"></i>Empresas
-                    </a>
-                    <a href="/expenses" class="premium-button ">
-                        <i class="fas fa-receipt mr-3"></i>Gastos
-                    </a>
+                <div id="userInfo" class="text-white">
+                    <!-- User info will be populated by JavaScript -->
                 </div>
+            </div>
+            <div class="flex gap-4 justify-center">
+                <a href="/" class="premium-button style="background: var(--gradient-gold);"">
+                    <i class="fas fa-chart-pie mr-3"></i>Dashboard
+                </a>
+                <a href="/companies" class="premium-button ">
+                    <i class="fas fa-building mr-3"></i>Empresas
+                </a>
+                <a href="/users" class="premium-button ">
+                    <i class="fas fa-users mr-3"></i>Usuarios
+                </a>
+                <a href="/employees" class="premium-button ">
+                    <i class="fas fa-user-tie mr-3"></i>Empleados
+                </a>
+                <a href="/expenses" class="premium-button ">
+                    <i class="fas fa-receipt mr-3"></i>Gastos
+                </a>
             </div>
         </div>
     </div>
@@ -2209,6 +3703,7 @@ app.get('/', (c) => {
                                 <option value="pending">⏳ Pendiente</option>
                                 <option value="approved">✅ Aprobado</option>
                                 <option value="rejected">❌ Rechazado</option>
+                                <option value="more_info">❓ Pedir Más Información</option>
                                 <option value="reimbursed">💰 Reembolsado</option>
                                 <option value="invoiced">📄 Facturado</option>
                             </select>
@@ -2269,11 +3764,152 @@ app.get('/', (c) => {
                             </tbody>
                         </table>
                     </div>
+                    
+                    <!-- Botones de Acción Dashboard -->
+                    <div class="mt-6 flex gap-4 justify-end">
+                        <button onclick="printDashboardExpenses()" class="premium-button" style="background: var(--gradient-accent);">
+                            <i class="fas fa-print mr-2"></i>Imprimir Lista
+                        </button>
+                        <button onclick="generateDashboardPDF()" class="premium-button">
+                            <i class="fas fa-file-pdf mr-2"></i>Generar PDF
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
     
+    <!-- Modal Detalle de Gasto -->
+    <div id="expenseDetailModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 hidden flex items-center justify-center">
+        <div class="glass-panel p-8 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-2xl font-bold text-accent-gold flex items-center">
+                    <i class="fas fa-receipt mr-3"></i>Detalle del Gasto
+                </h2>
+                <button onclick="closeExpenseModal()" class="text-text-secondary hover:text-accent-gold transition-colors">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
+            </div>
+            
+            <!-- Información Principal del Gasto -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <!-- Columna Izquierda -->
+                <div class="space-y-6">
+                    <div class="glass-panel p-6">
+                        <h3 class="text-lg font-semibold text-accent-gold mb-4">📋 Información General</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-accent-gold mb-1">Descripción</label>
+                                <p id="modal-description" class="text-text-primary font-medium text-lg"></p>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-accent-gold mb-1">📅 Fecha</label>
+                                    <p id="modal-date" class="text-text-primary"></p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-accent-gold mb-1">🏷️ Tipo</label>
+                                    <p id="modal-type" class="text-text-primary"></p>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-accent-gold mb-1">🏢 Empresa</label>
+                                <p id="modal-company" class="text-text-primary font-medium"></p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-accent-gold mb-1">👤 Usuario Responsable</label>
+                                <p id="modal-user" class="text-text-primary"></p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-panel p-6">
+                        <h3 class="text-lg font-semibold text-accent-gold mb-4">💰 Información Financiera</h3>
+                        <div class="space-y-4">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-accent-gold mb-1">💵 Monto Original</label>
+                                    <p id="modal-amount" class="text-accent-emerald font-bold text-xl"></p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-accent-gold mb-1">💱 Moneda</label>
+                                    <p id="modal-currency" class="text-text-primary"></p>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-accent-gold mb-1">🇲🇽 Equivalente MXN</label>
+                                <p id="modal-amount-mxn" class="text-accent-emerald font-bold text-lg"></p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-accent-gold mb-1">💳 Método de Pago</label>
+                                <p id="modal-payment-method" class="text-text-primary"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Columna Derecha -->
+                <div class="space-y-6">
+                    <div class="glass-panel p-6">
+                        <h3 class="text-lg font-semibold text-accent-gold mb-4">🏪 Detalles Comerciales</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-accent-gold mb-1">🏪 Proveedor/Lugar</label>
+                                <p id="modal-vendor" class="text-text-primary"></p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-accent-gold mb-1">📄 Número de Factura</label>
+                                <p id="modal-invoice" class="text-text-primary"></p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-accent-gold mb-1">📂 Categoría</label>
+                                <p id="modal-category" class="text-text-primary"></p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-accent-gold mb-1">📊 Estado Actual</label>
+                                <p id="modal-status" class="font-bold"></p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-panel p-6">
+                        <h3 class="text-lg font-semibold text-accent-gold mb-4">📝 Observaciones</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-accent-gold mb-1">Notas</label>
+                                <p id="modal-notes" class="text-text-primary text-sm bg-glass p-3 rounded-lg min-h-[60px]"></p>
+                            </div>
+                            <div class="text-sm">
+                                <div>
+                                    <label class="block text-xs font-medium text-accent-gold mb-1">Creado</label>
+                                    <p id="modal-created" class="text-text-secondary"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Acciones del Gasto -->
+            <div class="border-t border-glass-border pt-6">
+                <h3 class="text-lg font-semibold text-accent-gold mb-4">⚡ Acciones</h3>
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <button onclick="authorizeExpense()" class="premium-button bg-green-600 hover:bg-green-700">
+                        <i class="fas fa-check mr-2"></i>Autorizar
+                    </button>
+                    <button onclick="rejectExpense()" class="premium-button bg-red-600 hover:bg-red-700">
+                        <i class="fas fa-times mr-2"></i>Rechazar
+                    </button>
+                    <button onclick="requestMoreInfo()" class="premium-button bg-blue-600 hover:bg-blue-700">
+                        <i class="fas fa-question-circle mr-2"></i>Pedir Info
+                    </button>
+                    <button onclick="setPendingExpense()" class="premium-button bg-yellow-600 hover:bg-yellow-700">
+                        <i class="fas fa-clock mr-2"></i>Dejar Pendiente
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     
     <script>
@@ -2516,8 +4152,9 @@ app.get('/', (c) => {
             }
             
             // Generar filas de la tabla (limitar a 10 gastos recientes)
-            const rows = expenses.slice(0, 10).map(expense => 
-                '<tr class="border-b border-glass-border hover:bg-glass transition-colors">' +
+            const rows = expenses.slice(0, 10).map((expense, index) => 
+                '<tr class="border-b border-glass-border hover:bg-glass transition-colors cursor-pointer" onclick="openExpenseModal(' + 
+                    "expenseData[" + index + "]" + ')">' +
                     '<td class="py-3 px-4 text-text-primary">' + (expense.description || 'Sin descripción') + '</td>' +
                     '<td class="py-3 px-4 text-text-secondary">' + 
                         (expense.company_name || 'N/A') + 
@@ -2528,8 +4165,8 @@ app.get('/', (c) => {
                         ' ' + (expense.currency || 'MXN') +
                     '</td>' +
                     '<td class="py-3 px-4">' +
-                        '<span class="premium-badge ' + getStatusClass(expense.status) + '">' +
-                            getStatusText(expense.status) +
+                        '<span class="status-badge status-' + expense.status + '">' +
+                            getStatusIcon(expense.status) + ' ' + getStatusText(expense.status) +
                         '</span>' +
                     '</td>' +
                     '<td class="py-3 px-4 text-text-secondary">' +
@@ -2540,6 +4177,9 @@ app.get('/', (c) => {
             
             tableBody.innerHTML = rows;
             
+            // Hacer los datos disponibles globalmente para el modal
+            window.expenseData = expenses.slice(0, 10);
+            
             console.log('✅ Tabla actualizada con', expenses.length, 'gastos (mostrando max 10)');
         }
         
@@ -2549,7 +4189,9 @@ app.get('/', (c) => {
                 'pending': 'bg-yellow-100 text-yellow-800',
                 'approved': 'bg-green-100 text-green-800',
                 'rejected': 'bg-red-100 text-red-800',
-                'reimbursed': 'bg-blue-100 text-blue-800'
+                'reimbursed': 'bg-blue-100 text-blue-800',
+                'more_info': 'bg-purple-100 text-purple-800',
+                'invoiced': 'bg-indigo-100 text-indigo-800'
             };
             return classes[status] || 'bg-gray-100 text-gray-800';
         }
@@ -2557,11 +4199,26 @@ app.get('/', (c) => {
         function getStatusText(status) {
             const texts = {
                 'pending': 'Pendiente',
-                'approved': 'Aprobado',
+                'approved': 'Aprobado', 
                 'rejected': 'Rechazado',
-                'reimbursed': 'Reembolsado'
+                'reimbursed': 'Reembolsado',
+                'more_info': 'Pedir Más Info',
+                'invoiced': 'Facturado'
             };
             return texts[status] || status;
+        }
+        
+        // Función para íconos de estatus (igual que en sección Gastos)
+        function getStatusIcon(status) {
+            const icons = {
+                'pending': '⏳',
+                'approved': '✅',
+                'rejected': '❌',
+                'more_info': '❓',
+                'reimbursed': '💰',
+                'invoiced': '📄'
+            };
+            return icons[status] || '📋';
         }
         
         // Inicializar gráfica de pie
@@ -2670,6 +4327,265 @@ app.get('/', (c) => {
             
             console.log('📊 Gráfica actualizada:', { labels, values });
         }
+        
+        // Funciones de Impresión y PDF
+        function printDashboardExpenses() {
+            const printContent = document.querySelector('#recentExpensesTable').parentElement;
+            const originalContent = document.body.innerHTML;
+            
+            const printWindow = window.open('', '_blank');
+            const htmlContent = 
+                '<!DOCTYPE html>' +
+                '<html>' +
+                '<head>' +
+                    '<title>Gastos Recientes - Dashboard</title>' +
+                    '<style>' +
+                        'body { font-family: Arial, sans-serif; margin: 20px; }' +
+                        'table { width: 100%; border-collapse: collapse; margin-top: 20px; }' +
+                        'th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }' +
+                        'th { background-color: #f4f4f4; font-weight: bold; }' +
+                        '.header { text-align: center; margin-bottom: 30px; }' +
+                        '.date { color: #666; }' +
+                    '</style>' +
+                '</head>' +
+                '<body>' +
+                    '<div class="header">' +
+                        '<h1>📊 Gastos Recientes - Dashboard</h1>' +
+                        '<p class="date">Generado el: ' + new Date().toLocaleDateString('es-ES') + ' a las ' + new Date().toLocaleTimeString('es-ES') + '</p>' +
+                    '</div>' +
+                    printContent.outerHTML +
+                '</body>' +
+                '</html>';
+            printWindow.document.write(htmlContent);
+            printWindow.document.close();
+            printWindow.print();
+            printWindow.close();
+        }
+        
+        function generateDashboardPDF() {
+            const queryParams = new URLSearchParams(currentFilters).toString();
+            
+            fetch('/api/reports/pdf', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...currentFilters,
+                    format: 'dashboard_summary',
+                    title: 'Reporte Dashboard - Gastos Recientes'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Crear y descargar PDF
+                    const printWindow = window.open('', '_blank');
+                    printWindow.document.write(data.html_content);
+                    printWindow.document.close();
+                    printWindow.print();
+                    printWindow.close();
+                    
+                    console.log('✅ PDF generado exitosamente');
+                } else {
+                    alert('Error al generar PDF: ' + (data.error || 'Error desconocido'));
+                }
+            })
+            .catch(error => {
+                console.error('❌ Error generando PDF:', error);
+                alert('Error al generar el PDF. Por favor intente nuevamente.');
+            });
+        }
+        
+        // Variables para el modal
+        let currentExpenseId = null;
+        
+        // Funciones del Modal de Detalle
+        function openExpenseModal(expense) {
+            currentExpenseId = expense.id;
+            
+            // Llenar información general
+            document.getElementById('modal-description').textContent = expense.description || 'Sin descripción';
+            document.getElementById('modal-date').textContent = new Date(expense.expense_date).toLocaleDateString('es-ES');
+            document.getElementById('modal-type').textContent = expense.expense_type_name || 'No especificado';
+            document.getElementById('modal-company').textContent = (expense.country === 'MX' ? '🇲🇽 ' : '🇪🇸 ') + (expense.company_name || 'Sin empresa');
+            document.getElementById('modal-user').textContent = expense.user_name || 'Usuario desconocido';
+            
+            // Llenar información financiera
+            document.getElementById('modal-amount').textContent = '$' + parseFloat(expense.amount || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 });
+            document.getElementById('modal-currency').textContent = expense.currency || 'MXN';
+            document.getElementById('modal-amount-mxn').textContent = '$' + parseFloat(expense.amount_mxn || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 }) + ' MXN';
+            document.getElementById('modal-payment-method').textContent = getPaymentMethodText(expense.payment_method);
+            
+            // Llenar detalles comerciales
+            document.getElementById('modal-vendor').textContent = expense.vendor || 'No especificado';
+            document.getElementById('modal-invoice').textContent = expense.invoice_number || 'Sin número';
+            document.getElementById('modal-category').textContent = getCategoryText(expense.expense_type_name);
+            
+            const statusElement = document.getElementById('modal-status');
+            statusElement.textContent = getStatusText(expense.status);
+            statusElement.className = 'font-bold ' + getStatusColorClass(expense.status);
+            
+            // Llenar observaciones
+            document.getElementById('modal-notes').textContent = expense.description || 'Sin descripción disponible';
+            document.getElementById('modal-created').textContent = new Date(expense.created_at).toLocaleDateString('es-ES');
+            
+            // Mostrar modal
+            document.getElementById('expenseDetailModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            
+            console.log('📋 Modal abierto para gasto ID:', expense.id);
+        }
+        
+        function closeExpenseModal() {
+            document.getElementById('expenseDetailModal').classList.add('hidden');
+            document.body.style.overflow = 'auto';
+            currentExpenseId = null;
+        }
+        
+        // Función para formatear las notas GUSBit de manera legible
+        function formatGusbitNotes(notes) {
+            if (!notes || (!notes.includes('REGISTRO GUSBIT NUEVO ORDEN') && !notes.includes('REGISTRO GUSBIT COMPLETO'))) {
+                return '<div class="text-text-secondary italic">Sin información detallada de registro GUSBit disponible</div>';
+            }
+            
+            // Extraer la información línea por línea
+            const lines = notes.split('\\n').filter(line => line.trim() !== '' && !line.includes('═══'));
+            
+            let formattedHtml = '<div class="space-y-3">';
+            formattedHtml += '<div class="text-accent-gold font-semibold mb-3">📋 Información Completa del Registro GUSBit:</div>';
+            
+            lines.forEach((line, index) => {
+                if (index === 0) return; // Skip the header line
+                
+                const cleanLine = line.trim();
+                if (cleanLine && cleanLine.includes(':')) {
+                    const [label, value] = cleanLine.split(':', 2);
+                    const fieldNumber = label.match(/^\\d+\\./);
+                    
+                    if (fieldNumber) {
+                        const fieldName = label.replace(/^\\d+\\.\\s*/, '').trim();
+                        const fieldValue = value.trim();
+                        
+                        formattedHtml += \`
+                            <div class="flex justify-between items-center py-2 px-3 bg-glass rounded-lg">
+                                <span class="text-accent-gold text-sm font-medium">\${getFieldIcon(fieldName)} \${fieldName}:</span>
+                                <span class="text-text-primary font-semibold">\${fieldValue}</span>
+                            </div>
+                        \`;
+                    }
+                }
+            });
+            
+            formattedHtml += '</div>';
+            return formattedHtml;
+        }
+        
+        // Función helper para obtener iconos por campo
+        function getFieldIcon(fieldName) {
+            const icons = {
+                'Fecha': '📅',
+                'Empresa': '🏢',
+                'Usuario': '👤',
+                'Tipo': '🏷️',
+                'Categoría': '📂',
+                'Destino': '🎯',
+                'Lugar/Negocio': '📍',
+                'Lugar': '📍',
+                'Descripción': '📝',
+                'Monto': '💰',
+                'Moneda': '💱',
+                'Forma de Pago': '💳',
+                'Quién lo Capturó': '👨‍💻',
+                'Status': '📊'
+            };
+            
+            // Buscar coincidencia exacta o parcial
+            for (const [key, icon] of Object.entries(icons)) {
+                if (fieldName.includes(key) || key.includes(fieldName)) {
+                    return icon;
+                }
+            }
+            
+            return '📋'; // Icono por defecto
+        }
+        
+        // Funciones de acciones del gasto
+        function authorizeExpense() {
+            updateExpenseStatus('approved', '✅ Gasto autorizado exitosamente');
+        }
+        
+        function rejectExpense() {
+            updateExpenseStatus('rejected', '❌ Gasto rechazado');
+        }
+        
+        function requestMoreInfo() {
+            updateExpenseStatus('more_info', '❓ Se solicitó más información');
+        }
+        
+        function setPendingExpense() {
+            updateExpenseStatus('pending', '⏳ Gasto marcado como pendiente');
+        }
+        
+        function updateExpenseStatus(newStatus, message) {
+            if (!currentExpenseId) return;
+            
+            fetch('/api/expenses/' + currentExpenseId + '/status', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(message);
+                    closeExpenseModal();
+                    loadDashboardData(); // Recargar datos
+                } else {
+                    alert('Error: ' + (data.error || 'No se pudo actualizar el estado'));
+                }
+            })
+            .catch(error => {
+                console.error('❌ Error actualizando estado:', error);
+                alert('Error de conexión. Intente nuevamente.');
+            });
+        }
+        
+        // Helper functions para el modal
+        function getPaymentMethodText(method) {
+            const methods = {
+                'cash': '💵 Efectivo',
+                'credit_card': '💳 Tarjeta de Crédito',
+                'debit_card': '💳 Tarjeta de Débito',
+                'bank_transfer': '🏦 Transferencia',
+                'company_card': '🏢 Tarjeta Empresa',
+                'petty_cash': '💰 Caja Chica'
+            };
+            return methods[method] || method || 'No especificado';
+        }
+        
+        function getCategoryText(typeName) {
+            // Mapear tipos de gastos a categorías más amigables
+            const categories = {
+                'Comidas de Trabajo': '🍽️ Alimentación',
+                'Transporte Terrestre': '🚗 Transporte',
+                'Hospedaje': '🏨 Alojamiento',
+                'Vuelos': '✈️ Viajes Aéreos',
+                'Material de Oficina': '📋 Suministros',
+                'Software y Licencias': '💻 Tecnología',
+                'Capacitación': '📚 Formación'
+            };
+            return categories[typeName] || typeName || 'General';
+        }
+        
+        function getStatusColorClass(status) {
+            const colors = {
+                'pending': 'text-yellow-600',
+                'approved': 'text-green-600',
+                'rejected': 'text-red-600',
+                'reimbursed': 'text-blue-600',
+                'invoiced': 'text-purple-600'
+            };
+            return colors[status] || 'text-gray-600';
+        }
     </script>
     </body>
 </html>`);
@@ -2737,6 +4653,12 @@ app.get('/companies', (c) => {
                     </a>
                     <a href="/companies" class="premium-button" style="background: var(--gradient-gold);">
                         <i class="fas fa-building mr-3"></i>Empresas
+                    </a>
+                    <a href="/users" class="premium-button">
+                        <i class="fas fa-users mr-3"></i>Usuarios
+                    </a>
+                    <a href="/employees" class="premium-button">
+                        <i class="fas fa-user-tie mr-3"></i>Empleados
                     </a>
                     <a href="/expenses" class="premium-button">
                         <i class="fas fa-receipt mr-3"></i>Gastos
@@ -3510,6 +5432,7 @@ app.get('/expenses', (c) => {
                             <option value="pending">⏳ Pendiente</option>
                             <option value="approved">✅ Aprobado</option>
                             <option value="rejected">❌ Rechazado</option>
+                            <option value="more_info">💬 Pedir Más Información</option>
                             <option value="reimbursed">💰 Reembolsado</option>
                             <option value="invoiced">📄 Facturado</option>
                         </select>
@@ -3922,6 +5845,138 @@ app.get('/expenses', (c) => {
             </div>
         </div>
         
+        <!-- Modal Detalle de Gasto (Expenses) -->
+        <div id="expenseDetailModalExpenses" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 hidden flex items-center justify-center">
+            <div class="glass-panel p-8 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-8">
+                    <h2 class="text-2xl font-bold text-accent-gold flex items-center">
+                        <i class="fas fa-receipt mr-3"></i>Detalle del Gasto
+                    </h2>
+                    <button onclick="closeExpenseModalExpenses()" class="text-text-secondary hover:text-accent-gold transition-colors">
+                        <i class="fas fa-times text-2xl"></i>
+                    </button>
+                </div>
+                
+                <!-- Contenido idéntico al modal del dashboard -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                    <!-- Columna Izquierda -->
+                    <div class="space-y-6">
+                        <div class="glass-panel p-6">
+                            <h3 class="text-lg font-semibold text-accent-gold mb-4">📋 Información General</h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-accent-gold mb-1">Descripción</label>
+                                    <p id="modal-description-exp" class="text-text-primary font-medium text-lg"></p>
+                                </div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-accent-gold mb-1">📅 Fecha</label>
+                                        <p id="modal-date-exp" class="text-text-primary"></p>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-accent-gold mb-1">🏷️ Tipo</label>
+                                        <p id="modal-type-exp" class="text-text-primary"></p>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-accent-gold mb-1">🏢 Empresa</label>
+                                    <p id="modal-company-exp" class="text-text-primary font-medium"></p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-accent-gold mb-1">👤 Usuario Responsable</label>
+                                    <p id="modal-user-exp" class="text-text-primary"></p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="glass-panel p-6">
+                            <h3 class="text-lg font-semibold text-accent-gold mb-4">💰 Información Financiera</h3>
+                            <div class="space-y-4">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-accent-gold mb-1">💵 Monto Original</label>
+                                        <p id="modal-amount-exp" class="text-accent-emerald font-bold text-xl"></p>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-accent-gold mb-1">💱 Moneda</label>
+                                        <p id="modal-currency-exp" class="text-text-primary"></p>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-accent-gold mb-1">🇲🇽 Equivalente MXN</label>
+                                    <p id="modal-amount-mxn-exp" class="text-accent-emerald font-bold text-lg"></p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-accent-gold mb-1">💳 Método de Pago</label>
+                                    <p id="modal-payment-method-exp" class="text-text-primary"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Columna Derecha -->
+                    <div class="space-y-6">
+                        <div class="glass-panel p-6">
+                            <h3 class="text-lg font-semibold text-accent-gold mb-4">🏪 Detalles Comerciales</h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-accent-gold mb-1">🏪 Proveedor/Lugar</label>
+                                    <p id="modal-vendor-exp" class="text-text-primary"></p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-accent-gold mb-1">📄 Número de Factura</label>
+                                    <p id="modal-invoice-exp" class="text-text-primary"></p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-accent-gold mb-1">📂 Categoría</label>
+                                    <p id="modal-category-exp" class="text-text-primary"></p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-accent-gold mb-1">📊 Estado Actual</label>
+                                    <p id="modal-status-exp" class="font-bold"></p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="glass-panel p-6">
+                            <h3 class="text-lg font-semibold text-accent-gold mb-4">📝 Observaciones</h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-accent-gold mb-1">Notas</label>
+                                    <p id="modal-notes-exp" class="text-text-primary text-sm bg-glass p-3 rounded-lg min-h-[60px]"></p>
+                                </div>
+                                <div class="text-sm">
+                                    <div>
+                                        <label class="block text-xs font-medium text-accent-gold mb-1">Creado</label>
+                                        <p id="modal-created-exp" class="text-text-secondary"></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Acciones del Gasto -->
+                <div class="border-t border-glass-border pt-6">
+                    <h3 class="text-lg font-semibold text-accent-gold mb-4">⚡ Acciones</h3>
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        <button onclick="authorizeExpenseExp()" class="premium-button bg-green-600 hover:bg-green-700">
+                            <i class="fas fa-check mr-2"></i>Autorizar
+                        </button>
+                        <button onclick="rejectExpenseExp()" class="premium-button bg-red-600 hover:bg-red-700">
+                            <i class="fas fa-times mr-2"></i>Rechazar
+                        </button>
+                        <button onclick="requestMoreInfoExpenses()" class="premium-button bg-blue-600 hover:bg-blue-700">
+                            <i class="fas fa-question-circle mr-2"></i>Pedir Info
+                        </button>
+                        <button onclick="leavePendingExpenses()" class="premium-button bg-yellow-600 hover:bg-yellow-700">
+                            <i class="fas fa-clock mr-2"></i>Dejar Pendiente
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <!-- CARGAR SISTEMA GUSBIT COMPLETO -->
         <script src="/static/expenses.js"></script>
         
@@ -4089,6 +6144,7 @@ app.get('/expenses-old', (c) => {
                 <option value="pending" style="background-color: white !important; color: black !important;">⏳ Pendiente</option>
                 <option value="approved" style="background-color: white !important; color: black !important;">✅ Aprobado</option>
                 <option value="rejected" style="background-color: white !important; color: black !important;">❌ Rechazado</option>
+                <option value="more_info" style="background-color: white !important; color: black !important;">💬 Pedir Más Información</option>
                 <option value="reimbursed" style="background-color: white !important; color: black !important;">💰 Reembolsado</option>
                 <option value="invoiced" style="background-color: white !important; color: black !important;">📄 Facturado</option>
               </select>
@@ -5592,6 +7648,843 @@ app.get('/analytics-morado', (c) => {
     </script>
 </body>
 </html>`);
+})
+
+// ===== GESTIÓN DE USUARIOS DEL SISTEMA =====
+app.get('/users', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Gestión de Usuarios del Sistema</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <link href="/static/styles.css" rel="stylesheet">
+        <style>
+        body {
+            background: linear-gradient(135deg, 
+                var(--color-bg-primary) 0%, 
+                var(--color-bg-secondary) 50%, 
+                var(--color-bg-tertiary) 100%);
+            min-height: 100vh;
+            color: var(--color-text-primary);
+        }
+        
+        .premium-button {
+            background: var(--gradient-emerald);
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+        
+        .premium-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+        }
+        
+        .premium-button.secondary {
+            background: var(--gradient-sapphire);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+        
+        .premium-button.secondary:hover {
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+        }
+        
+        .premium-button.danger {
+            background: var(--gradient-accent);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        }
+        
+        .premium-button.danger:hover {
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+        }
+        
+        .glass-panel {
+            background: var(--color-glass);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--color-border);
+            border-radius: 12px;
+            box-shadow: var(--shadow-glass);
+        }
+        
+        .role-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .role-viewer { background-color: #e0f2fe; color: #0277bd; }
+        .role-editor { background-color: #e8f5e8; color: #2e7d32; }
+        .role-advanced { background-color: #fff3e0; color: #f57c00; }
+        .role-admin { background-color: #fce4ec; color: #c2185b; }
+        
+        .status-active { color: #10b981; }
+        .status-inactive { color: #ef4444; }
+        </style>
+    </head>
+    <body>
+        <!-- Navigation -->
+        <nav class="glass-panel border-b sticky top-0 z-40 mb-8">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center h-16">
+                    <div class="flex items-center space-x-8">
+                        <a href="/" class="text-2xl font-bold bg-gradient-to-r from-accent-gold to-accent-emerald bg-clip-text text-transparent">
+                            <i class="fas fa-gem mr-2"></i>LYRA
+                        </a>
+                        <div class="hidden md:flex space-x-6">
+                            <a href="/" class="text-text-secondary hover:text-accent-emerald transition-colors">
+                                <i class="fas fa-chart-line mr-2"></i>Dashboard
+                            </a>
+                            <a href="/expenses" class="text-text-secondary hover:text-accent-emerald transition-colors">
+                                <i class="fas fa-receipt mr-2"></i>Gastos
+                            </a>
+                            <a href="/users" class="text-accent-emerald font-semibold">
+                                <i class="fas fa-users-cog mr-2"></i>Usuarios del Sistema
+                            </a>
+                            <a href="/employees" class="text-text-secondary hover:text-accent-emerald transition-colors">
+                                <i class="fas fa-id-card mr-2"></i>Empleados
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <!-- Header Section -->
+            <div class="mb-8">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                    <div>
+                        <h1 class="text-4xl font-bold bg-gradient-to-r from-accent-gold to-accent-emerald bg-clip-text text-transparent mb-4">
+                            <i class="fas fa-users-cog mr-3"></i>
+                            Gestión de Usuarios del Sistema
+                        </h1>
+                        <p class="text-text-secondary text-lg">
+                            Administra usuarios con acceso al sistema de gastos • Roles y Privilegios
+                        </p>
+                    </div>
+                    <div class="flex gap-3 mt-4 md:mt-0">
+                        <button onclick="showAddUserModal()" class="premium-button">
+                            <i class="fas fa-user-plus"></i>
+                            Nuevo Usuario
+                        </button>
+                        <button onclick="exportUsers()" class="premium-button secondary">
+                            <i class="fas fa-download"></i>
+                            Exportar
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistics Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="glass-panel p-6 text-center">
+                    <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-blue-500 to-blue-600">
+                        <i class="fas fa-users text-2xl text-white"></i>
+                    </div>
+                    <p class="text-2xl font-bold text-accent-emerald" id="total-users-count">-</p>
+                    <p class="text-text-secondary">Total Usuarios</p>
+                </div>
+                
+                <div class="glass-panel p-6 text-center">
+                    <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-green-500 to-green-600">
+                        <i class="fas fa-user-check text-2xl text-white"></i>
+                    </div>
+                    <p class="text-2xl font-bold text-accent-emerald" id="active-users-count">-</p>
+                    <p class="text-text-secondary">Usuarios Activos</p>
+                </div>
+                
+                <div class="glass-panel p-6 text-center">
+                    <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-amber-500 to-amber-600">
+                        <i class="fas fa-crown text-2xl text-white"></i>
+                    </div>
+                    <p class="text-2xl font-bold text-accent-emerald" id="admin-users-count">-</p>
+                    <p class="text-text-secondary">Administradores</p>
+                </div>
+                
+                <div class="glass-panel p-6 text-center">
+                    <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-purple-500 to-purple-600">
+                        <i class="fas fa-clock text-2xl text-white"></i>
+                    </div>
+                    <p class="text-2xl font-bold text-accent-emerald" id="recent-logins-count">-</p>
+                    <p class="text-text-secondary">Últimos 30 días</p>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="glass-panel p-6 mb-8">
+                <div class="flex flex-col md:flex-row gap-4">
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-text-primary mb-2">Buscar Usuario</label>
+                        <input 
+                            type="text" 
+                            id="search-user" 
+                            placeholder="Nombre, email o ID..."
+                            class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary placeholder-text-secondary focus:outline-none focus:ring-2 focus:ring-accent-emerald focus:border-transparent"
+                        >
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-text-primary mb-2">Filtrar por Rol</label>
+                        <select 
+                            id="filter-role" 
+                            class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-emerald focus:border-transparent"
+                        >
+                            <option value="">Todos los Roles</option>
+                            <option value="viewer">👀 Solo Lectura</option>
+                            <option value="editor">✏️ Editor</option>
+                            <option value="advanced">⭐ Avanzado</option>
+                            <option value="admin">👑 Administrador</option>
+                        </select>
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-text-primary mb-2">Estado</label>
+                        <select 
+                            id="filter-status" 
+                            class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-emerald focus:border-transparent"
+                        >
+                            <option value="">Todos</option>
+                            <option value="active">✅ Activo</option>
+                            <option value="inactive">❌ Inactivo</option>
+                        </select>
+                    </div>
+                    <div class="flex items-end gap-2">
+                        <button onclick="applyUserFilters()" class="premium-button">
+                            <i class="fas fa-filter"></i>
+                            Filtrar
+                        </button>
+                        <button onclick="clearUserFilters()" class="premium-button secondary">
+                            <i class="fas fa-eraser"></i>
+                            Limpiar
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Users Table -->
+            <div class="glass-panel overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-gradient-to-r from-accent-gold/10 to-accent-emerald/10">
+                            <tr>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-text-primary uppercase tracking-wider">Usuario</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-text-primary uppercase tracking-wider">Email</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-text-primary uppercase tracking-wider">Rol</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-text-primary uppercase tracking-wider">Estado</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-text-primary uppercase tracking-wider">Último Acceso</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-text-primary uppercase tracking-wider">Empresas Asignadas</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-text-primary uppercase tracking-wider">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-list" class="divide-y divide-border-primary">
+                            <!-- Users will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add/Edit User Modal -->
+        <div id="userModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 hidden flex items-center justify-center">
+            <div class="glass-panel p-8 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-2xl font-bold text-text-primary">
+                        <i class="fas fa-user-plus mr-2 text-accent-emerald"></i>
+                        <span id="modal-title">Nuevo Usuario del Sistema</span>
+                    </h3>
+                    <button onclick="closeUserModal()" class="text-text-secondary hover:text-accent-gold">
+                        <i class="fas fa-times text-2xl"></i>
+                    </button>
+                </div>
+                
+                <form id="userForm" onsubmit="saveUser(event)">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <!-- Basic Info -->
+                        <div>
+                            <label class="block text-sm font-medium text-text-primary mb-2">
+                                <i class="fas fa-user mr-2 text-accent-emerald"></i>
+                                Nombre Completo *
+                            </label>
+                            <input 
+                                type="text" 
+                                id="user-name" 
+                                required
+                                class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-emerald"
+                                placeholder="Ej: Juan Pérez García"
+                            >
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-text-primary mb-2">
+                                <i class="fas fa-envelope mr-2 text-accent-emerald"></i>
+                                Email *
+                            </label>
+                            <input 
+                                type="email" 
+                                id="user-email" 
+                                required
+                                class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-emerald"
+                                placeholder="juan.perez@empresa.com"
+                            >
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-text-primary mb-2">
+                                <i class="fas fa-lock mr-2 text-accent-emerald"></i>
+                                Contraseña *
+                            </label>
+                            <input 
+                                type="password" 
+                                id="user-password" 
+                                required
+                                class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-emerald"
+                                placeholder="Mínimo 8 caracteres"
+                            >
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-text-primary mb-2">
+                                <i class="fas fa-user-tag mr-2 text-accent-emerald"></i>
+                                Rol del Usuario *
+                            </label>
+                            <select 
+                                id="user-role" 
+                                required
+                                class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-emerald"
+                            >
+                                <option value="">Seleccionar Rol...</option>
+                                <option value="viewer">👀 Solo Lectura - Puede ver gastos y reportes</option>
+                                <option value="editor">✏️ Editor - Puede crear y editar gastos</option>
+                                <option value="advanced">⭐ Avanzado - Editor + Aprobaciones limitadas</option>
+                                <option value="admin">👑 Administrador - Acceso completo</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Company Permissions -->
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-text-primary mb-4">
+                            <i class="fas fa-building mr-2 text-accent-emerald"></i>
+                            Permisos por Empresa
+                        </label>
+                        <div id="company-permissions" class="space-y-3">
+                            <!-- Company permissions will be loaded here -->
+                        </div>
+                    </div>
+                    
+                    <!-- Status -->
+                    <div class="mb-6">
+                        <label class="flex items-center text-sm font-medium text-text-primary">
+                            <input 
+                                type="checkbox" 
+                                id="user-active" 
+                                checked
+                                class="mr-3 w-4 h-4 text-accent-emerald bg-glass-input border-border-primary rounded focus:ring-accent-emerald focus:ring-2"
+                            >
+                            <i class="fas fa-check-circle mr-2 text-accent-emerald"></i>
+                            Usuario Activo (puede iniciar sesión)
+                        </label>
+                    </div>
+                    
+                    <div class="flex justify-end gap-4">
+                        <button type="button" onclick="closeUserModal()" class="premium-button secondary">
+                            <i class="fas fa-times mr-2"></i>
+                            Cancelar
+                        </button>
+                        <button type="submit" class="premium-button">
+                            <i class="fas fa-save mr-2"></i>
+                            Guardar Usuario
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <script src="/static/permissions-ui.js"></script>
+        <script src="/static/users.js"></script></script>
+    </body>
+    </html>`);
+})
+
+// ===== GESTIÓN DE EMPLEADOS =====
+app.get('/employees', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Gestión de Empleados</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <link href="/static/styles.css" rel="stylesheet">
+        <style>
+        body {
+            background: linear-gradient(135deg, 
+                var(--color-bg-primary) 0%, 
+                var(--color-bg-secondary) 50%, 
+                var(--color-bg-tertiary) 100%);
+            min-height: 100vh;
+            color: var(--color-text-primary);
+        }
+        
+        .premium-button {
+            background: var(--gradient-emerald);
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+        
+        .premium-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+        }
+        
+        .premium-button.secondary {
+            background: var(--gradient-sapphire);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+        
+        .premium-button.secondary:hover {
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+        }
+        
+        .premium-button.danger {
+            background: var(--gradient-accent);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        }
+        
+        .premium-button.danger:hover {
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+        }
+        
+        .glass-panel {
+            background: var(--color-glass);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--color-border);
+            border-radius: 12px;
+            box-shadow: var(--shadow-glass);
+        }
+        
+        .department-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .dept-it { background-color: #e3f2fd; color: #1565c0; }
+        .dept-sales { background-color: #e8f5e8; color: #2e7d32; }
+        .dept-hr { background-color: #fff3e0; color: #f57c00; }
+        .dept-finance { background-color: #fce4ec; color: #c2185b; }
+        .dept-operations { background-color: #f3e5f5; color: #7b1fa2; }
+        .dept-management { background-color: #fff8e1; color: #f9a825; }
+        </style>
+    </head>
+    <body>
+        <!-- Navigation -->
+        <nav class="glass-panel border-b sticky top-0 z-40 mb-8">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center h-16">
+                    <div class="flex items-center space-x-8">
+                        <a href="/" class="text-2xl font-bold bg-gradient-to-r from-accent-gold to-accent-emerald bg-clip-text text-transparent">
+                            <i class="fas fa-gem mr-2"></i>LYRA
+                        </a>
+                        <div class="hidden md:flex space-x-6">
+                            <a href="/" class="text-text-secondary hover:text-accent-emerald transition-colors">
+                                <i class="fas fa-chart-line mr-2"></i>Dashboard
+                            </a>
+                            <a href="/expenses" class="text-text-secondary hover:text-accent-emerald transition-colors">
+                                <i class="fas fa-receipt mr-2"></i>Gastos
+                            </a>
+                            <a href="/users" class="text-text-secondary hover:text-accent-emerald transition-colors">
+                                <i class="fas fa-users-cog mr-2"></i>Usuarios del Sistema
+                            </a>
+                            <a href="/employees" class="text-accent-emerald font-semibold">
+                                <i class="fas fa-id-card mr-2"></i>Empleados
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <!-- Header Section -->
+            <div class="mb-8">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                    <div>
+                        <h1 class="text-4xl font-bold bg-gradient-to-r from-accent-gold to-accent-emerald bg-clip-text text-transparent mb-4">
+                            <i class="fas fa-id-card mr-3"></i>
+                            Gestión de Empleados
+                        </h1>
+                        <p class="text-text-secondary text-lg">
+                            Administra empleados que generan gastos y viáticos • Información Personal y Laboral
+                        </p>
+                    </div>
+                    <div class="flex gap-3 mt-4 md:mt-0">
+                        <button onclick="showAddEmployeeModal()" class="premium-button">
+                            <i class="fas fa-user-plus"></i>
+                            Nuevo Empleado
+                        </button>
+                        <button onclick="exportEmployees()" class="premium-button secondary">
+                            <i class="fas fa-download"></i>
+                            Exportar
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistics Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="glass-panel p-6 text-center">
+                    <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-blue-500 to-blue-600">
+                        <i class="fas fa-users text-2xl text-white"></i>
+                    </div>
+                    <p class="text-2xl font-bold text-accent-emerald" id="total-employees-count">-</p>
+                    <p class="text-text-secondary">Total Empleados</p>
+                </div>
+                
+                <div class="glass-panel p-6 text-center">
+                    <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-green-500 to-green-600">
+                        <i class="fas fa-user-check text-2xl text-white"></i>
+                    </div>
+                    <p class="text-2xl font-bold text-accent-emerald" id="active-employees-count">-</p>
+                    <p class="text-text-secondary">Empleados Activos</p>
+                </div>
+                
+                <div class="glass-panel p-6 text-center">
+                    <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-amber-500 to-amber-600">
+                        <i class="fas fa-building text-2xl text-white"></i>
+                    </div>
+                    <p class="text-2xl font-bold text-accent-emerald" id="departments-count">-</p>
+                    <p class="text-text-secondary">Departamentos</p>
+                </div>
+                
+                <div class="glass-panel p-6 text-center">
+                    <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-purple-500 to-purple-600">
+                        <i class="fas fa-receipt text-2xl text-white"></i>
+                    </div>
+                    <p class="text-2xl font-bold text-accent-emerald" id="with-expenses-count">-</p>
+                    <p class="text-text-secondary">Con Gastos</p>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="glass-panel p-6 mb-8">
+                <div class="flex flex-col md:flex-row gap-4">
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-text-primary mb-2">Buscar Empleado</label>
+                        <input 
+                            type="text" 
+                            id="search-employee" 
+                            placeholder="Nombre, email, ID o puesto..."
+                            class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary placeholder-text-secondary focus:outline-none focus:ring-2 focus:ring-accent-emerald focus:border-transparent"
+                        >
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-text-primary mb-2">Filtrar por Departamento</label>
+                        <select 
+                            id="filter-department" 
+                            class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-emerald focus:border-transparent"
+                        >
+                            <option value="">Todos los Departamentos</option>
+                            <option value="it">💻 Tecnología</option>
+                            <option value="sales">💼 Ventas</option>
+                            <option value="hr">👥 Recursos Humanos</option>
+                            <option value="finance">💰 Finanzas</option>
+                            <option value="operations">⚙️ Operaciones</option>
+                            <option value="management">👔 Dirección</option>
+                        </select>
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-text-primary mb-2">Empresa</label>
+                        <select 
+                            id="filter-company" 
+                            class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-emerald focus:border-transparent"
+                        >
+                            <option value="">Todas las Empresas</option>
+                            <!-- Companies will be loaded here -->
+                        </select>
+                    </div>
+                    <div class="flex items-end gap-2">
+                        <button onclick="applyEmployeeFilters()" class="premium-button">
+                            <i class="fas fa-filter"></i>
+                            Filtrar
+                        </button>
+                        <button onclick="clearEmployeeFilters()" class="premium-button secondary">
+                            <i class="fas fa-eraser"></i>
+                            Limpiar
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Employees Table -->
+            <div class="glass-panel overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-gradient-to-r from-accent-gold/10 to-accent-emerald/10">
+                            <tr>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-text-primary uppercase tracking-wider">Empleado</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-text-primary uppercase tracking-wider">Puesto</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-text-primary uppercase tracking-wider">Departamento</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-text-primary uppercase tracking-wider">Empresa</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-text-primary uppercase tracking-wider">Email</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-text-primary uppercase tracking-wider">Teléfono</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-text-primary uppercase tracking-wider">Estado</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-text-primary uppercase tracking-wider">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="employees-list" class="divide-y divide-border-primary">
+                            <!-- Employees will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add/Edit Employee Modal -->
+        <div id="employeeModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 hidden flex items-center justify-center">
+            <div class="glass-panel p-8 max-w-6xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-2xl font-bold text-text-primary">
+                        <i class="fas fa-user-plus mr-2 text-accent-emerald"></i>
+                        <span id="employee-modal-title">Nuevo Empleado</span>
+                    </h3>
+                    <button onclick="closeEmployeeModal()" class="text-text-secondary hover:text-accent-gold">
+                        <i class="fas fa-times text-2xl"></i>
+                    </button>
+                </div>
+                
+                <form id="employeeForm" onsubmit="saveEmployee(event)">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                        <!-- Personal Info -->
+                        <div class="lg:col-span-3">
+                            <h4 class="text-lg font-semibold text-text-primary mb-4 pb-2 border-b border-border-primary">
+                                <i class="fas fa-user mr-2 text-accent-emerald"></i>
+                                Información Personal
+                            </h4>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-text-primary mb-2">
+                                Nombre Completo *
+                            </label>
+                            <input 
+                                type="text" 
+                                id="employee-name" 
+                                required
+                                class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-emerald"
+                                placeholder="Nombre y apellidos"
+                            >
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-text-primary mb-2">
+                                Email Personal
+                            </label>
+                            <input 
+                                type="email" 
+                                id="employee-email" 
+                                class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-emerald"
+                                placeholder="email@personal.com"
+                            >
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-text-primary mb-2">
+                                Teléfono
+                            </label>
+                            <input 
+                                type="tel" 
+                                id="employee-phone" 
+                                class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-emerald"
+                                placeholder="+52 555 123 4567"
+                            >
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-text-primary mb-2">
+                                RFC/Identificación Fiscal
+                            </label>
+                            <input 
+                                type="text" 
+                                id="employee-rfc" 
+                                class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-emerald"
+                                placeholder="XAXX010101000"
+                            >
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-text-primary mb-2">
+                                Fecha de Nacimiento
+                            </label>
+                            <input 
+                                type="date" 
+                                id="employee-birthdate" 
+                                class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-emerald"
+                            >
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-text-primary mb-2">
+                                Dirección
+                            </label>
+                            <input 
+                                type="text" 
+                                id="employee-address" 
+                                class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-emerald"
+                                placeholder="Calle, número, colonia, ciudad"
+                            >
+                        </div>
+                        
+                        <!-- Work Info -->
+                        <div class="lg:col-span-3">
+                            <h4 class="text-lg font-semibold text-text-primary mb-4 pb-2 border-b border-border-primary mt-6">
+                                <i class="fas fa-briefcase mr-2 text-accent-emerald"></i>
+                                Información Laboral
+                            </h4>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-text-primary mb-2">
+                                Empresa *
+                            </label>
+                            <select 
+                                id="employee-company" 
+                                required
+                                class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-emerald"
+                            >
+                                <option value="">Seleccionar Empresa...</option>
+                                <!-- Companies will be loaded here -->
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-text-primary mb-2">
+                                Puesto de Trabajo *
+                            </label>
+                            <input 
+                                type="text" 
+                                id="employee-position" 
+                                required
+                                class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-emerald"
+                                placeholder="Ej: Gerente de Ventas, Developer Senior"
+                            >
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-text-primary mb-2">
+                                Departamento *
+                            </label>
+                            <select 
+                                id="employee-department" 
+                                required
+                                class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-emerald"
+                            >
+                                <option value="">Seleccionar Departamento...</option>
+                                <option value="it">💻 Tecnología</option>
+                                <option value="sales">💼 Ventas</option>
+                                <option value="hr">👥 Recursos Humanos</option>
+                                <option value="finance">💰 Finanzas</option>
+                                <option value="operations">⚙️ Operaciones</option>
+                                <option value="management">👔 Dirección</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-text-primary mb-2">
+                                Número de Empleado
+                            </label>
+                            <input 
+                                type="text" 
+                                id="employee-number" 
+                                class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-emerald"
+                                placeholder="ID interno de empleado"
+                            >
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-text-primary mb-2">
+                                Fecha de Ingreso
+                            </label>
+                            <input 
+                                type="date" 
+                                id="employee-hire-date" 
+                                class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-emerald"
+                            >
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-text-primary mb-2">
+                                Jefe Directo
+                            </label>
+                            <select 
+                                id="employee-manager" 
+                                class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-emerald"
+                            >
+                                <option value="">Sin jefe directo...</option>
+                                <!-- Managers will be loaded here -->
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Status -->
+                    <div class="mb-6">
+                        <label class="flex items-center text-sm font-medium text-text-primary">
+                            <input 
+                                type="checkbox" 
+                                id="employee-active" 
+                                checked
+                                class="mr-3 w-4 h-4 text-accent-emerald bg-glass-input border-border-primary rounded focus:ring-accent-emerald focus:ring-2"
+                            >
+                            <i class="fas fa-check-circle mr-2 text-accent-emerald"></i>
+                            Empleado Activo (puede generar gastos)
+                        </label>
+                    </div>
+                    
+                    <div class="flex justify-end gap-4">
+                        <button type="button" onclick="closeEmployeeModal()" class="premium-button secondary">
+                            <i class="fas fa-times mr-2"></i>
+                            Cancelar
+                        </button>
+                        <button type="submit" class="premium-button">
+                            <i class="fas fa-save mr-2"></i>
+                            Guardar Empleado
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <script src="/static/permissions-ui.js"></script>
+        <script src="/static/employees.js"></script>
+    </body>
+    </html>`);
 })
 
 export default app

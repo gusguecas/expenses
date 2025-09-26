@@ -928,19 +928,191 @@ function getStatusIcon(status) {
         'pending': '⏳',
         'approved': '✅',
         'rejected': '❌',
+        'more_info': '❓',
         'reimbursed': '💰',
         'invoiced': '📄'
     };
     return icons[status] || '📋';
 }
 
-// FUNCIÓN - VER DETALLES DE GASTO
+// ===== FUNCIONES DEL MODAL DE DETALLES DE GASTO =====
+
+// FUNCIÓN PRINCIPAL - ABRIR MODAL DE DETALLES
 function viewExpenseDetails(expenseId) {
     const expense = allExpenses.find(e => e.id === expenseId);
     if (expense) {
         console.log('👀 Ver detalles del gasto:', expense);
-        // Aquí se puede implementar un modal de detalles
-        alert(`Gasto ID: ${expense.id}\nDescripción: ${expense.description}\nMonto: $${expense.amount} ${expense.currency}`);
+        openExpenseModalExpenses(expense);
+    }
+}
+
+// FUNCIÓN - ABRIR MODAL DE DETALLES EN SECCIÓN EXPENSES
+function openExpenseModalExpenses(expense) {
+    console.log('🚀 Abriendo modal de detalles para gasto:', expense.id);
+    
+    // Extraer datos GUSBit del campo notes
+    const gusbitData = extractGusbitFromNotes(expense.notes || '');
+    
+    // Poblar todos los campos del modal con los datos del gasto
+    const fields = [
+        { id: 'expense-id-exp', value: expense.id },
+        { id: 'expense-fecha-exp', value: gusbitData.fecha || expense.expense_date || 'N/A' },
+        { id: 'expense-empresa-exp', value: getCompanyName(expense.company_id) },
+        { id: 'expense-usuario-exp', value: getUserName(gusbitData.usuario || expense.user_id) },
+        { id: 'expense-tipo-exp', value: getTipoExpanded(gusbitData.tipo) },
+        { id: 'expense-categoria-exp', value: getCategoryName(gusbitData.categoria || expense.expense_type_id) },
+        { id: 'expense-destino-exp', value: gusbitData.destino || 'N/A' },
+        { id: 'expense-lugar-exp', value: gusbitData.lugar || expense.vendor || 'N/A' },
+        { id: 'expense-descripcion-exp', value: gusbitData.descripcion || expense.description || 'N/A' },
+        { id: 'expense-monto-exp', value: formatCurrency(gusbitData.monto || expense.amount, gusbitData.moneda || expense.currency) },
+        { id: 'expense-moneda-exp', value: gusbitData.moneda || expense.currency || 'N/A' },
+        { id: 'expense-forma-pago-exp', value: gusbitData.forma_pago || expense.payment_method || 'N/A' },
+        { id: 'expense-quien-capturo-exp', value: getUserName(gusbitData.quien_capturo) || 'N/A' },
+        { id: 'expense-status-exp', value: `<span class="status-badge status-${expense.status}">${getStatusIcon(expense.status)} ${gusbitData.status || expense.status || 'N/A'}</span>` }
+    ];
+    
+    // Actualizar todos los campos en el DOM
+    fields.forEach(field => {
+        const element = document.getElementById(field.id);
+        if (element) {
+            element.innerHTML = field.value;
+        }
+    });
+    
+    // Actualizar las notas con descripción del gasto
+    const notesElement = document.getElementById('modal-notes-exp');
+    if (notesElement) {
+        notesElement.textContent = gusbitData.descripcion || expense.description || 'Sin descripción disponible';
+    }
+    
+    // Actualizar fecha de creación
+    const createdElement = document.getElementById('modal-created-exp');
+    if (createdElement && expense.created_at) {
+        createdElement.textContent = new Date(expense.created_at).toLocaleDateString('es-ES');
+    }
+    
+    // Configurar botones de acción con el ID del gasto
+    window.currentExpenseIdExp = expense.id;
+    
+    // Mostrar el modal
+    const modal = document.getElementById('expenseDetailModalExpenses');
+    if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        console.log('✅ Modal de detalles abierto exitosamente');
+    } else {
+        console.error('❌ Modal de detalles no encontrado');
+    }
+}
+
+// FUNCIÓN - CERRAR MODAL DE DETALLES EN SECCIÓN EXPENSES
+function closeExpenseModalExpenses() {
+    const modal = document.getElementById('expenseDetailModalExpenses');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        console.log('✅ Modal de detalles cerrado');
+    }
+    
+    // Limpiar variable global
+    window.currentExpenseIdExp = null;
+}
+
+// FUNCIÓN - AUTORIZAR GASTO (SECCIÓN EXPENSES)
+function authorizeExpenseExpenses() {
+    if (!window.currentExpenseIdExp) {
+        console.error('❌ No hay gasto seleccionado');
+        return;
+    }
+    
+    updateExpenseStatusExpenses('approved', 'Gasto autorizado exitosamente');
+}
+
+// FUNCIÓN - RECHAZAR GASTO (SECCIÓN EXPENSES)
+function rejectExpenseExpenses() {
+    if (!window.currentExpenseIdExp) {
+        console.error('❌ No hay gasto seleccionado');
+        return;
+    }
+    
+    const reason = prompt('💬 Motivo del rechazo (opcional):');
+    const message = reason ? `Gasto rechazado: ${reason}` : 'Gasto rechazado';
+    
+    updateExpenseStatusExpenses('rejected', message);
+}
+
+// FUNCIÓN - SOLICITAR MÁS INFORMACIÓN (SECCIÓN EXPENSES)
+function requestMoreInfoExpenses() {
+    if (!window.currentExpenseIdExp) {
+        console.error('❌ No hay gasto seleccionado');
+        return;
+    }
+    
+    const info = prompt('📋 ¿Qué información adicional necesitas?');
+    if (info) {
+        updateExpenseStatusExpenses('more_info', `Información solicitada: ${info}`);
+    }
+}
+
+// FUNCIÓN - DEJAR PENDIENTE (SECCIÓN EXPENSES)
+function leavePendingExpenses() {
+    if (!window.currentExpenseIdExp) {
+        console.error('❌ No hay gasto seleccionado');
+        return;
+    }
+    
+    updateExpenseStatusExpenses('pending', 'Gasto marcado como pendiente');
+}
+
+// FUNCIÓN HELPER - ACTUALIZAR STATUS DEL GASTO (SECCIÓN EXPENSES)
+async function updateExpenseStatusExpenses(newStatus, message) {
+    const expenseId = window.currentExpenseIdExp;
+    
+    if (!expenseId) {
+        console.error('❌ No hay gasto seleccionado');
+        return;
+    }
+    
+    try {
+        console.log(`🔄 Actualizando gasto ${expenseId} a status: ${newStatus}`);
+        
+        const response = await fetch(`/api/expenses/${expenseId}/status`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                status: newStatus,
+                notes: message
+            })
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            console.log('✅ Status actualizado exitosamente:', result);
+            
+            showMessage(message, 'success');
+            closeExpenseModalExpenses();
+            
+            // Recargar la lista de gastos
+            await loadExpenses();
+            
+        } else {
+            const errorData = await response.json();
+            throw new Error(`Error ${response.status}: ${errorData.error || 'Error desconocido'}`);
+        }
+        
+    } catch (error) {
+        console.error('❌ Error actualizando status del gasto:', error);
+        showMessage(`Error al actualizar el gasto: ${error.message}`, 'error');
+    }
+}
+
+// FUNCIÓN - CERRAR MODAL AL HACER CLIC EN EL BACKDROP (SECCIÓN EXPENSES)
+function handleModalBackdropClickExpenses(event) {
+    // Solo cerrar si el clic fue en el backdrop, no en el contenido del modal
+    if (event.target.id === 'expenseDetailModalExpenses') {
+        closeExpenseModalExpenses();
     }
 }
 
@@ -1466,6 +1638,73 @@ async function handleFileUpload(input) {
             `;
         }
     }
+}
+
+// FUNCIÓN - FORMATEAR NOTAS GUSBIT PARA MODAL
+function formatGusbitNotesExpenses(notes) {
+    if (!notes || (!notes.includes('REGISTRO GUSBIT NUEVO ORDEN') && !notes.includes('REGISTRO GUSBIT COMPLETO'))) {
+        return '<div class="text-text-secondary italic">Sin información detallada de registro GUSBit disponible</div>';
+    }
+    
+    // Extraer la información línea por línea
+    const lines = notes.split('\n').filter(line => line.trim() !== '' && !line.includes('═══'));
+    
+    let formattedHtml = '<div class="space-y-3">';
+    formattedHtml += '<div class="text-accent-gold font-semibold mb-3">📋 Información Completa del Registro GUSBit:</div>';
+    
+    lines.forEach((line, index) => {
+        if (index === 0) return; // Skip the header line
+        
+        const cleanLine = line.trim();
+        if (cleanLine && cleanLine.includes(':')) {
+            const [label, value] = cleanLine.split(':', 2);
+            const fieldNumber = label.match(/^\d+\./);
+            
+            if (fieldNumber) {
+                const fieldName = label.replace(/^\d+\.\s*/, '').trim();
+                const fieldValue = value.trim();
+                
+                formattedHtml += `
+                    <div class="flex justify-between items-center py-2 px-3 bg-glass rounded-lg">
+                        <span class="text-accent-gold text-sm font-medium">${getFieldIconExpenses(fieldName)} ${fieldName}:</span>
+                        <span class="text-text-primary font-semibold">${fieldValue}</span>
+                    </div>
+                `;
+            }
+        }
+    });
+    
+    formattedHtml += '</div>';
+    return formattedHtml;
+}
+
+// FUNCIÓN HELPER - OBTENER ICONOS POR CAMPO (EXPENSES)
+function getFieldIconExpenses(fieldName) {
+    const icons = {
+        'Fecha': '📅',
+        'Empresa': '🏢',
+        'Usuario': '👤',
+        'Tipo': '🏷️',
+        'Categoría': '📂',
+        'Destino': '🎯',
+        'Lugar/Negocio': '📍',
+        'Lugar': '📍',
+        'Descripción': '📝',
+        'Monto': '💰',
+        'Moneda': '💱',
+        'Forma de Pago': '💳',
+        'Quién lo Capturó': '👨‍💻',
+        'Status': '📊'
+    };
+    
+    // Buscar coincidencia exacta o parcial
+    for (const [key, icon] of Object.entries(icons)) {
+        if (fieldName.includes(key) || key.includes(fieldName)) {
+            return icon;
+        }
+    }
+    
+    return '📋'; // Icono por defecto
 }
 
 console.log('✅ expenses.js cargado exitosamente');

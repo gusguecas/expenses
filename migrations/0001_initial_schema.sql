@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS expenses (
   invoice_number TEXT,
   
   -- Estado y aprobaciones
-  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'reimbursed', 'invoiced')),
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'more_info', 'reimbursed', 'invoiced')),
   approved_by INTEGER,
   approved_at DATETIME,
   

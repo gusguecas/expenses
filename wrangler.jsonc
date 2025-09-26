@@ -11,7 +11,7 @@
     {
       "binding": "DB",
       "database_name": "expenses-app-production",
-      "database_id": "" // Will be populated after successful creation
+      "database_id": "local-dev-db-id" // Temporary ID for local development
     }
   ],
   // R2 Bucket for attachments (tickets, invoices, logos)
