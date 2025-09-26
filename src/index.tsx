@@ -2256,31 +2256,83 @@ app.get('/', (c) => {
                     </h3>
                     
                     <div class="space-y-4">
+                        <!-- Filtro por Fecha -->
                         <div>
-                            <label class="block text-sm font-medium text-accent-gold mb-2">Empresa</label>
+                            <label class="block text-sm font-medium text-accent-gold mb-2">📅 Fecha</label>
+                            <div class="flex gap-2">
+                                <input type="date" id="filter-date-from" class="flex-1 p-3 rounded-lg border border-glass-border bg-glass text-text-primary focus:border-accent-gold focus:outline-none text-sm">
+                                <input type="date" id="filter-date-to" class="flex-1 p-3 rounded-lg border border-glass-border bg-glass text-text-primary focus:border-accent-gold focus:outline-none text-sm">
+                            </div>
+                        </div>
+
+                        <!-- Filtro por Empresa -->
+                        <div>
+                            <label class="block text-sm font-medium text-accent-gold mb-2">🏢 Empresa</label>
                             <select id="companyFilter" class="w-full p-3 rounded-lg border border-glass-border bg-glass text-text-primary focus:border-accent-gold focus:outline-none">
                                 <option value="">Todas las empresas</option>
                             </select>
                         </div>
 
+                        <!-- Filtro por Usuario -->
                         <div>
-                            <label class="block text-sm font-medium text-accent-gold mb-2">Estado</label>
-                            <select id="statusFilter" class="w-full p-3 rounded-lg border border-glass-border bg-glass text-text-primary focus:border-accent-gold focus:outline-none">
-                                <option value="">Todos los estados</option>
-                                <option value="pending">Pendiente</option>
-                                <option value="approved">Aprobado</option>
-                                <option value="rejected">Rechazado</option>
-                                <option value="reimbursed">Reembolsado</option>
+                            <label class="block text-sm font-medium text-accent-gold mb-2">👤 Usuario</label>
+                            <select id="userFilter" class="w-full p-3 rounded-lg border border-glass-border bg-glass text-text-primary focus:border-accent-gold focus:outline-none">
+                                <option value="">Todos los usuarios</option>
+                                <option value="1">👑 Alejandro Rodríguez</option>
+                                <option value="2">✏️ María López</option>
+                                <option value="3">⭐ Carlos Martínez</option>
+                                <option value="4">✏️ Ana García</option>
+                                <option value="5">⭐ Pedro Sánchez</option>
+                                <option value="6">✏️ Elena Torres</option>
                             </select>
                         </div>
 
+                        <!-- Filtro por Tipo -->
                         <div>
-                            <label class="block text-sm font-medium text-accent-gold mb-2">Moneda</label>
+                            <label class="block text-sm font-medium text-accent-gold mb-2">🏷️ Tipo</label>
+                            <select id="typeFilter" class="w-full p-3 rounded-lg border border-glass-border bg-glass text-text-primary focus:border-accent-gold focus:outline-none">
+                                <option value="">Todos los tipos</option>
+                                <option value="G">💼 Gastos</option>
+                                <option value="V">✈️ Viáticos</option>
+                            </select>
+                        </div>
+
+                        <!-- Filtro por Categoría -->
+                        <div>
+                            <label class="block text-sm font-medium text-accent-gold mb-2">📂 Categoría</label>
+                            <select id="categoryFilter" class="w-full p-3 rounded-lg border border-glass-border bg-glass text-text-primary focus:border-accent-gold focus:outline-none">
+                                <option value="">Todas las categorías</option>
+                                <option value="meals">🍽️ Comidas</option>
+                                <option value="transport">🚗 Transporte</option>
+                                <option value="accommodation">🏨 Hospedaje</option>
+                                <option value="travel">✈️ Viajes</option>
+                                <option value="supplies">📋 Suministros</option>
+                                <option value="services">💻 Servicios</option>
+                                <option value="general">📦 General</option>
+                            </select>
+                        </div>
+
+                        <!-- Filtro por Status -->
+                        <div>
+                            <label class="block text-sm font-medium text-accent-gold mb-2">📊 Status</label>
+                            <select id="statusFilter" class="w-full p-3 rounded-lg border border-glass-border bg-glass text-text-primary focus:border-accent-gold focus:outline-none">
+                                <option value="">Todos los estados</option>
+                                <option value="pending">⏳ Pendiente</option>
+                                <option value="approved">✅ Aprobado</option>
+                                <option value="rejected">❌ Rechazado</option>
+                                <option value="reimbursed">💰 Reembolsado</option>
+                                <option value="invoiced">📄 Facturado</option>
+                            </select>
+                        </div>
+
+                        <!-- Filtro por Moneda -->
+                        <div>
+                            <label class="block text-sm font-medium text-accent-gold mb-2">💱 Moneda</label>
                             <select id="currencyFilter" class="w-full p-3 rounded-lg border border-glass-border bg-glass text-text-primary focus:border-accent-gold focus:outline-none">
                                 <option value="">Todas las monedas</option>
-                                <option value="MXN">MXN - Peso Mexicano</option>
-                                <option value="USD">USD - Dólar</option>
-                                <option value="EUR">EUR - Euro</option>
+                                <option value="MXN">🇲🇽 MXN</option>
+                                <option value="USD">🇺🇸 USD</option>
+                                <option value="EUR">🇪🇺 EUR</option>
                             </select>
                         </div>
 
@@ -2291,8 +2343,7 @@ app.get('/', (c) => {
                         <button id="clearFilters" class="w-full premium-button" style="background: var(--gradient-accent);">
                             <i class="fas fa-broom mr-2"></i>Limpiar Filtros
                         </button>
-                    </div>
-                </div>
+                    </div></div>
             </div>
 
             <div class="lg:col-span-3">
