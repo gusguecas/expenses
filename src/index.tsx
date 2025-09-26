@@ -2226,7 +2226,220 @@ app.get('/', (c) => {
         </div>
     </div>
     
-</body>
+
+    
+    <script>
+        // Variables globales para filtros
+        let currentFilters = {};
+        
+        // Inicializar al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeEventListeners();
+            loadCompanies();
+            loadDashboardData();
+        });
+        
+        // Event listeners para filtros
+        function initializeEventListeners() {
+            const applyBtn = document.getElementById('applyFilters');
+            const clearBtn = document.getElementById('clearFilters');
+            
+            if (applyBtn) {
+                applyBtn.addEventListener('click', applyFilters);
+            }
+            
+            if (clearBtn) {
+                clearBtn.addEventListener('click', clearFilters);
+            }
+        }
+        
+        // Aplicar filtros
+        function applyFilters() {
+            const companyFilter = document.getElementById('companyFilter');
+            const statusFilter = document.getElementById('statusFilter');
+            const currencyFilter = document.getElementById('currencyFilter');
+            
+            currentFilters = {
+                company_id: companyFilter ? companyFilter.value : '',
+                status: statusFilter ? statusFilter.value : '',
+                currency: currencyFilter ? currencyFilter.value : ''
+            };
+            
+            console.log('🔍 Aplicando filtros:', currentFilters);
+            
+            // Mostrar feedback visual
+            const applyBtn = document.getElementById('applyFilters');
+            if (applyBtn) {
+                applyBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Filtrando...';
+                setTimeout(() => {
+                    applyBtn.innerHTML = '<i class="fas fa-search mr-2"></i>Aplicar Filtros';
+                }, 1000);
+            }
+            
+            loadDashboardData();
+        }
+        
+        // Limpiar filtros
+        function clearFilters() {
+            const companyFilter = document.getElementById('companyFilter');
+            const statusFilter = document.getElementById('statusFilter');
+            const currencyFilter = document.getElementById('currencyFilter');
+            
+            if (companyFilter) companyFilter.value = '';
+            if (statusFilter) statusFilter.value = '';
+            if (currencyFilter) currencyFilter.value = '';
+            
+            currentFilters = {};
+            
+            console.log('🧹 Filtros limpiados');
+            
+            // Mostrar feedback visual
+            const clearBtn = document.getElementById('clearFilters');
+            if (clearBtn) {
+                clearBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Limpiando...';
+                setTimeout(() => {
+                    clearBtn.innerHTML = '<i class="fas fa-broom mr-2"></i>Limpiar Filtros';
+                }, 1000);
+            }
+            
+            loadDashboardData();
+        }
+        
+        // Cargar empresas para el filtro
+        function loadCompanies() {
+            fetch('/api/companies')
+                .then(response => response.json())
+                .then(companies => {
+                    const companySelect = document.getElementById('companyFilter');
+                    if (companySelect) {
+                        // Limpiar opciones existentes excepto la primera
+                        companySelect.innerHTML = '<option value="">Todas las empresas</option>';
+                        
+                        companies.forEach(company => {
+                            const option = document.createElement('option');
+                            option.value = company.id;
+                            option.textContent = company.name;
+                            companySelect.appendChild(option);
+                        });
+                        
+                        console.log('✅ Empresas cargadas en filtro:', companies.length);
+                    }
+                })
+                .catch(error => {
+                    console.error('❌ Error cargando empresas:', error);
+                });
+        }
+        
+        // Cargar datos del dashboard
+        function loadDashboardData() {
+            console.log('📊 Cargando datos del dashboard con filtros:', currentFilters);
+            
+            // Construir query string con filtros
+            const queryParams = new URLSearchParams();
+            Object.keys(currentFilters).forEach(key => {
+                if (currentFilters[key]) {
+                    queryParams.append(key, currentFilters[key]);
+                }
+            });
+            
+            // Cargar métricas del dashboard
+            fetch('/api/dashboard/metrics?' + queryParams.toString())
+                .then(response => response.json())
+                .then(metrics => {
+                    updateDashboardMetrics(metrics);
+                })
+                .catch(error => {
+                    console.error('❌ Error cargando métricas:', error);
+                });
+                
+            // Cargar gastos recientes
+            fetch('/api/expenses?' + queryParams.toString())
+                .then(response => response.json())
+                .then(expenses => {
+                    updateExpensesTable(expenses);
+                })
+                .catch(error => {
+                    console.error('❌ Error cargando gastos:', error);
+                });
+        }
+        
+        // Actualizar métricas en el dashboard
+        function updateDashboardMetrics(metrics) {
+            // Actualizar KPIs si los datos están disponibles
+            if (metrics.total_amount !== undefined) {
+                const totalElement = document.querySelector('.glass-panel .text-3xl');
+                if (totalElement) {
+                    totalElement.textContent = metrics.total_amount + ' €';
+                }
+            }
+            
+            console.log('📈 Métricas actualizadas:', metrics);
+        }
+        
+        // Actualizar tabla de gastos
+        function updateExpensesTable(expenses) {
+            const tableBody = document.querySelector('tbody');
+            if (!tableBody || !expenses || !Array.isArray(expenses)) {
+                return;
+            }
+            
+            if (expenses.length === 0) {
+                tableBody.innerHTML = 
+                    '<tr>' +
+                        '<td colspan="5" class="py-4 px-4 text-center text-text-secondary">' +
+                            '<i class="fas fa-info-circle mr-2"></i>' +
+                            'No se encontraron gastos con los filtros aplicados' +
+                        '</td>' +
+                    '</tr>';
+                return;
+            }
+            
+            // Generar filas de la tabla
+            const rows = expenses.slice(0, 10).map(expense => 
+                '<tr class="border-b border-glass-border hover:bg-glass transition-colors">' +
+                    '<td class="py-3 px-4 text-text-primary">' + (expense.description || 'Sin descripción') + '</td>' +
+                    '<td class="py-3 px-4 text-text-secondary">' + (expense.company_name || 'N/A') + '</td>' +
+                    '<td class="py-3 px-4 text-accent-emerald font-bold">' +
+                        expense.amount + ' ' + (expense.currency || 'EUR') +
+                    '</td>' +
+                    '<td class="py-3 px-4">' +
+                        '<span class="premium-badge ' + getStatusClass(expense.status) + '">' +
+                            getStatusText(expense.status) +
+                        '</span>' +
+                    '</td>' +
+                    '<td class="py-3 px-4 text-text-secondary">' +
+                        new Date(expense.expense_date).toLocaleDateString('es-ES') +
+                    '</td>' +
+                '</tr>'
+            ).join('');
+            
+            tableBody.innerHTML = rows;
+            
+            console.log('📋 Tabla actualizada con', expenses.length, 'gastos');
+        }
+        
+        // Helper functions para estados
+        function getStatusClass(status) {
+            const classes = {
+                'pending': 'bg-yellow-100 text-yellow-800',
+                'approved': 'bg-green-100 text-green-800',
+                'rejected': 'bg-red-100 text-red-800',
+                'reimbursed': 'bg-blue-100 text-blue-800'
+            };
+            return classes[status] || 'bg-gray-100 text-gray-800';
+        }
+        
+        function getStatusText(status) {
+            const texts = {
+                'pending': 'Pendiente',
+                'approved': 'Aprobado',
+                'rejected': 'Rechazado',
+                'reimbursed': 'Reembolsado'
+            };
+            return texts[status] || status;
+        }
+    </script>
+    </body>
 </html>`);
 })
 
