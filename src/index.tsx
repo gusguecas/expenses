@@ -525,15 +525,38 @@ app.post('/api/init-db', async (c) => {
     const tables = [
       `CREATE TABLE IF NOT EXISTS companies (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        -- Información Básica
         name TEXT NOT NULL,
-        country TEXT NOT NULL CHECK (country IN ('MX', 'ES')), 
-        logo_url TEXT,
-        primary_currency TEXT NOT NULL DEFAULT 'MXN' CHECK (primary_currency IN ('MXN', 'EUR', 'USD')),
+        commercial_name TEXT,
+        razon_social TEXT,
+        country TEXT NOT NULL CHECK (country IN ('MX', 'ES', 'US', 'CA')), 
         tax_id TEXT,
-        address TEXT,
+        primary_currency TEXT NOT NULL DEFAULT 'MXN' CHECK (primary_currency IN ('MXN', 'EUR', 'USD', 'CAD')),
+        employees_count INTEGER,
+        
+        -- Información Comercial
+        business_category TEXT,
+        website TEXT,
+        business_description TEXT,
+        
+        -- Dirección Fiscal
+        address_street TEXT,
+        address_city TEXT,
+        address_state TEXT,
+        address_postal TEXT,
+        phone TEXT,
+        
+        -- Branding Corporativo
+        logo_url TEXT,
+        brand_color TEXT DEFAULT '#D4AF37',
+        
+        -- Sistema
         active BOOLEAN NOT NULL DEFAULT TRUE,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        
+        -- Legacy field for backward compatibility
+        address TEXT
       )`,
       
       `CREATE TABLE IF NOT EXISTS users (
@@ -881,6 +904,104 @@ app.get('/api/companies', async (c) => {
   } catch (error) {
     console.error('Companies API error:', error);
     return c.json({ error: 'Failed to fetch companies' }, 500);
+  }
+})
+
+// Companies API - Create new company (Protected)
+app.post('/api/companies', async (c) => {
+  const { env } = c;
+  const user = await authenticateUser(c);
+  
+  if (!user) {
+    return c.json({ error: 'No autorizado' }, 401);
+  }
+  
+  // Check if user can create companies (CFO only for now)
+  if (!user.is_cfo) {
+    return c.json({ error: 'Solo CFOs pueden crear nuevas empresas' }, 403);
+  }
+  
+  try {
+    const companyData = await c.req.json();
+    
+    // Validate required fields
+    const requiredFields = ['razon_social', 'commercial_name', 'country', 'tax_id', 'primary_currency'];
+    for (const field of requiredFields) {
+      if (!companyData[field]) {
+        return c.json({ error: `El campo ${field} es requerido` }, 400);
+      }
+    }
+    
+    // Validate country
+    if (!['MX', 'ES', 'US', 'CA'].includes(companyData.country)) {
+      return c.json({ error: 'País no válido' }, 400);
+    }
+    
+    // Validate currency
+    if (!['MXN', 'EUR', 'USD', 'CAD'].includes(companyData.primary_currency)) {
+      return c.json({ error: 'Moneda no válida' }, 400);
+    }
+    
+    // Check if company with same tax_id already exists
+    const existingCompany = await env.DB.prepare(`
+      SELECT id FROM companies WHERE tax_id = ? AND active = TRUE
+    `).bind(companyData.tax_id).first();
+    
+    if (existingCompany) {
+      return c.json({ error: 'Ya existe una empresa con ese RFC/NIF/EIN/BN' }, 409);
+    }
+    
+    // Insert new company
+    const result = await env.DB.prepare(`
+      INSERT INTO companies (
+        name, commercial_name, razon_social, country, tax_id, primary_currency, employees_count,
+        business_category, website, business_description,
+        address_street, address_city, address_state, address_postal, phone,
+        logo_url, brand_color, active, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    `).bind(
+      companyData.commercial_name || companyData.razon_social,
+      companyData.commercial_name,
+      companyData.razon_social,
+      companyData.country,
+      companyData.tax_id,
+      companyData.primary_currency,
+      companyData.employees_count || null,
+      companyData.business_category || null,
+      companyData.website || null,
+      companyData.business_description || null,
+      companyData.address_street || null,
+      companyData.address_city || null,
+      companyData.address_state || null,
+      companyData.address_postal || null,
+      companyData.phone || null,
+      companyData.logo_url || null,
+      companyData.brand_color || '#D4AF37',
+      true
+    ).run();
+    
+    const companyId = result.meta.last_row_id;
+    
+    // Get the created company
+    const newCompany = await env.DB.prepare(`
+      SELECT * FROM companies WHERE id = ?
+    `).bind(companyId).first();
+    
+    console.log(`✅ Nueva empresa creada: ${companyData.commercial_name} (ID: ${companyId})`);
+    
+    return c.json({
+      success: true,
+      message: 'Empresa creada exitosamente',
+      company: newCompany,
+      id: companyId
+    });
+    
+  } catch (error) {
+    console.error('Error creating company:', error);
+    return c.json({ 
+      error: 'Error interno del servidor',
+      details: error.message 
+    }, 500);
   }
 })
 
@@ -5287,7 +5408,7 @@ app.get('/companies', (c) => {
                 return;
             }
 
-            grid.innerHTML = companies.map(company => {
+            const companyCards = companies.map(company => {
                 const countryFlag = {
                     'MX': '🇲🇽',
                     'ES': '🇪🇸', 
@@ -5302,52 +5423,51 @@ app.get('/companies', (c) => {
                     'CAD': 'C$'
                 }[company.primary_currency] || '';
 
-                return \`
-                    <div class="glass-panel p-6 hover:shadow-xl transition-all group cursor-pointer">
-                        <div class="flex items-center justify-between mb-6">
-                            <div class="flex items-center space-x-4">
-                                <div class="p-4 rounded-xl bg-glass group-hover:bg-glass-hover transition-all">
-                                    \${company.logo_url ? 
-                                        \`<img src="\${company.logo_url}" alt="\${company.name}" class="w-8 h-8 object-contain">\` :
-                                        \`<span class="text-2xl">\${countryFlag}</span>\`
-                                    }
-                                </div>
-                                <div>
-                                    <h3 class="text-lg font-bold text-accent-gold group-hover:text-accent-emerald transition-colors">\${company.name}</h3>
-                                    <p class="text-sm text-text-secondary">\${company.country}</p>
-                                </div>
-                            </div>
-                            <div class="text-right">
-                                <div class="premium-badge mb-2">
-                                    <i class="fas fa-check-circle mr-1"></i>
-                                    \${company.active ? 'Activa' : 'Inactiva'}
-                                </div>
-                                <p class="text-xs text-text-secondary">\${company.primary_currency}</p>
-                            </div>
-                        </div>
-                        
-                        <div class="grid grid-cols-2 gap-4 mb-6">
-                            <div class="text-center p-3 bg-glass rounded-lg">
-                                <div class="text-xl font-bold text-accent-emerald">\${company.employees || 0}</div>
-                                <div class="text-xs text-text-secondary">Empleados</div>
-                            </div>
-                            <div class="text-center p-3 bg-glass rounded-lg">
-                                <div class="text-xl font-bold text-accent-gold">\${currencySymbol}0</div>
-                                <div class="text-xs text-text-secondary">Gastos</div>
-                            </div>
-                        </div>
-                        
-                        <div class="flex items-center justify-between pt-4 border-t border-glass-border">
-                            <button onclick="editCompany(\${company.id})" class="text-sm text-accent-sapphire hover:text-accent-gold transition-colors">
-                                <i class="fas fa-edit mr-1"></i>Editar
-                            </button>
-                            <button onclick="viewCompany(\${company.id})" class="text-sm text-accent-gold hover:text-accent-emerald transition-colors">
-                                Ver detalles <i class="fas fa-arrow-right ml-1"></i>
-                            </button>
-                        </div>
-                    </div>
-                \`;
-            }).join('');
+                const logoHtml = company.logo_url ? 
+                    '<img src="' + company.logo_url + '" alt="' + company.name + '" class="w-8 h-8 object-contain">' :
+                    '<span class="text-2xl">' + countryFlag + '</span>';
+
+                return '<div class="glass-panel p-6 hover:shadow-xl transition-all group cursor-pointer">' +
+                    '<div class="flex items-center justify-between mb-6">' +
+                        '<div class="flex items-center space-x-4">' +
+                            '<div class="p-4 rounded-xl bg-glass group-hover:bg-glass-hover transition-all">' +
+                                logoHtml +
+                            '</div>' +
+                            '<div>' +
+                                '<h3 class="text-lg font-bold text-accent-gold group-hover:text-accent-emerald transition-colors">' + company.name + '</h3>' +
+                                '<p class="text-sm text-text-secondary">' + company.country + '</p>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="text-right">' +
+                            '<div class="premium-badge mb-2">' +
+                                '<i class="fas fa-check-circle mr-1"></i>' +
+                                (company.active ? 'Activa' : 'Inactiva') +
+                            '</div>' +
+                            '<p class="text-xs text-text-secondary">' + company.primary_currency + '</p>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="grid grid-cols-2 gap-4 mb-6">' +
+                        '<div class="text-center p-3 bg-glass rounded-lg">' +
+                            '<div class="text-xl font-bold text-accent-emerald">' + (company.employees_count || 0) + '</div>' +
+                            '<div class="text-xs text-text-secondary">Empleados</div>' +
+                        '</div>' +
+                        '<div class="text-center p-3 bg-glass rounded-lg">' +
+                            '<div class="text-xl font-bold text-accent-gold">' + currencySymbol + '0</div>' +
+                            '<div class="text-xs text-text-secondary">Gastos</div>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="flex items-center justify-between pt-4 border-t border-glass-border">' +
+                        '<button onclick="editCompany(' + company.id + ')" class="text-sm text-accent-sapphire hover:text-accent-gold transition-colors">' +
+                            '<i class="fas fa-edit mr-1"></i>Editar' +
+                        '</button>' +
+                        '<button onclick="viewCompany(' + company.id + ')" class="text-sm text-accent-gold hover:text-accent-emerald transition-colors">' +
+                            'Ver detalles <i class="fas fa-arrow-right ml-1"></i>' +
+                        '</button>' +
+                    '</div>' +
+                '</div>';
+            });
+            
+            grid.innerHTML = companyCards.join('');
         }
 
         // Update statistics
@@ -5412,12 +5532,19 @@ app.get('/companies', (c) => {
                 });
 
                 if (response.ok) {
-                    showMessage(\`Empresa \${currentEditingCompany ? 'actualizada' : 'creada'} exitosamente\`, 'success');
+                    const result = await response.json();
+                    showMessage('Empresa ' + (currentEditingCompany ? 'actualizada' : 'creada') + ' exitosamente', 'success');
                     closeCompanyModal();
                     await loadCompanies();
                 } else {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || 'Error desconocido');
+                    let errorMessage = 'Error desconocido';
+                    try {
+                        const errorData = await response.json();
+                        errorMessage = errorData.error || errorMessage;
+                    } catch (e) {
+                        errorMessage = 'Error del servidor (status: ' + response.status + ')';
+                    }
+                    throw new Error(errorMessage);
                 }
             } catch (error) {
                 console.error('Error:', error);
