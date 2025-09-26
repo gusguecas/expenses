@@ -542,6 +542,7 @@ app.post('/api/init-db', async (c) => {
         name TEXT NOT NULL,
         password_hash TEXT NOT NULL,
         role TEXT NOT NULL DEFAULT 'editor' CHECK (role IN ('viewer', 'editor', 'advanced', 'admin')),
+        is_cfo BOOLEAN NOT NULL DEFAULT FALSE,
         active BOOLEAN NOT NULL DEFAULT TRUE,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -702,14 +703,42 @@ app.post('/api/init-db', async (c) => {
         (10, 'Otros Gastos', 'Gastos diversos no categorizados', 'general', TRUE)
     `).run();
 
+    // Hash passwords with the current hashPassword function
+    const admin123Hash = await hashPassword('admin123');
+    const partner123Hash = await hashPassword('partner123');
+    const employee123Hash = await hashPassword('employee123');
+    
     await env.DB.prepare(`
-      INSERT OR IGNORE INTO users (id, email, name, password_hash, role, active) VALUES 
-        (1, 'admin@techmx.com', 'Alejandro Rodríguez', '$2b$10$yvsqabOwKIXJf5cu2nCIq.LDZQAKQPusEN2pvncvnTgO9lHfgE1F6', 'admin', TRUE),
-        (2, 'maria.lopez@techmx.com', 'María López', '$2b$10$E28fauI9DklVUyNGeGC6X.TP6wUw7PjE2d/anA3DhqXr3V64.3M7C', 'editor', TRUE),
-        (3, 'carlos.martinez@innovacion.mx', 'Carlos Martínez', '$2b$10$E28fauI9DklVUyNGeGC6X.TP6wUw7PjE2d/anA3DhqXr3V64.3M7C', 'advanced', TRUE),
-        (4, 'ana.garcia@consultoria.mx', 'Ana García', '$2b$10$E28fauI9DklVUyNGeGC6X.TP6wUw7PjE2d/anA3DhqXr3V64.3M7C', 'editor', TRUE),
-        (5, 'pedro.sanchez@techespana.es', 'Pedro Sánchez', '$2b$10$E28fauI9DklVUyNGeGC6X.TP6wUw7PjE2d/anA3DhqXr3V64.3M7C', 'advanced', TRUE),
-        (6, 'elena.torres@madrid.es', 'Elena Torres', '$2b$10$E28fauI9DklVUyNGeGC6X.TP6wUw7PjE2d/anA3DhqXr3V64.3M7C', 'editor', TRUE)
+      INSERT OR IGNORE INTO users (id, email, name, password_hash, role, active, is_cfo) VALUES 
+        (1, 'admin@techmx.com', 'Alejandro Rodríguez', ?, 'admin', TRUE, FALSE),
+        (2, 'maria.lopez@techmx.com', 'María López', ?, 'editor', TRUE, FALSE),
+        (3, 'carlos.martinez@innovacion.mx', 'Carlos Martínez', ?, 'advanced', TRUE, FALSE),
+        (4, 'ana.garcia@consultoria.mx', 'Ana García', ?, 'editor', TRUE, FALSE),
+        (5, 'pedro.sanchez@techespana.es', 'Pedro Sánchez', ?, 'advanced', TRUE, FALSE),
+        (6, 'elena.torres@madrid.es', 'Elena Torres', ?, 'editor', TRUE, FALSE),
+        (7, 'gus@lyraexpenses.com', 'Gus', ?, 'admin', TRUE, TRUE),
+        (8, 'maria@lyraexpenses.com', 'María Partner', ?, 'editor', TRUE, FALSE),
+        (9, 'carlos@lyraexpenses.com', 'Carlos Employee', ?, 'viewer', TRUE, FALSE)
+    `).bind(
+      admin123Hash, partner123Hash, employee123Hash, admin123Hash, partner123Hash, employee123Hash,
+      admin123Hash, partner123Hash, employee123Hash
+    ).run();
+
+    // Create user_permissions table if it doesn't exist
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS user_permissions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        company_id INTEGER NOT NULL,
+        can_view_all BOOLEAN NOT NULL DEFAULT FALSE,
+        can_create BOOLEAN NOT NULL DEFAULT FALSE,
+        can_approve BOOLEAN NOT NULL DEFAULT FALSE,
+        can_manage_users BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, company_id),
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (company_id) REFERENCES companies(id)
+      )
     `).run();
 
     await env.DB.prepare(`
@@ -718,6 +747,18 @@ app.post('/api/init-db', async (c) => {
         (1, 4, TRUE, TRUE, TRUE), (1, 5, TRUE, TRUE, TRUE), (1, 6, TRUE, TRUE, TRUE),
         (2, 1, TRUE, TRUE, FALSE), (3, 2, TRUE, TRUE, FALSE), (4, 3, TRUE, TRUE, FALSE),
         (5, 4, TRUE, TRUE, FALSE), (6, 5, TRUE, TRUE, FALSE)
+    `).run();
+
+    // Insert permissions for new users from README
+    await env.DB.prepare(`
+      INSERT OR IGNORE INTO user_permissions (user_id, company_id, can_view_all, can_create, can_approve, can_manage_users) VALUES 
+        -- Gus (CFO) - Control total de todas las empresas
+        (7, 1, TRUE, TRUE, TRUE, TRUE), (7, 2, TRUE, TRUE, TRUE, TRUE), (7, 3, TRUE, TRUE, TRUE, TRUE),
+        (7, 4, TRUE, TRUE, TRUE, TRUE), (7, 5, TRUE, TRUE, TRUE, TRUE), (7, 6, TRUE, TRUE, TRUE, TRUE),
+        -- María (Partner) - LYRA México (crear gastos) + LYRA España (solo ver)
+        (8, 1, TRUE, TRUE, FALSE, FALSE), (8, 4, TRUE, FALSE, FALSE, FALSE),
+        -- Carlos (Employee) - Solo LYRA México (read-only)
+        (9, 1, FALSE, FALSE, FALSE, FALSE)
     `).run();
 
     await env.DB.prepare(`

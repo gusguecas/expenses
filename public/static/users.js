@@ -21,7 +21,11 @@ async function loadUsers() {
         // Cargar empresas PRIMERO para mostrar nombres
         await loadCompaniesCache();
         
-        const response = await fetch('/api/users');
+        // Obtener token de autenticación  
+        const token = localStorage.getItem('auth_token');
+        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+        
+        const response = await fetch('/api/users', { headers });
         if (response.ok) {
             const data = await response.json();
             allUsers = data.users || [];
@@ -45,7 +49,11 @@ async function loadCompaniesCache() {
     console.log('🏢 Cargando empresas en cache...');
     
     try {
-        const response = await fetch('/api/companies');
+        // Obtener token de autenticación
+        const token = localStorage.getItem('auth_token');
+        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+        
+        const response = await fetch('/api/companies', { headers });
         const result = await response.json();
         
         if (result.companies) {
@@ -341,9 +349,15 @@ async function saveUser(event) {
         const url = currentEditingUser ? `/api/users/${currentEditingUser}` : '/api/users';
         const method = currentEditingUser ? 'PUT' : 'POST';
         
+        const token = localStorage.getItem('auth_token');
+        const headers = {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        };
+        
         const response = await fetch(url, {
             method: method,
-            headers: { 'Content-Type': 'application/json' },
+            headers,
             body: JSON.stringify(userData)
         });
         
@@ -368,7 +382,9 @@ async function editUser(userId) {
     console.log('✏️ Editando usuario:', userId);
     
     try {
-        const response = await fetch(`/api/users/${userId}`);
+        const token = localStorage.getItem('auth_token');
+        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+        const response = await fetch(`/api/users/${userId}`, { headers });
         if (response.ok) {
             const userData = await response.json();
             currentEditingUser = userId;
@@ -427,9 +443,15 @@ async function activateUser(userId) {
 // FUNCIÓN HELPER - ACTUALIZAR ESTADO DEL USUARIO
 async function updateUserStatus(userId, active) {
     try {
+        const token = localStorage.getItem('auth_token');
+        const headers = {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        };
+        
         const response = await fetch(`/api/users/${userId}/status`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers,
             body: JSON.stringify({ active })
         });
         
