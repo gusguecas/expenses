@@ -2117,20 +2117,20 @@ app.get('/', (c) => {
             </h3>
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div class="glass-panel p-4 text-center">
-                    <div class="text-3xl font-bold text-accent-gold">4563 €</div>
+                    <div id="totalAmount" class="text-3xl font-bold text-accent-gold">Cargando...</div>
+                    <div class="text-text-secondary text-sm">Total Gastos (MXN)</div>
+                </div>
+                <div class="glass-panel p-4 text-center">
+                    <div id="totalExpenses" class="text-3xl font-bold text-accent-emerald">-</div>
                     <div class="text-text-secondary text-sm">Total Gastos</div>
                 </div>
                 <div class="glass-panel p-4 text-center">
-                    <div class="text-3xl font-bold text-accent-emerald">1</div>
-                    <div class="text-text-secondary text-sm">Empresa</div>
+                    <div id="pendingExpenses" class="text-3xl font-bold text-accent-gold">-</div>
+                    <div class="text-text-secondary text-sm">Pendientes</div>
                 </div>
                 <div class="glass-panel p-4 text-center">
-                    <div class="text-3xl font-bold text-accent-gold">1</div>
-                    <div class="text-text-secondary text-sm">Pendiente Autorización</div>
-                </div>
-                <div class="glass-panel p-4 text-center">
-                    <div class="text-3xl font-bold text-accent-emerald">85%</div>
-                    <div class="text-text-secondary text-sm">Aprobación</div>
+                    <div id="approvalRate" class="text-3xl font-bold text-accent-emerald">-</div>
+                    <div class="text-text-secondary text-sm">% Aprobación</div>
                 </div>
             </div>
         </div>
@@ -2262,13 +2262,11 @@ app.get('/', (c) => {
                                     <th class="text-left py-3 px-4 text-accent-gold">Fecha</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                <tr class="border-b border-glass-border">
-                                    <td class="py-3 px-4 text-text-primary">Almuerzo de negocio</td>
-                                    <td class="py-3 px-4 text-text-secondary">TechMX Solutions</td>
-                                    <td class="py-3 px-4 text-accent-emerald font-bold">$850 MXN</td>
-                                    <td class="py-3 px-4"><span class="premium-badge">Aprobado</span></td>
-                                    <td class="py-3 px-4 text-text-secondary">2024-01-15</td>
+                            <tbody id="recentExpensesTable">
+                                <tr>
+                                    <td colspan="5" class="py-8 text-center text-text-secondary">
+                                        <i class="fas fa-spinner fa-spin mr-2"></i>Cargando gastos recientes...
+                                    </td>
                                 </tr>
                             </tbody>
                         </table>
@@ -2437,29 +2435,76 @@ app.get('/', (c) => {
         }
         
         // Actualizar métricas en el dashboard
-        function updateDashboardMetrics(metrics) {
-            // Actualizar KPIs si los datos están disponibles
-            if (metrics.total_amount !== undefined) {
-                const totalElement = document.querySelector('.glass-panel .text-3xl');
-                if (totalElement) {
-                    totalElement.textContent = metrics.total_amount + ' €';
-                }
+        function updateDashboardMetrics(data) {
+            console.log('📊 Datos recibidos para métricas:', data);
+            
+            // Calcular total en MXN de todos los gastos
+            let totalAmountMxn = 0;
+            let totalExpenses = 0;
+            let pendingCount = 0;
+            let approvedCount = 0;
+            
+            if (data.status_metrics && data.status_metrics.length > 0) {
+                data.status_metrics.forEach(status => {
+                    totalAmountMxn += parseFloat(status.total_mxn || 0);
+                    totalExpenses += parseInt(status.count || 0);
+                    
+                    if (status.status === 'pending') {
+                        pendingCount += parseInt(status.count || 0);
+                    }
+                    if (status.status === 'approved') {
+                        approvedCount += parseInt(status.count || 0);
+                    }
+                });
             }
             
-            console.log('📈 Métricas actualizadas:', metrics);
+            // Calcular porcentaje de aprobación
+            const approvalRate = totalExpenses > 0 ? Math.round((approvedCount / totalExpenses) * 100) : 0;
+            
+            // Actualizar elementos del DOM
+            const totalAmountEl = document.getElementById('totalAmount');
+            const totalExpensesEl = document.getElementById('totalExpenses');
+            const pendingExpensesEl = document.getElementById('pendingExpenses');
+            const approvalRateEl = document.getElementById('approvalRate');
+            
+            if (totalAmountEl) {
+                totalAmountEl.textContent = '$' + totalAmountMxn.toLocaleString('es-MX', { minimumFractionDigits: 2 });
+            }
+            
+            if (totalExpensesEl) {
+                totalExpensesEl.textContent = totalExpenses;
+            }
+            
+            if (pendingExpensesEl) {
+                pendingExpensesEl.textContent = pendingCount;
+            }
+            
+            if (approvalRateEl) {
+                approvalRateEl.textContent = approvalRate + '%';
+            }
+            
+            console.log('✅ KPIs actualizados:', {
+                totalAmountMxn,
+                totalExpenses,
+                pendingCount,
+                approvalRate
+            });
         }
         
         // Actualizar tabla de gastos
-        function updateExpensesTable(expenses) {
-            const tableBody = document.querySelector('tbody');
-            if (!tableBody || !expenses || !Array.isArray(expenses)) {
+        function updateExpensesTable(data) {
+            const tableBody = document.getElementById('recentExpensesTable');
+            if (!tableBody) {
+                console.error('❌ No se encontró el elemento recentExpensesTable');
                 return;
             }
+            
+            const expenses = data.expenses || [];
             
             if (expenses.length === 0) {
                 tableBody.innerHTML = 
                     '<tr>' +
-                        '<td colspan="5" class="py-4 px-4 text-center text-text-secondary">' +
+                        '<td colspan="5" class="py-8 text-center text-text-secondary">' +
                             '<i class="fas fa-info-circle mr-2"></i>' +
                             'No se encontraron gastos con los filtros aplicados' +
                         '</td>' +
@@ -2467,13 +2512,17 @@ app.get('/', (c) => {
                 return;
             }
             
-            // Generar filas de la tabla
+            // Generar filas de la tabla (limitar a 10 gastos recientes)
             const rows = expenses.slice(0, 10).map(expense => 
                 '<tr class="border-b border-glass-border hover:bg-glass transition-colors">' +
                     '<td class="py-3 px-4 text-text-primary">' + (expense.description || 'Sin descripción') + '</td>' +
-                    '<td class="py-3 px-4 text-text-secondary">' + (expense.company_name || 'N/A') + '</td>' +
-                    '<td class="py-3 px-4 text-accent-emerald font-bold">' +
-                        expense.amount + ' ' + (expense.currency || 'EUR') +
+                    '<td class="py-3 px-4 text-text-secondary">' + 
+                        (expense.company_name || 'N/A') + 
+                        (expense.country ? ' ' + (expense.country === 'MX' ? '🇲🇽' : expense.country === 'ES' ? '🇪🇸' : '') : '') +
+                    '</td>' +
+                    '<td class="py-3 px-4 text-accent-emerald font-bold">$' +
+                        parseFloat(expense.amount || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 }) + 
+                        ' ' + (expense.currency || 'MXN') +
                     '</td>' +
                     '<td class="py-3 px-4">' +
                         '<span class="premium-badge ' + getStatusClass(expense.status) + '">' +
@@ -2481,14 +2530,14 @@ app.get('/', (c) => {
                         '</span>' +
                     '</td>' +
                     '<td class="py-3 px-4 text-text-secondary">' +
-                        new Date(expense.expense_date).toLocaleDateString('es-ES') +
+                        new Date(expense.expense_date || expense.created_at).toLocaleDateString('es-ES') +
                     '</td>' +
                 '</tr>'
             ).join('');
             
             tableBody.innerHTML = rows;
             
-            console.log('📋 Tabla actualizada con', expenses.length, 'gastos');
+            console.log('✅ Tabla actualizada con', expenses.length, 'gastos (mostrando max 10)');
         }
         
         // Helper functions para estados
