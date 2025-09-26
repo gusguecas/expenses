@@ -3142,6 +3142,13 @@ ID VIAJE: 1234-5678-9012`,confidence:.89}};let s="ticket";return a&&(a.toLowerCa
 
         // Load companies on page load
         document.addEventListener('DOMContentLoaded', function() {
+            // Check if user is authenticated
+            const token = localStorage.getItem('auth_token');
+            if (!token) {
+                window.location.href = '/login';
+                return;
+            }
+            
             loadCompanies();
             setupLogoUpload();
         });

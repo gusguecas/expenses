@@ -5365,6 +5365,13 @@ app.get('/companies', (c) => {
 
         // Load companies on page load
         document.addEventListener('DOMContentLoaded', function() {
+            // Check if user is authenticated
+            const token = localStorage.getItem('auth_token');
+            if (!token) {
+                window.location.href = '/login';
+                return;
+            }
+            
             loadCompanies();
             setupLogoUpload();
         });
