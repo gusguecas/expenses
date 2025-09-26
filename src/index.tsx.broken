@@ -3544,629 +3544,286 @@ app.get('/expenses', (c) => {
                 </div>
             </div>
         </div>
-
-        <!-- FILTROS Y TABLA DE GASTOS -->
-        <div class="container mx-auto px-6 pb-8">
-            <!-- Filtros Avanzados -->
-            <div class="glass-panel p-6 mb-8">
-                <div class="flex justify-between items-center mb-6">
-                    <div>
-                        <h3 class="text-xl font-bold text-accent-gold flex items-center">
-                            <i class="fas fa-filter mr-3"></i>
-                            Filtros Avanzados de Gastos
-                        </h3>
-                        <p class="text-text-secondary">Personaliza tu búsqueda con filtros multidimensionales</p>
-                    </div>
-                    <button onclick="clearAllFilters()" class="premium-button" style="background: var(--gradient-accent);">
-                        <i class="fas fa-broom mr-2"></i>Limpiar Filtros
-                    </button>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <!-- Filtro por Empresa -->
-                    <div>
-                        <label class="block text-sm font-semibold text-accent-gold mb-2">🏢 Empresa</label>
-                        <select id="filter-company" onchange="applyFilters()" 
-                                class="w-full p-3 rounded-lg border border-glass-border bg-glass text-text-primary focus:border-accent-gold focus:outline-none">
-                            <option value="">Todas las Empresas</option>
-                        </select>
-                    </div>
-                    
-                    <!-- Filtro por Usuario -->
-                    <div>
-                        <label class="block text-sm font-semibold text-accent-gold mb-2">👤 Usuario</label>
-                        <select id="filter-user" onchange="applyFilters()" 
-                                class="w-full p-3 rounded-lg border border-glass-border bg-glass text-text-primary focus:border-accent-gold focus:outline-none">
-                            <option value="">Todos los Usuarios</option>
-                            <option value="1">👑 Alejandro Rodríguez</option>
-                            <option value="2">✏️ María López</option>
-                            <option value="3">⭐ Carlos Martínez</option>
-                            <option value="4">✏️ Ana García</option>
-                            <option value="5">⭐ Pedro Sánchez</option>
-                            <option value="6">✏️ Elena Torres</option>
-                        </select>
-                    </div>
-                    
-                    <!-- Filtro por Status -->
-                    <div>
-                        <label class="block text-sm font-semibold text-accent-gold mb-2">📊 Status</label>
-                        <select id="filter-status" onchange="applyFilters()" 
-                                class="w-full p-3 rounded-lg border border-glass-border bg-glass text-text-primary focus:border-accent-gold focus:outline-none">
-                            <option value="">Todos los Status</option>
-                            <option value="pending">⏳ Pendiente</option>
-                            <option value="approved">✅ Aprobado</option>
-                            <option value="rejected">❌ Rechazado</option>
-                            <option value="reimbursed">💰 Reembolsado</option>
-                            <option value="invoiced">📄 Facturado</option>
-                        </select>
-                    </div>
-                    
-                    <!-- Filtro por Moneda -->
-                    <div>
-                        <label class="block text-sm font-semibold text-accent-gold mb-2">💱 Moneda</label>
-                        <select id="filter-currency" onchange="applyFilters()" 
-                                class="w-full p-3 rounded-lg border border-glass-border bg-glass text-text-primary focus:border-accent-gold focus:outline-none">
-                            <option value="">Todas las Monedas</option>
-                            <option value="MXN">🇲🇽 MXN</option>
-                            <option value="USD">🇺🇸 USD</option>
-                            <option value="EUR">🇪🇺 EUR</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Estadísticas Generales -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                <div class="glass-panel p-6">
-                    <h4 class="text-lg font-bold text-accent-emerald mb-3 flex items-center">
-                        <i class="fas fa-chart-bar mr-3"></i>
-                        Total de Gastos
-                    </h4>
-                    <div class="text-3xl font-bold text-accent-gold">
-                        <span id="total-count">0</span>
-                        <span class="text-sm text-text-secondary ml-2">registros</span>
-                    </div>
-                </div>
-                
-                <div class="glass-panel p-6">
-                    <h4 class="text-lg font-bold text-accent-emerald mb-3 flex items-center">
-                        <i class="fas fa-calculator mr-3"></i>
-                        Monto Total
-                    </h4>
-                    <div class="text-2xl font-bold text-accent-emerald" id="total-amount">
-                        $0.00 MXN
-                    </div>
-                </div>
-            </div>
-
-            <!-- Tabla de Gastos -->
-            <div class="glass-panel p-6">
-                <div class="flex justify-between items-center mb-6">
-                    <div>
-                        <h3 class="text-xl font-bold text-accent-gold flex items-center">
-                            <i class="fas fa-table mr-3"></i>
-                            Registro de Gastos GUSBit
-                        </h3>
-                        <p class="text-text-secondary">Sistema completo de 13 campos con validación avanzada</p>
-                    </div>
-                </div>
-                
-                <div class="overflow-x-auto">
-                    <table class="w-full text-sm">
-                        <thead>
-                            <tr class="border-b border-accent-gold/30">
-                                <th class="text-left py-4 px-4 font-semibold text-accent-gold">📅 Fecha</th>
-                                <th class="text-left py-4 px-4 font-semibold text-accent-gold">🏢 Empresa</th>
-                                <th class="text-left py-4 px-4 font-semibold text-accent-gold">👤 Usuario</th>
-                                <th class="text-left py-4 px-4 font-semibold text-accent-gold">🏷️ Tipo</th>
-                                <th class="text-left py-4 px-4 font-semibold text-accent-gold">📂 Categoría</th>
-                                <th class="text-left py-4 px-4 font-semibold text-accent-gold">📍 Destino</th>
-                                <th class="text-left py-4 px-4 font-semibold text-accent-gold">🏪 Lugar</th>
-                                <th class="text-left py-4 px-4 font-semibold text-accent-gold">📝 Descripción</th>
-                                <th class="text-left py-4 px-4 font-semibold text-accent-gold">💰 Monto</th>
-                                <th class="text-left py-4 px-4 font-semibold text-accent-gold">💱 Moneda</th>
-                                <th class="text-left py-4 px-4 font-semibold text-accent-gold">💳 Forma Pago</th>
-                                <th class="text-left py-4 px-4 font-semibold text-accent-gold">👨‍💼 Capturó</th>
-                                <th class="text-left py-4 px-4 font-semibold text-accent-gold">📊 Status</th>
-                                <th class="text-left py-4 px-4 font-semibold text-accent-gold">⚙️ Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody id="expenses-list">
-                            <tr>
-                                <td colspan="14" class="text-center py-12 text-text-secondary">
-                                    <i class="fas fa-spinner fa-spin text-4xl mb-4"></i>
-                                    <p>Cargando sistema GUSBit...</p>
-                                </td>
-                            </tr>
-                        </tbody>
-                        <tfoot id="expenses-totals">
-                            <!-- Los totales se generan dinámicamente -->
-                        </tfoot>
-                    </table>
-                </div>
-            </div>
-        </div>
-        
-        <!-- MODAL GUSBIT COMPLETO (13 CAMPOS) CON OCR Y ADJUNTOS -->
-        <div id="add-expense-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100vh; background: rgba(0,0,0,0.95); z-index: 10000; overflow-y: auto;">
-            <div class="glass-panel" style="max-width: 1200px; margin: 20px auto; border: 3px solid var(--color-accent-gold);">
-                <!-- Modal Header -->
-                <div class="flex justify-between items-center p-6 border-b border-accent-gold bg-gradient-to-r from-accent-gold/10 to-accent-emerald/10">
-                    <div>
-                        <h2 class="text-2xl font-bold text-accent-gold flex items-center">
-                            <i class="fas fa-plus-circle mr-3"></i>
-                            SISTEMA GUSBIT - Registro Completo de Gasto
-                        </h2>
-                        <p class="text-text-secondary mt-1">
-                            🏆 Información Principal del Gasto (13 Campos GUSBit) + Comprobantes y Procesamiento OCR Automático
-                        </p>
-                    </div>
-                    <button onclick="closeAddExpenseModal()" class="text-accent-gold hover:text-red-400 text-3xl font-bold transition-colors">
-                        <i class="fas fa-times-circle"></i>
-                    </button>
-                </div>
-
-                <form id="expense-form" onsubmit="submitExpenseGusbit(event)" class="p-6">
-                    <!-- SECCIÓN 1: INFORMACIÓN PRINCIPAL DEL GASTO (13 CAMPOS GUSBIT) -->
-                    <div class="mb-8">
-                        <h3 class="text-xl font-bold text-accent-emerald mb-6 flex items-center">
-                            <i class="fas fa-list-ol mr-3"></i>
-                            📋 INFORMACIÓN PRINCIPAL DEL GASTO (13 Campos GUSBit)
-                        </h3>
-                        
-                        <!-- Fila 1: Fecha, Empresa, Usuario, Tipo -->
-                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                            <!-- Campo 1: FECHA -->
-                            <div>
-                                <label for="gusbit-fecha" class="block text-sm font-semibold text-accent-gold mb-2">
-                                    🗓️ 1. FECHA *
-                                </label>
-                                <input type="date" id="gusbit-fecha" required 
-                                       class="w-full p-3 rounded-lg border-2 border-accent-gold/30 bg-glass text-text-primary focus:border-accent-gold focus:outline-none transition-colors">
-                            </div>
-                            
-                            <!-- Campo 2: EMPRESA -->
-                            <div>
-                                <label for="gusbit-empresa" class="block text-sm font-semibold text-accent-gold mb-2">
-                                    🏢 2. EMPRESA *
-                                </label>
-                                <select id="gusbit-empresa" required 
-                                        class="w-full p-3 rounded-lg border-2 border-accent-gold/30 bg-glass text-text-primary focus:border-accent-gold focus:outline-none transition-colors">
-                                    <option value="">⚠️ SELECCIONAR EMPRESA...</option>
-                                </select>
-                            </div>
-                            
-                            <!-- Campo 3: USUARIO -->
-                            <div>
-                                <label for="gusbit-usuario" class="block text-sm font-semibold text-accent-gold mb-2">
-                                    👤 3. USUARIO *
-                                </label>
-                                <select id="gusbit-usuario" required 
-                                        class="w-full p-3 rounded-lg border-2 border-accent-gold/30 bg-glass text-text-primary focus:border-accent-gold focus:outline-none transition-colors">
-                                    <option value="">⚠️ SELECCIONAR USUARIO...</option>
-                                    <option value="1">👑 Alejandro Rodríguez</option>
-                                    <option value="2">✏️ María López</option>
-                                    <option value="3">⭐ Carlos Martínez</option>
-                                    <option value="4">✏️ Ana García</option>
-                                    <option value="5">⭐ Pedro Sánchez</option>
-                                    <option value="6">✏️ Elena Torres</option>
-                                </select>
-                            </div>
-                            
-                            <!-- Campo 4: TIPO (V=Viático, G=Gasto) -->
-                            <div>
-                                <label for="gusbit-tipo" class="block text-sm font-semibold text-accent-gold mb-2">
-                                    🏷️ 4. TIPO *
-                                </label>
-                                <select id="gusbit-tipo" required 
-                                        class="w-full p-3 rounded-lg border-2 border-accent-gold/30 bg-glass text-text-primary focus:border-accent-gold focus:outline-none transition-colors">
-                                    <option value="">⚠️ SELECCIONAR TIPO...</option>
-                                    <option value="V">✈️ V - Viático</option>
-                                    <option value="G">💰 G - Gasto</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <!-- Fila 2: Categoría, Destino, Lugar, Descripción -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <!-- Campo 5: CATEGORÍA -->
-                            <div>
-                                <label for="gusbit-categoria" class="block text-sm font-semibold text-accent-gold mb-2">
-                                    📂 5. CATEGORÍA *
-                                </label>
-                                <select id="gusbit-categoria" required 
-                                        class="w-full p-3 rounded-lg border-2 border-accent-gold/30 bg-glass text-text-primary focus:border-accent-gold focus:outline-none transition-colors">
-                                    <option value="">⚠️ SELECCIONAR CATEGORÍA...</option>
-                                    <option value="1">🍽️ Comidas de Trabajo</option>
-                                    <option value="2">🚗 Transporte Terrestre</option>
-                                    <option value="3">⛽ Combustible</option>
-                                    <option value="4">🏨 Hospedaje</option>
-                                    <option value="5">✈️ Vuelos</option>
-                                    <option value="6">📋 Material de Oficina</option>
-                                    <option value="7">💻 Software y Licencias</option>
-                                    <option value="8">📚 Capacitación</option>
-                                    <option value="9">📢 Marketing</option>
-                                    <option value="10">📦 Otros Gastos</option>
-                                </select>
-                            </div>
-                            
-                            <!-- Campo 6: DESTINO -->
-                            <div>
-                                <label for="gusbit-destino" class="block text-sm font-semibold text-accent-gold mb-2">
-                                    📍 6. DESTINO *
-                                </label>
-                                <input type="text" id="gusbit-destino" required placeholder="Ej: Ciudad de México, Madrid, Nueva York" 
-                                       class="w-full p-3 rounded-lg border-2 border-accent-gold/30 bg-glass text-text-primary focus:border-accent-gold focus:outline-none transition-colors">
-                            </div>
-                        </div>
-
-                        <!-- Fila 3: Lugar y Descripción -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <!-- Campo 7: LUGAR/NEGOCIO -->
-                            <div>
-                                <label for="gusbit-lugar" class="block text-sm font-semibold text-accent-gold mb-2">
-                                    🏪 7. LUGAR/NEGOCIO *
-                                </label>
-                                <input type="text" id="gusbit-lugar" required placeholder="Ej: Restaurante Pujol, Uber, Hotel Marriott" 
-                                       class="w-full p-3 rounded-lg border-2 border-accent-gold/30 bg-glass text-text-primary focus:border-accent-gold focus:outline-none transition-colors">
-                            </div>
-                            
-                            <!-- Campo 8: DESCRIPCIÓN -->
-                            <div>
-                                <label for="gusbit-descripcion" class="block text-sm font-semibold text-accent-gold mb-2">
-                                    📝 8. DESCRIPCIÓN *
-                                </label>
-                                <input type="text" id="gusbit-descripcion" required placeholder="Ej: Comida con cliente potencial" 
-                                       class="w-full p-3 rounded-lg border-2 border-accent-gold/30 bg-glass text-text-primary focus:border-accent-gold focus:outline-none transition-colors">
-                            </div>
-                        </div>
-
-                        <!-- Fila 4: Monto, Moneda, Forma de Pago -->
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                            <!-- Campo 9: MONTO -->
-                            <div>
-                                <label for="gusbit-monto" class="block text-sm font-semibold text-accent-gold mb-2">
-                                    💰 9. MONTO *
-                                </label>
-                                <input type="number" step="0.01" min="0.01" id="gusbit-monto" required placeholder="0.00" 
-                                       class="w-full p-3 rounded-lg border-2 border-accent-gold/30 bg-glass text-text-primary focus:border-accent-gold focus:outline-none transition-colors">
-                            </div>
-                            
-                            <!-- Campo 10: MONEDA -->
-                            <div>
-                                <label for="gusbit-moneda" class="block text-sm font-semibold text-accent-gold mb-2">
-                                    💱 10. MONEDA *
-                                </label>
-                                <select id="gusbit-moneda" required 
-                                        class="w-full p-3 rounded-lg border-2 border-accent-gold/30 bg-glass text-text-primary focus:border-accent-gold focus:outline-none transition-colors">
-                                    <option value="">⚠️ SELECCIONAR MONEDA...</option>
-                                    <option value="MXN">🇲🇽 MXN - Peso Mexicano</option>
-                                    <option value="USD">🇺🇸 USD - Dólar Americano</option>
-                                    <option value="EUR">🇪🇺 EUR - Euro</option>
-                                </select>
-                            </div>
-                            
-                            <!-- Campo 11: FORMA DE PAGO -->
-                            <div>
-                                <label for="gusbit-forma-pago" class="block text-sm font-semibold text-accent-gold mb-2">
-                                    💳 11. FORMA DE PAGO *
-                                </label>
-                                <select id="gusbit-forma-pago" required 
-                                        class="w-full p-3 rounded-lg border-2 border-accent-gold/30 bg-glass text-text-primary focus:border-accent-gold focus:outline-none transition-colors">
-                                    <option value="">⚠️ SELECCIONAR FORMA DE PAGO...</option>
-                                    <option value="efectivo">💵 Efectivo</option>
-                                    <option value="tarjeta_credito">💳 Tarjeta de Crédito</option>
-                                    <option value="tarjeta_debito">💳 Tarjeta de Débito</option>
-                                    <option value="tarjeta_empresarial">🏢 Tarjeta Empresarial</option>
-                                    <option value="transferencia">🏦 Transferencia Bancaria</option>
-                                    <option value="cheque">📄 Cheque</option>
-                                    <option value="vales">🎫 Vales de Despensa</option>
-                                    <option value="caja_chica">💰 Caja Chica</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <!-- Fila 5: Quién lo Capturó y Status -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <!-- Campo 12: QUIÉN LO CAPTURÓ -->
-                            <div>
-                                <label for="gusbit-quien-capturo" class="block text-sm font-semibold text-accent-gold mb-2">
-                                    👨‍💼 12. QUIÉN LO CAPTURÓ *
-                                </label>
-                                <select id="gusbit-quien-capturo" required 
-                                        class="w-full p-3 rounded-lg border-2 border-accent-gold/30 bg-glass text-text-primary focus:border-accent-gold focus:outline-none transition-colors">
-                                    <option value="">⚠️ SELECCIONAR QUIÉN CAPTURÓ...</option>
-                                    <option value="alejandro">👑 Alejandro Rodríguez</option>
-                                    <option value="maria">✏️ María López</option>
-                                    <option value="carlos">⭐ Carlos Martínez</option>
-                                    <option value="ana">✏️ Ana García</option>
-                                    <option value="pedro">⭐ Pedro Sánchez</option>
-                                    <option value="elena">✏️ Elena Torres</option>
-                                </select>
-                            </div>
-                            
-                            <!-- Campo 13: STATUS -->
-                            <div>
-                                <label for="gusbit-status" class="block text-sm font-semibold text-accent-gold mb-2">
-                                    📊 13. STATUS *
-                                </label>
-                                <select id="gusbit-status" required 
-                                        class="w-full p-3 rounded-lg border-2 border-accent-gold/30 bg-glass text-text-primary focus:border-accent-gold focus:outline-none transition-colors">
-                                    <option value="">⚠️ SELECCIONAR STATUS...</option>
-                                    <option value="pending">⏳ Pendiente de Autorización</option>
-                                    <option value="approved">✅ Aprobado</option>
-                                    <option value="rejected">❌ Rechazado</option>
-                                    <option value="reimbursed">💰 Reembolsado</option>
-                                    <option value="invoiced">📄 Facturado</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- SECCIÓN 2: COMPROBANTES Y PROCESAMIENTO OCR AUTOMÁTICO -->
-                    <div class="mb-8">
-                        <h3 class="text-xl font-bold text-accent-emerald mb-6 flex items-center">
-                            <i class="fas fa-camera mr-3"></i>
-                            📸 COMPROBANTES Y PROCESAMIENTO OCR AUTOMÁTICO
-                        </h3>
-                        
-                        <!-- Upload Section -->
-                        <div class="glass-panel p-6 mb-4">
-                            <div class="flex items-center justify-between mb-4">
-                                <div>
-                                    <h4 class="text-lg font-semibold text-accent-gold">📎 Adjuntar Tickets y Facturas</h4>
-                                    <p class="text-text-secondary text-sm">Sube tickets, facturas o recibos para procesamiento OCR automático</p>
-                                </div>
-                                <label class="premium-button cursor-pointer">
-                                    <i class="fas fa-upload mr-2"></i>
-                                    SELECCIONAR ARCHIVOS
-                                    <input type="file" multiple accept="image/*,.pdf" style="display: none;" onchange="handleFileUpload(this)">
-                                </label>
-                            </div>
-                            
-                            <!-- Uploaded Files Display -->
-                            <div id="uploaded-files" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4"></div>
-                            
-                            <!-- OCR Results -->
-                            <div id="ocr-results" style="display: none;" class="glass-panel p-4">
-                                <h5 class="text-lg font-semibold text-accent-emerald mb-3">
-                                    <i class="fas fa-eye mr-2"></i>
-                                    🤖 Resultados del Procesamiento OCR
-                                </h5>
-                                <div id="ocr-content" class="space-y-3"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- BOTONES DE ACCIÓN -->
-                    <div class="flex justify-between items-center pt-6 border-t border-accent-gold/30">
-                        <button type="button" onclick="closeAddExpenseModal()" 
-                                class="premium-button" style="background: var(--gradient-accent);">
-                            <i class="fas fa-times mr-3"></i>
-                            ❌ CANCELAR
-                        </button>
-                        
-                        <button type="submit" id="gusbit-submit-button" 
-                                class="premium-button text-lg px-8" 
-                                style="background: var(--gradient-gold);" disabled>
-                            <i class="fas fa-save mr-3"></i>
-                            ❌ COMPLETAR TODOS LOS CAMPOS
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-        
-        <!-- CARGAR SISTEMA GUSBIT COMPLETO -->
-        <script src="/static/expenses.js"></script>
-        
-        <script>
-            // INICIALIZACIÓN INMEDIATA DEL SISTEMA GUSBIT
-            document.addEventListener('DOMContentLoaded', function() {
-                // Cargar gastos y empresas inmediatamente
-                if (typeof loadExpenses === 'function') {
-                    loadExpenses();
-                } else {
-                    console.error('❌ loadExpenses no está definido');
-                }
-                
-                // Configurar fecha actual por defecto
-                const today = new Date().toISOString().split('T')[0];
-                const fechaField = document.getElementById('gusbit-fecha');
-                if (fechaField) {
-                    fechaField.value = today;
-                }
-            });
-            
-            // FUNCIONES DE FORMATEO DE NÚMEROS PARA MONTOS
-            function formatNumber(num) {
-                if (!num) return '';
-                // Eliminar todo excepto números y puntos
-                const cleanNum = num.toString().replace(/[^0-9.]/g, '');
-                
-                // Dividir en parte entera y decimales
-                const parts = cleanNum.split('.');
-                const integerPart = parts[0];
-                const decimalPart = parts[1];
-                
-                // Formatear parte entera con comas cada 3 dígitos
-                const formattedInteger = integerPart.replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',');
-                
-                // Retornar con decimales si existen
-                if (decimalPart !== undefined) {
-                    return formattedInteger + '.' + decimalPart.slice(0, 2); // Máximo 2 decimales
-                }
-                
-                return formattedInteger;
-            }
-            
-            function unformatNumber(formattedNum) {
-                if (!formattedNum) return '';
-                return formattedNum.replace(/,/g, '');
-            }
-            
-            // CONFIGURAR FORMATEO AUTOMÁTICO DEL CAMPO MONTO
-            document.addEventListener('DOMContentLoaded', function() {
-                // Esperar a que el modal se cargue y luego configurar el evento
-                setTimeout(() => {
-                    const montoField = document.getElementById('gusbit-monto');
-                    if (montoField) {
-                        // Formatear mientras escribe
-                        montoField.addEventListener('input', function(e) {
-                            const cursorPos = e.target.selectionStart;
-                            const oldValue = e.target.value;
-                            const newValue = formatNumber(oldValue);
-                            
-                            if (oldValue !== newValue) {
-                                e.target.value = newValue;
-                                // Ajustar cursor
-                                const newCursorPos = cursorPos + (newValue.length - oldValue.length);
-                                e.target.setSelectionRange(newCursorPos, newCursorPos);
-                            }
-                        });
-                        
-                        // Al salir del campo, asegurar formato correcto
-                        montoField.addEventListener('blur', function(e) {
-                            const value = parseFloat(unformatNumber(e.target.value));
-                            if (!isNaN(value)) {
-                                e.target.value = formatNumber(value.toFixed(2));
-                            }
-                        });
-
-                    }
-                }, 2000);
-            });
-            
-            // NOTA: La función closeAddExpenseModal() ya está definida en expenses.js
-            // No necesitamos redefinirla aquí
-        </script>
-            // FUNCIÓN PARA MANEJAR SUBIDA DE ARCHIVOS CON OCR
-            async function handleFileUpload(input) {
-                if (!input.files || input.files.length === 0) {
-                    return;
-                }
-                
-                const uploadedFilesContainer = document.getElementById('uploaded-files');
-                const ocrResultsContainer = document.getElementById('ocr-results');
-                const ocrContentContainer = document.getElementById('ocr-content');
-                
-                for (let i = 0; i < input.files.length; i++) {
-                    const file = input.files[i];
-
-                    
-                    // Crear preview del archivo
-                    const fileDiv = document.createElement('div');
-                    fileDiv.className = 'glass-panel p-4 border border-accent-gold/30 rounded-lg';
-                    fileDiv.innerHTML = \`
-                        <div class="flex items-center justify-between mb-2">
-                            <div class="flex items-center">
-                                <i class="fas fa-file-image text-accent-emerald mr-2"></i>
-                                <span class="text-sm font-semibold text-text-primary">\${file.name}</span>
-                            </div>
-                            <span class="text-xs text-text-secondary">\${(file.size / 1024).toFixed(1)} KB</span>
-                        </div>
-                        <div class="w-full bg-glass-hover rounded-full h-2 mb-2">
-                            <div class="bg-gradient-to-r from-accent-gold to-accent-emerald h-2 rounded-full animate-pulse" style="width: 0%" id="progress-\${i}"></div>
-                        </div>
-                        <div class="text-xs text-accent-gold">⚡ Procesando OCR...</div>
-                    \`;
-                    uploadedFilesContainer.appendChild(fileDiv);
-                    
-                    // Simular progreso
-                    let progress = 0;
-                    const progressBar = document.getElementById(\`progress-\${i}\`);
-                    const progressInterval = setInterval(() => {
-                        progress += Math.random() * 20;
-                        if (progress >= 100) {
-                            progress = 100;
-                            clearInterval(progressInterval);
-                        }
-                        progressBar.style.width = progress + '%';
-                    }, 200);
-                    
-                    // Simular subida y procesamiento OCR
-                    try {
-                        const formData = new FormData();
-                        formData.append('file', file);
-                        
-                        // Enviar al endpoint de subida (usamos el mock de OCR)
-                        const response = await fetch('/api/attachments', {
-                            method: 'POST',
-                            body: formData
-                        });
-                        
-                        if (response.ok) {
-                            const result = await response.json();
-
-                            
-                            // Actualizar el archivo con el resultado exitoso
-                            fileDiv.innerHTML = \`
-                                <div class="flex items-center justify-between mb-2">
-                                    <div class="flex items-center">
-                                        <i class="fas fa-check-circle text-emerald mr-2"></i>
-                                        <span class="text-sm font-semibold text-text-primary">\${file.name}</span>
-                                    </div>
-                                    <span class="text-xs text-emerald">✅ Completado</span>
-                                </div>
-                                <div class="text-xs text-text-secondary">
-                                    📄 URL: \${result.url}
-                                </div>
-                            \`;
-                            
-                            // Si hay resultados de OCR, mostrarlos
-                            if (result.ocr_result && result.ocr_result.text) {
-                                ocrResultsContainer.style.display = 'block';
-                                
-                                const ocrDiv = document.createElement('div');
-                                ocrDiv.className = 'glass-panel p-4 border border-accent-emerald/30 rounded-lg';
-                                ocrDiv.innerHTML = \`
-                                    <div class="flex items-center justify-between mb-3">
-                                        <div class="flex items-center">
-                                            <i class="fas fa-eye text-accent-emerald mr-2"></i>
-                                            <span class="font-semibold text-text-primary">\${file.name}</span>
-                                        </div>
-                                        <span class="text-xs text-accent-emerald">Confianza: \${(result.ocr_result.confidence * 100).toFixed(0)}%</span>
-                                    </div>
-                                    <div class="text-sm text-text-primary bg-glass-hover rounded p-3 font-mono">
-                                        \${result.ocr_result.text.replace(/\\n/g, '<br>')}
-                                    </div>
-                                    <div class="mt-3 flex justify-end">
-                                        <button onclick="fillFormWithOCR(decodeURIComponent('\${encodeURIComponent(result.ocr_result.text)}'))" class="premium-button text-xs">
-                                            <i class="fas fa-magic mr-2"></i>
-                                            ✨ Llenar Formulario Automáticamente
-                                        </button>
-                                    </div>
-                                \`;
-                                ocrContentContainer.appendChild(ocrDiv);
-                            }
-                            
-                        } else {
-                            throw new Error('Error en la subida del archivo');
-                        }
-                        
-                    } catch (error) {
-                        console.error('❌ Error procesando archivo:', error);
-                        fileDiv.innerHTML = \`
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center">
-                                    <i class="fas fa-exclamation-circle text-red-400 mr-2"></i>
-                                    <span class="text-sm font-semibold text-text-primary">\${file.name}</span>
-                                </div>
-                                <span class="text-xs text-red-400">❌ Error</span>
-                            </div>
-                            <div class="text-xs text-red-400 mt-1">Error: \${error.message}</div>
-                        \`;
-                    }
-                }
-            }
-            
-
-        </script>
     </body>
     </html>
   `)
 })
 
+        <div className="mb-6">
+          <h3 className="text-2xl font-semibold text-accent-gold flex items-center">
+            <i className="fas fa-filter mr-3 text-accent-gold"></i>
+            Filtros Ejecutivos
+          </h3>
+          <p className="text-text-secondary mt-2">
+            Controles avanzados de visualización de datos
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-accent-gold flex items-center">
+              <i className="fas fa-building mr-2"></i>
+              Empresa
+            </label>
+            <select 
+              id="filter-company" 
+              onChange="applyFilters()" 
+              className="w-full bg-white text-black border-2 border-accent-sapphire rounded-lg px-4 py-3 font-medium focus:ring-2 focus:ring-accent-gold focus:border-accent-gold transition-all"
+            >
+              <option value="">Todas las empresas</option>
+              <option value="1">🇲🇽 TechMX Solutions</option>
+                <option value="2">🇲🇽 Innovación Digital MX</option>
+                <option value="4">🇪🇸 TechES Barcelona</option>
+            </select>
+        </div>
+        <div>
+            <label class="gold">👤 Usuario</label><br>
+            <select id="filter-user" onchange="filterExpenses()">
+                <option value="">Todos</option>
+                <option value="1">👑 Alejandro</option>
+                <option value="2">✏️ María López</option>
+                <option value="3">⭐ Carlos</option>
+            </select>
+        </div>
+        <div>
+            <label class="gold">📊 Estado</label><br>
+            <select id="filter-status" onchange="filterExpenses()">
+                <option value="">Todos</option>
+                <option value="pending">⏳ Pendiente</option>
+                <option value="approved">✅ Aprobado</option>
+                <option value="rejected">❌ Rechazado</option>
+            </select>
+        </div>
+    </div>
+    
+    <button onclick="quickMaria()" class="btn btn-green">MARÍA</button>
+    <button onclick="quickPending()" class="btn btn-gold" style="background: #f59e0b;">PENDIENTES</button>
+    <button onclick="clearFilters()" class="btn btn-red">LIMPIAR</button>
+</div>
+
+<div class="card">
+    <h3 class="text-xl gold mb-4"><i class="fas fa-list mr-2"></i>Gastos (<span id="count">0</span>) - Total: <span id="total" class="gold">$0</span></h3>
+    
+    <table id="expenses-table">
+        <thead>
+            <tr>
+                <th><i class="fas fa-hashtag gold"></i> ID</th>
+                <th><i class="fas fa-calendar gold"></i> Fecha</th>
+                <th><i class="fas fa-file-text gold"></i> Descripción</th>
+                <th><i class="fas fa-building gold"></i> Empresa</th>
+                <th><i class="fas fa-user gold"></i> Usuario</th>
+                <th><i class="fas fa-money-bill gold"></i> Monto</th>
+                <th><i class="fas fa-flag gold"></i> Estado</th>
+            </tr>
+        </thead>
+        <tbody id="tbody">
+            <tr><td colspan="7" style="text-align: center; padding: 40px;"><i class="fas fa-spinner fa-spin gold"></i> Cargando...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- FORM MODAL -->
+<div id="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000;">
+    <div style="background: #1a1d25; border-radius: 12px; padding: 30px; margin: 50px auto; max-width: 500px; border: 2px solid #f59e0b;">
+        <h2 class="text-2xl gold mb-4"><i class="fas fa-plus mr-2"></i>Agregar Gasto</h2>
+        
+        <div style="margin-bottom: 15px;">
+            <label class="gold">🏢 Empresa *</label><br>
+            <select id="new-company" required style="width: 100%;">
+                <option value="">Seleccionar...</option>
+                <option value="1">🇲🇽 TechMX Solutions</option>
+                <option value="2">🇲🇽 Innovación Digital MX</option>
+                <option value="4">🇪🇸 TechES Barcelona</option>
+            </select>
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+            <label class="gold">👤 Usuario *</label><br>
+            <select id="new-user" required style="width: 100%;">
+                <option value="">Seleccionar...</option>
+                <option value="1">👑 Alejandro</option>
+                <option value="2">✏️ María López</option>
+                <option value="3">⭐ Carlos</option>
+            </select>
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+            <label class="gold">📝 Descripción *</label><br>
+            <input type="text" id="new-desc" required placeholder="Ej: Comida con cliente" style="width: 100%;">
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+            <div>
+                <label class="gold">💰 Monto *</label><br>
+                <input type="number" step="0.01" id="new-amount" required placeholder="0.00" style="width: 100%;">
+            </div>
+            <div>
+                <label class="gold">💱 Moneda *</label><br>
+                <select id="new-currency" required style="width: 100%;">
+                    <option value="">Moneda</option>
+                    <option value="MXN">🇲🇽 MXN</option>
+                    <option value="USD">🇺🇸 USD</option>
+                    <option value="EUR">🇪🇺 EUR</option>
+                </select>
+            </div>
+            <div>
+                <label class="gold">📅 Fecha *</label><br>
+                <input type="date" id="new-date" required style="width: 100%;">
+            </div>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <button onclick="closeForm()" class="btn btn-red" style="width: 100%;">❌ Cancelar</button>
+            <button onclick="saveExpense()" class="btn btn-green" style="width: 100%;">💾 GUARDAR</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let allExpenses = [];
+
+// LOAD DATA
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 NUCLEAR system loading...');
+    loadExpenses();
+    document.getElementById('new-date').value = new Date().toISOString().split('T')[0];
+});
+
+async function loadExpenses() {
+    try {
+        const response = await fetch('/api/expenses');
+        const data = await response.json();
+        allExpenses = data.expenses || [];
+        console.log('✅ Loaded', allExpenses.length, 'expenses');
+        renderExpenses(allExpenses);
+    } catch (error) {
+        console.error('❌ Error:', error);
+        document.getElementById('tbody').innerHTML = '<tr><td colspan="7" style="text-align: center; color: red;">Error: ' + error.message + '</td></tr>';
+    }
+}
+
+function renderExpenses(expenses) {
+    const tbody = document.getElementById('tbody');
+    const count = expenses.length;
+    const total = expenses.reduce((sum, e) => sum + parseFloat(e.amount_mxn || 0), 0);
+    
+    document.getElementById('count').textContent = count;
+    document.getElementById('total').textContent = '$' + total.toLocaleString('es-MX');
+    
+    if (count === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: gray; padding: 40px;">No hay gastos</td></tr>';
+        return;
+    }
+    
+    const rows = expenses.map(e => {
+        const statusColors = {
+            'pending': '⏳ <span style="color: #f59e0b;">Pendiente</span>',
+            'approved': '✅ <span style="color: #10b981;">Aprobado</span>',
+            'rejected': '❌ <span style="color: #ef4444;">Rechazado</span>'
+        };
+        
+        return \`<tr style="cursor: pointer;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
+            <td><strong>#\${e.id}</strong></td>
+            <td>\${e.expense_date}</td>
+            <td>\${e.description}</td>
+            <td>\${e.company_name || 'N/A'}</td>
+            <td>\${e.user_name || 'N/A'}</td>
+            <td><strong>\${e.currency} $\${parseFloat(e.amount || 0).toLocaleString()}</strong></td>
+            <td>\${statusColors[e.status] || e.status}</td>
+        </tr>\`;
+    }).join('');
+    
+    tbody.innerHTML = rows;
+}
+
+// FILTERS
+function filterExpenses() {
+    const company = document.getElementById('filter-company').value;
+    const user = document.getElementById('filter-user').value;
+    const status = document.getElementById('filter-status').value;
+    
+    let filtered = allExpenses;
+    if (company) filtered = filtered.filter(e => e.company_id == company);
+    if (user) filtered = filtered.filter(e => e.user_id == user);
+    if (status) filtered = filtered.filter(e => e.status === status);
+    
+    console.log(\`🎯 Filtered: \${filtered.length} of \${allExpenses.length}\`);
+    renderExpenses(filtered);
+}
+
+function quickMaria() {
+    document.getElementById('filter-user').value = '2';
+    filterExpenses();
+}
+
+function quickPending() {
+    document.getElementById('filter-status').value = 'pending';
+    filterExpenses();
+}
+
+function clearFilters() {
+    document.getElementById('filter-company').value = '';
+    document.getElementById('filter-user').value = '';
+    document.getElementById('filter-status').value = '';
+    renderExpenses(allExpenses);
+}
+
+// MODAL
+function showForm() {
+    document.getElementById('modal').style.display = 'block';
+}
+
+function closeForm() {
+    document.getElementById('modal').style.display = 'none';
+}
+
+async function saveExpense() {
+    const data = {
+        company_id: document.getElementById('new-company').value,
+        user_id: document.getElementById('new-user').value,
+        expense_type_id: 1,
+        description: document.getElementById('new-desc').value,
+        amount: parseFloat(document.getElementById('new-amount').value),
+        currency: document.getElementById('new-currency').value,
+        expense_date: document.getElementById('new-date').value,
+        payment_method: 'cash',
+        status: 'pending'
+    };
+    
+    if (!data.company_id || !data.user_id || !data.description || !data.amount || !data.currency || !data.expense_date) {
+        alert('❌ Faltan campos obligatorios');
+        return;
+    }
+    
+    try {
+        console.log('💾 Saving:', data);
+        const response = await fetch('/api/expenses', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+            alert('✅ Gasto guardado!');
+            closeForm();
+            loadExpenses();
+        } else {
+            throw new Error('HTTP ' + response.status);
+        }
+    } catch (error) {
+        alert('❌ Error: ' + error.message);
+    }
+}
+
+console.log('🚀 NUCLEAR Expenses System - ALL FUNCTIONS LOADED!');
+</script>
+
+</body></html>
+    `);
+  }
+})
+
+// OLD COMPLEX VERSION (DISABLED)
 app.get('/expenses-old', (c) => {
   return c.render(
     <div className="min-h-screen bg-primary">
@@ -5076,201 +4733,8 @@ app.get('/api/auth/companies', authMiddleware, async (c) => {
 })
 
 // Analytics page - Advanced analytics and reports
-app.get('/analytics', (c) => {
-  return c.render(
-    <div className="min-h-screen" style="background: linear-gradient(135deg, #0a0b0d 0%, #12141a 50%, #1a1d25 100%);">
-      {/* Premium Navigation */}
-      <nav className="nav-premium border-b" style="border-color: rgba(255, 255, 255, 0.1);">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            {/* Logo & Branding */}
-            <div className="flex items-center space-x-6">
-              <div className="flex items-center space-x-3">
-                <div className="relative">
-                  <i className="fas fa-gem text-3xl text-gold animate-pulse-gold"></i>
-                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full animate-ping"></div>
-                </div>
-                <div>
-                  <h1 className="nav-logo text-3xl">Lyra Expenses</h1>
-                  <p className="text-xs text-secondary opacity-75 font-medium">Executive Financial Management</p>
-                </div>
-              </div>
-              <span className="nav-badge">
-                Sistema 4-D Premium
-              </span>
-            </div>
-
-            {/* Navigation Menu */}
-            <div className="flex items-center space-x-8">
-              {/* Main Navigation Links */}
-              <nav className="flex space-x-6">
-                <a href="/" className="nav-link text-secondary hover:text-gold transition-colors duration-200 flex items-center space-x-2">
-                  <i className="fas fa-chart-pie"></i>
-                  <span>Dashboard</span>
-                </a>
-                <a href="/companies" className="nav-link text-secondary hover:text-gold transition-colors duration-200 flex items-center space-x-2">
-                  <i className="fas fa-building"></i>
-                  <span>Empresas</span>
-                </a>
-                <a href="/expenses" className="nav-link text-secondary hover:text-gold transition-colors duration-200 flex items-center space-x-2">
-                  <i className="fas fa-receipt"></i>
-                  <span>Gastos</span>
-                </a>
-                <a href="/analytics" className="nav-link text-gold active flex items-center space-x-2">
-                  <i className="fas fa-chart-line"></i>
-                  <span>Analytics</span>
-                </a>
-              </nav>
-              
-              {/* Right Side Actions */}
-              <div className="flex items-center space-x-4 border-l border-glass-border pl-6">
-                <div id="auth-indicator">
-                  {/* Authentication status will be inserted here */}
-                </div>
-                
-                <select id="currency-selector" className="form-input-premium bg-glass border-0 text-sm min-w-[120px]">
-                  <option value="MXN">💎 MXN</option>
-                  <option value="USD">🔹 USD</option>
-                  <option value="EUR">🔸 EUR</option>
-                </select>
-                
-                <button onclick="showExpenseForm()" className="btn-premium btn-emerald text-sm">
-                  <i className="fas fa-plus mr-1"></i>
-                  Nuevo
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </nav>
-      
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h2 className="text-4xl font-bold gradient-text-gold mb-3">
-            <i className="fas fa-chart-line mr-3"></i>
-            Analytics Avanzado
-          </h2>
-          <p className="text-secondary text-lg">Análisis profundo y reportes inteligentes multiempresa</p>
-          <div className="flex justify-center mt-4">
-            <div className="flex items-center space-x-6 text-sm text-tertiary">
-              <span className="flex items-center">
-                <div className="w-2 h-2 bg-emerald rounded-full mr-2 animate-pulse"></div>
-                Datos en tiempo real
-              </span>
-              <span className="flex items-center">
-                <div className="w-2 h-2 bg-gold rounded-full mr-2 animate-pulse"></div>
-                Machine Learning activo
-              </span>
-              <span className="flex items-center">
-                <div className="w-2 h-2 bg-sapphire rounded-full mr-2 animate-pulse"></div>
-                Predicciones inteligentes
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Coming Soon */}
-        <div className="glass-panel p-16 text-center">
-          <div className="mb-8">
-            <i className="fas fa-rocket text-6xl text-gold mb-6"></i>
-            <h3 className="text-3xl font-bold text-primary mb-4">Próximamente</h3>
-            <p className="text-xl text-secondary mb-6">Analytics Avanzado con IA</p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="p-6 bg-glass rounded-lg">
-              <i className="fas fa-brain text-3xl text-emerald mb-4"></i>
-              <h4 className="text-lg font-bold text-primary mb-2">Machine Learning</h4>
-              <p className="text-sm text-tertiary">Predicciones automáticas de gastos y detección de anomalías</p>
-            </div>
-            
-            <div className="p-6 bg-glass rounded-lg">
-              <i className="fas fa-chart-network text-3xl text-gold mb-4"></i>
-              <h4 className="text-lg font-bold text-primary mb-2">Analytics Predictivo</h4>
-              <p className="text-sm text-tertiary">Forecasting inteligente y optimización de presupuestos</p>
-            </div>
-            
-            <div className="p-6 bg-glass rounded-lg">
-              <i className="fas fa-file-chart-line text-3xl text-sapphire mb-4"></i>
-              <h4 className="text-lg font-bold text-primary mb-2">Reportes Avanzados</h4>
-              <p className="text-sm text-tertiary">Reportes ejecutivos automatizados con insights accionables</p>
-            </div>
-          </div>
-          
-          <div className="flex justify-center space-x-4">
-            <a href="/" className="btn-premium btn-gold">
-              <i className="fas fa-chart-pie mr-2"></i>
-              Volver al Dashboard
-            </a>
-            <a href="/companies" className="btn-premium btn-sapphire">
-              <i className="fas fa-building mr-2"></i>
-              Ver Empresas
-            </a>
-          </div>
-        </div>
-        
-      </div>
-      
-      {/* Dependencies */}
-      <script src="https://cdn.tailwindcss.com"></script>
-      <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet" />
-      <link href="/static/styles.css" rel="stylesheet" />
-      
-      {/* Scripts */}
-      <script src="/static/app.js"></script>
-      <script>{`
-        // Initialize expenses page IMMEDIATELY
-        console.log('🚀 Expenses page script loaded');
-        
-        // Function to load expenses with retry
-        function loadExpensesNow() {
-          console.log('🔄 Attempting to load expenses...');
-          
-          fetch('/api/expenses')
-            .then(response => response.json())
-            .then(data => {
-              console.log('✅ Expenses loaded:', data);
-              
-              // Update counters
-              const count = data.expenses?.length || 0;
-              const total = data.expenses?.reduce((sum, e) => sum + parseFloat(e.amount_mxn || 0), 0) || 0;
-              
-              document.getElementById('expenses-count').textContent = count + ' gastos';
-              document.getElementById('expenses-total').textContent = '$' + total.toLocaleString('es-MX');
-              
-              // Update table
-              EXPENSES_UPDATE_TABLE(data.expenses || []);
-            })
-            .catch(error => {
-              console.error('❌ Error loading expenses:', error);
-              
-              // Show error in table
-              const tableBody = document.getElementById('expenses-table');
-              if (tableBody) {
-                tableBody.innerHTML = '<tr><td colspan="10" class="px-6 py-8 text-center text-red-500"><i class="fas fa-exclamation-triangle mr-2"></i>Error al cargar gastos</td></tr>';
-              }
-            });
-        }
-        
-        // Load immediately
-        loadExpensesNow();
-        
-        // Also try after DOM loaded
-        document.addEventListener('DOMContentLoaded', function() {
-          console.log('🚀 DOM loaded - retrying expenses load');
-          setTimeout(loadExpensesNow, 500);
-        });
-        
-        // Try again after 2 seconds as backup
-        setTimeout(loadExpensesNow, 2000);
-      `}</script>
-    </div>
-  );
-})
-
 // Dashboard Analytics Route - Purple themed with "Ficha de gasto" sidebar
-app.get('/analytics-morado', (c) => {
+app.get('/analytics', (c) => {
   return c.html(`<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -5308,13 +4772,13 @@ app.get('/analytics-morado', (c) => {
                     <h1 class="text-2xl font-bold text-white">Lyra Expenses</h1>
                 </div>
                 <nav class="flex space-x-6">
-                    <a href="/analytics-morado" class="text-white font-medium px-3 py-2 rounded-md bg-white bg-opacity-20">
+                    <a href="/analytics" class="text-white font-medium px-3 py-2 rounded-md bg-white bg-opacity-20">
                         <i class="fas fa-chart-pie mr-2"></i>Analytics
                     </a>
-                    <a href="/" class="text-white hover:text-purple-200 font-medium px-3 py-2 rounded-md hover:bg-white hover:bg-opacity-10 transition">
-                        <i class="fas fa-building mr-2"></i>Dashboard
+                    <a href="/empresas" class="text-white hover:text-purple-200 font-medium px-3 py-2 rounded-md hover:bg-white hover:bg-opacity-10 transition">
+                        <i class="fas fa-building mr-2"></i>Empresas
                     </a>
-                    <a href="/expenses" class="text-white hover:text-purple-200 font-medium px-3 py-2 rounded-md hover:bg-white hover:bg-opacity-10 transition">
+                    <a href="/gastos" class="text-white hover:text-purple-200 font-medium px-3 py-2 rounded-md hover:bg-white hover:bg-opacity-10 transition">
                         <i class="fas fa-receipt mr-2"></i>Gastos
                     </a>
                 </nav>
@@ -5361,6 +4825,17 @@ app.get('/analytics-morado', (c) => {
                             <option value="USD">USD - Dólar</option>
                             <option value="EUR">EUR - Euro</option>
                         </select>
+                    </div>
+
+                    <!-- Date Range -->
+                    <div>
+                        <label class="block text-sm font-medium text-purple-800 mb-2">Fecha Desde</label>
+                        <input type="date" id="dateFromFilter" class="w-full px-3 py-2 border border-purple-200 rounded-md bg-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-purple-800 mb-2">Fecha Hasta</label>
+                        <input type="date" id="dateToFilter" class="w-full px-3 py-2 border border-purple-200 rounded-md bg-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
                     </div>
 
                     <!-- Apply Filters Button -->
@@ -5698,7 +5173,9 @@ app.get('/analytics-morado', (c) => {
             currentFilters = {
                 company_id: document.getElementById('companyFilter').value,
                 status: document.getElementById('statusFilter').value,
-                currency: document.getElementById('currencyFilter').value
+                currency: document.getElementById('currencyFilter').value,
+                date_from: document.getElementById('dateFromFilter').value,
+                date_to: document.getElementById('dateToFilter').value
             };
             
             // Remove empty filters
@@ -5716,6 +5193,8 @@ app.get('/analytics-morado', (c) => {
             document.getElementById('companyFilter').value = '';
             document.getElementById('statusFilter').value = '';
             document.getElementById('currencyFilter').value = '';
+            document.getElementById('dateFromFilter').value = '';
+            document.getElementById('dateToFilter').value = '';
             
             currentFilters = {};
             loadDashboardData();
@@ -5724,6 +5203,325 @@ app.get('/analytics-morado', (c) => {
         // Utility functions
         function formatDate(dateString) {
             return new Date(dateString).toLocaleDateString('es-ES');
+        }
+
+        function getStatusLabel(status) {
+            const labels = {
+                'pending': 'Pendiente',
+                'approved': 'Aprobado',
+                'rejected': 'Rechazado',
+                'reimbursed': 'Reembolsado'
+            };
+            return labels[status] || status;
+        }
+
+        function getStatusBadgeClass(status) {
+            const classes = {
+                'pending': 'bg-yellow-100 text-yellow-800',
+                'approved': 'bg-green-100 text-green-800',
+                'rejected': 'bg-red-100 text-red-800',
+                'reimbursed': 'bg-blue-100 text-blue-800'
+            };
+            return classes[status] || 'bg-gray-100 text-gray-800';
+        }
+    </script>
+</body>
+</html>`);
+})
+
+// Empresas page - Purple themed
+app.get('/empresas', (c) => {
+  return c.html(`<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏢 Empresas - Lyra Expenses</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .purple-gradient { 
+            background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 50%, #c084fc 100%); 
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+    <!-- Navigation Header -->
+    <header class="purple-gradient shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-4">
+                    <div class="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-chart-line text-white text-xl"></i>
+                    </div>
+                    <h1 class="text-2xl font-bold text-white">Lyra Expenses</h1>
+                </div>
+                <nav class="flex space-x-6">
+                    <a href="/analytics" class="text-white hover:text-purple-200 font-medium px-3 py-2 rounded-md hover:bg-white hover:bg-opacity-10 transition">
+                        <i class="fas fa-chart-pie mr-2"></i>Analytics
+                    </a>
+                    <a href="/empresas" class="text-white font-medium px-3 py-2 rounded-md bg-white bg-opacity-20">
+                        <i class="fas fa-building mr-2"></i>Empresas
+                    </a>
+                    <a href="/gastos" class="text-white hover:text-purple-200 font-medium px-3 py-2 rounded-md hover:bg-white hover:bg-opacity-10 transition">
+                        <i class="fas fa-receipt mr-2"></i>Gastos
+                    </a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div class="px-4 py-6 sm:px-0">
+            <h2 class="text-3xl font-bold text-gray-900 mb-6">
+                <i class="fas fa-building mr-2 text-purple-600"></i>Gestión de Empresas
+            </h2>
+            
+            <div class="bg-white shadow rounded-lg">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-medium text-gray-900">Lista de Empresas</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Empresa</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">País</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Moneda</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha Creación</th>
+                            </tr>
+                        </thead>
+                        <tbody id="companiesTableBody" class="bg-white divide-y divide-gray-200">
+                            <!-- Table rows will be populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCompanies();
+        });
+
+        async function loadCompanies() {
+            try {
+                const response = await axios.get('/api/companies');
+                const companies = response.data.companies;
+                
+                const tableBody = document.getElementById('companiesTableBody');
+                tableBody.innerHTML = '';
+                
+                companies.forEach(company => {
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-gray-50';
+                    row.innerHTML = 
+                        '<td class="px-6 py-4 whitespace-nowrap"><div class="flex items-center"><div class="text-sm font-medium text-gray-900">' + company.name + '</div></div></td>' +
+                        '<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">' + (company.country === 'MX' ? '🇲🇽 México' : company.country === 'ES' ? '🇪🇸 España' : company.country) + '</td>' +
+                        '<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">' + company.primary_currency + '</td>' +
+                        '<td class="px-6 py-4 whitespace-nowrap"><span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Activa</span></td>' +
+                        '<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">' + new Date(company.created_at).toLocaleDateString('es-ES') + '</td>';
+                    tableBody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error loading companies:', error);
+            }
+        }
+    </script>
+</body>
+</html>`);
+})
+
+// Gastos page - Purple themed
+app.get('/gastos', (c) => {
+  return c.html(`<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>💸 Gastos - Lyra Expenses</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .purple-gradient { 
+            background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 50%, #c084fc 100%); 
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+    <!-- Navigation Header -->
+    <header class="purple-gradient shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-4">
+                    <div class="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-chart-line text-white text-xl"></i>
+                    </div>
+                    <h1 class="text-2xl font-bold text-white">Lyra Expenses</h1>
+                </div>
+                <nav class="flex space-x-6">
+                    <a href="/analytics" class="text-white hover:text-purple-200 font-medium px-3 py-2 rounded-md hover:bg-white hover:bg-opacity-10 transition">
+                        <i class="fas fa-chart-pie mr-2"></i>Analytics
+                    </a>
+                    <a href="/empresas" class="text-white hover:text-purple-200 font-medium px-3 py-2 rounded-md hover:bg-white hover:bg-opacity-10 transition">
+                        <i class="fas fa-building mr-2"></i>Empresas
+                    </a>
+                    <a href="/gastos" class="text-white font-medium px-3 py-2 rounded-md bg-white bg-opacity-20">
+                        <i class="fas fa-receipt mr-2"></i>Gastos
+                    </a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div class="px-4 py-6 sm:px-0">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-3xl font-bold text-gray-900">
+                    <i class="fas fa-receipt mr-2 text-purple-600"></i>Gestión de Gastos
+                </h2>
+                <button id="addExpenseBtn" class="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition">
+                    <i class="fas fa-plus mr-2"></i>Nuevo Gasto
+                </button>
+            </div>
+            
+            <!-- Filters -->
+            <div class="bg-white p-4 rounded-lg shadow mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Empresa</label>
+                        <select id="companyFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            <option value="">Todas las empresas</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+                        <select id="statusFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            <option value="">Todos los estados</option>
+                            <option value="pending">Pendiente</option>
+                            <option value="approved">Aprobado</option>
+                            <option value="rejected">Rechazado</option>
+                            <option value="reimbursed">Reembolsado</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Moneda</label>
+                        <select id="currencyFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            <option value="">Todas las monedas</option>
+                            <option value="MXN">MXN</option>
+                            <option value="USD">USD</option>
+                            <option value="EUR">EUR</option>
+                        </select>
+                    </div>
+                    <div class="flex items-end">
+                        <button id="applyFiltersBtn" class="w-full bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition">
+                            <i class="fas fa-search mr-2"></i>Filtrar
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white shadow rounded-lg">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-medium text-gray-900">Lista de Gastos</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descripción</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Empresa</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Monto</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuario</th>
+                            </tr>
+                        </thead>
+                        <tbody id="expensesTableBody" class="bg-white divide-y divide-gray-200">
+                            <!-- Table rows will be populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentFilters = {};
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCompanies();
+            loadExpenses();
+            initializeEventListeners();
+        });
+
+        function initializeEventListeners() {
+            document.getElementById('applyFiltersBtn').addEventListener('click', applyFilters);
+        }
+
+        async function loadCompanies() {
+            try {
+                const response = await axios.get('/api/companies');
+                const companies = response.data.companies;
+                
+                const select = document.getElementById('companyFilter');
+                companies.forEach(company => {
+                    const option = document.createElement('option');
+                    option.value = company.id;
+                    option.textContent = company.name + ' (' + company.country + ')';
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading companies:', error);
+            }
+        }
+
+        async function loadExpenses() {
+            try {
+                const response = await axios.get('/api/expenses', {
+                    params: currentFilters
+                });
+                const expenses = response.data.expenses;
+                
+                const tableBody = document.getElementById('expensesTableBody');
+                tableBody.innerHTML = '';
+                
+                expenses.forEach(expense => {
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-gray-50';
+                    row.innerHTML = 
+                        '<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">' + new Date(expense.expense_date).toLocaleDateString('es-ES') + '</td>' +
+                        '<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">' + expense.description + '</td>' +
+                        '<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">' + expense.company_name + '</td>' +
+                        '<td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">' + expense.currency + ' ' + parseFloat(expense.amount).toLocaleString() + '</td>' +
+                        '<td class="px-6 py-4 whitespace-nowrap"><span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full ' + getStatusBadgeClass(expense.status) + '">' + getStatusLabel(expense.status) + '</span></td>' +
+                        '<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">' + expense.user_name + '</td>';
+                    tableBody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error loading expenses:', error);
+            }
+        }
+
+        function applyFilters() {
+            currentFilters = {
+                company_id: document.getElementById('companyFilter').value,
+                status: document.getElementById('statusFilter').value,
+                currency: document.getElementById('currencyFilter').value
+            };
+            
+            // Remove empty filters
+            Object.keys(currentFilters).forEach(key => {
+                if (!currentFilters[key]) {
+                    delete currentFilters[key];
+                }
+            });
+            
+            loadExpenses();
         }
 
         function getStatusLabel(status) {

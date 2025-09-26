@@ -1,0 +1,1264 @@
+import { Hono } from 'hono'
+import { cors } from 'hono/cors'
+import { logger } from 'hono/logger'
+import { serveStatic } from 'hono/cloudflare-workers'
+
+// Types for Cloudflare bindings
+type Bindings = {
+  DB: D1Database;
+  ATTACHMENTS: R2Bucket;
+  ENVIRONMENT: string;
+}
+
+const app = new Hono<{ Bindings: Bindings }>()
+
+// Middleware
+app.use('*', logger())
+app.use('/api/*', cors())
+
+// Serve static files
+app.use('/static/*', serveStatic({ root: './public' }))
+
+// ===== API ROUTES =====
+
+// Health check
+app.get('/api/health', async (c) => {
+  const { env } = c;
+  
+  try {
+    const result = await env.DB.prepare('SELECT 1 as test').first();
+    return c.json({ 
+      status: 'healthy', 
+      database: 'connected',
+      environment: env.ENVIRONMENT || 'development',
+      timestamp: new Date().toISOString() 
+    });
+  } catch (error) {
+    return c.json({ 
+      status: 'unhealthy', 
+      database: 'disconnected',
+      error: error.message 
+    }, 500);
+  }
+})
+
+// Dashboard metrics
+app.get('/api/dashboard/metrics', async (c) => {
+  const { env } = c;
+  const query = c.req.query();
+  
+  try {
+    // Build WHERE clause for filters
+    let whereClause = 'WHERE 1=1';
+    const params = [];
+    
+    if (query.company_id) {
+      whereClause += ' AND e.company_id = ?';
+      params.push(query.company_id);
+    }
+    
+    if (query.status) {
+      whereClause += ' AND e.status = ?';
+      params.push(query.status);
+    }
+    
+    if (query.currency) {
+      whereClause += ' AND e.currency = ?';
+      params.push(query.currency);
+    }
+    
+    if (query.date_from) {
+      whereClause += ' AND e.expense_date >= ?';
+      params.push(query.date_from);
+    }
+    
+    if (query.date_to) {
+      whereClause += ' AND e.expense_date <= ?';
+      params.push(query.date_to);
+    }
+    
+    // Total expenses by status (with filters)
+    const statusMetrics = await env.DB.prepare(`
+      SELECT status, COUNT(*) as count, SUM(amount_mxn) as total_mxn
+      FROM expenses e
+      ${whereClause}
+      GROUP BY status
+    `).bind(...params).all();
+    
+    // Expenses by company (with filters)
+    const companyMetrics = await env.DB.prepare(`
+      SELECT c.name as company, c.country, COUNT(*) as count, SUM(e.amount_mxn) as total_mxn
+      FROM expenses e
+      JOIN companies c ON e.company_id = c.id
+      ${whereClause}
+      GROUP BY c.id, c.name, c.country
+      ORDER BY total_mxn DESC
+    `).bind(...params).all();
+    
+    // Recent expenses (with filters, limited to 10)
+    const recentExpenses = await env.DB.prepare(`
+      SELECT e.*, c.name as company_name, u.name as user_name
+      FROM expenses e
+      JOIN companies c ON e.company_id = c.id
+      JOIN users u ON e.user_id = u.id
+      ${whereClause}
+      ORDER BY e.created_at DESC
+      LIMIT 10
+    `).bind(...params).all();
+    
+    return c.json({
+      status_metrics: statusMetrics.results || [],
+      company_metrics: companyMetrics.results || [],
+      recent_expenses: recentExpenses.results || []
+    });
+  } catch (error) {
+    return c.json({ 
+      error: 'Failed to fetch dashboard metrics', 
+      details: error.message 
+    }, 500);
+  }
+})
+
+// Initialize database with test data (development only)
+app.post('/api/init-db', async (c) => {
+  const { env } = c;
+  
+  try {
+    // Create tables one by one
+    const tables = [
+      `CREATE TABLE IF NOT EXISTS companies (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        country TEXT NOT NULL CHECK (country IN ('MX', 'ES')), 
+        logo_url TEXT,
+        primary_currency TEXT NOT NULL DEFAULT 'MXN' CHECK (primary_currency IN ('MXN', 'EUR', 'USD')),
+        tax_id TEXT,
+        address TEXT,
+        active BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`,
+      
+      `CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT UNIQUE NOT NULL,
+        name TEXT NOT NULL,
+        password_hash TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'editor' CHECK (role IN ('viewer', 'editor', 'advanced', 'admin')),
+        active BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        last_login DATETIME
+      )`,
+      
+      `CREATE TABLE IF NOT EXISTS user_companies (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        company_id INTEGER NOT NULL,
+        can_view BOOLEAN NOT NULL DEFAULT TRUE,
+        can_edit BOOLEAN NOT NULL DEFAULT FALSE,
+        can_admin BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, company_id)
+      )`,
+      
+      `CREATE TABLE IF NOT EXISTS expense_types (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT,
+        category TEXT NOT NULL DEFAULT 'general' CHECK (category IN ('travel', 'meals', 'transport', 'accommodation', 'supplies', 'services', 'general')),
+        active BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`,
+      
+      `CREATE TABLE IF NOT EXISTS expenses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        company_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        expense_type_id INTEGER NOT NULL,
+        description TEXT NOT NULL,
+        expense_date DATE NOT NULL,
+        amount DECIMAL(12,2) NOT NULL,
+        currency TEXT NOT NULL CHECK (currency IN ('MXN', 'EUR', 'USD')),
+        exchange_rate DECIMAL(10,6) NOT NULL DEFAULT 1.0,
+        amount_mxn DECIMAL(12,2) NOT NULL,
+        payment_method TEXT CHECK (payment_method IN ('cash', 'credit_card', 'debit_card', 'bank_transfer', 'company_card', 'petty_cash')),
+        vendor TEXT,
+        invoice_number TEXT,
+        status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'reimbursed', 'invoiced')),
+        approved_by INTEGER,
+        approved_at DATETIME,
+        notes TEXT,
+        tags TEXT,
+        is_billable BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        created_by INTEGER NOT NULL,
+        updated_by INTEGER
+      )`
+    ];
+
+    // Create tables
+    for (const table of tables) {
+      await env.DB.prepare(table).run();
+    }
+
+    // Insert test data
+    await env.DB.prepare(`
+      INSERT OR IGNORE INTO companies (id, name, country, primary_currency, tax_id, active) VALUES 
+        (1, 'TechMX Solutions', 'MX', 'MXN', 'TMX123456789', TRUE),
+        (2, 'Innovación Digital MX', 'MX', 'MXN', 'IDM987654321', TRUE),
+        (3, 'Consultoría Estratégica MX', 'MX', 'MXN', 'CEM555666777', TRUE),
+        (4, 'TechES Barcelona', 'ES', 'EUR', 'B-12345678', TRUE),
+        (5, 'Innovación Madrid SL', 'ES', 'EUR', 'B-87654321', TRUE),
+        (6, 'Digital Valencia S.A.', 'ES', 'EUR', 'A-11223344', TRUE)
+    `).run();
+
+    await env.DB.prepare(`
+      INSERT OR IGNORE INTO expense_types (id, name, description, category, active) VALUES 
+        (1, 'Comidas de Trabajo', 'Gastos en restaurantes por reuniones de trabajo', 'meals', TRUE),
+        (2, 'Transporte Terrestre', 'Taxis, Uber, autobuses, metro', 'transport', TRUE),
+        (3, 'Combustible', 'Gasolina y gastos de vehículos', 'transport', TRUE),
+        (4, 'Hospedaje', 'Hoteles y alojamientos', 'accommodation', TRUE),
+        (5, 'Vuelos', 'Boletos de avión nacionales e internacionales', 'travel', TRUE),
+        (6, 'Material de Oficina', 'Papelería, suministros de oficina', 'supplies', TRUE),
+        (7, 'Software y Licencias', 'Suscripciones y licencias de software', 'services', TRUE),
+        (8, 'Capacitación', 'Cursos, conferencias, workshops', 'services', TRUE),
+        (9, 'Marketing', 'Publicidad, eventos, promociones', 'services', TRUE),
+        (10, 'Otros Gastos', 'Gastos diversos no categorizados', 'general', TRUE)
+    `).run();
+
+    await env.DB.prepare(`
+      INSERT OR IGNORE INTO users (id, email, name, password_hash, role, active) VALUES 
+        (1, 'admin@techmx.com', 'Alejandro Rodríguez', '$2b$10$yvsqabOwKIXJf5cu2nCIq.LDZQAKQPusEN2pvncvnTgO9lHfgE1F6', 'admin', TRUE),
+        (2, 'maria.lopez@techmx.com', 'María López', '$2b$10$E28fauI9DklVUyNGeGC6X.TP6wUw7PjE2d/anA3DhqXr3V64.3M7C', 'editor', TRUE),
+        (3, 'carlos.martinez@innovacion.mx', 'Carlos Martínez', '$2b$10$E28fauI9DklVUyNGeGC6X.TP6wUw7PjE2d/anA3DhqXr3V64.3M7C', 'advanced', TRUE),
+        (4, 'ana.garcia@consultoria.mx', 'Ana García', '$2b$10$E28fauI9DklVUyNGeGC6X.TP6wUw7PjE2d/anA3DhqXr3V64.3M7C', 'editor', TRUE),
+        (5, 'pedro.sanchez@techespana.es', 'Pedro Sánchez', '$2b$10$E28fauI9DklVUyNGeGC6X.TP6wUw7PjE2d/anA3DhqXr3V64.3M7C', 'advanced', TRUE),
+        (6, 'elena.torres@madrid.es', 'Elena Torres', '$2b$10$E28fauI9DklVUyNGeGC6X.TP6wUw7PjE2d/anA3DhqXr3V64.3M7C', 'editor', TRUE)
+    `).run();
+
+    await env.DB.prepare(`
+      INSERT OR IGNORE INTO user_companies (user_id, company_id, can_view, can_edit, can_admin) VALUES 
+        (1, 1, TRUE, TRUE, TRUE), (1, 2, TRUE, TRUE, TRUE), (1, 3, TRUE, TRUE, TRUE),
+        (1, 4, TRUE, TRUE, TRUE), (1, 5, TRUE, TRUE, TRUE), (1, 6, TRUE, TRUE, TRUE),
+        (2, 1, TRUE, TRUE, FALSE), (3, 2, TRUE, TRUE, FALSE), (4, 3, TRUE, TRUE, FALSE),
+        (5, 4, TRUE, TRUE, FALSE), (6, 5, TRUE, TRUE, FALSE)
+    `).run();
+
+    // Sample expenses
+    await env.DB.prepare(`
+      INSERT OR IGNORE INTO expenses (
+        id, company_id, user_id, expense_type_id, description, expense_date, 
+        amount, currency, exchange_rate, amount_mxn, payment_method, vendor, 
+        status, notes, is_billable, created_by
+      ) VALUES 
+        (1, 1, 2, 1, 'Comida con cliente - Proyecto Alpha', '2024-09-20', 850.00, 'MXN', 1.0, 850.00, 'company_card', 'Restaurante Pujol', 'approved', 'Reunión de cierre de proyecto', TRUE, 2),
+        (2, 1, 2, 2, 'Taxi al aeropuerto', '2024-09-21', 320.50, 'MXN', 1.0, 320.50, 'cash', 'Uber', 'pending', NULL, FALSE, 2),
+        (3, 2, 3, 7, 'Licencia Adobe Creative Suite', '2024-09-22', 2500.00, 'MXN', 1.0, 2500.00, 'credit_card', 'Adobe Inc', 'approved', 'Renovación anual', FALSE, 3),
+        (4, 4, 5, 5, 'Vuelo Barcelona-Madrid', '2024-09-18', 120.00, 'EUR', 20.15, 2418.00, 'company_card', 'Iberia', 'reimbursed', 'Reunión con cliente en Madrid', TRUE, 5),
+        (5, 5, 6, 4, 'Hotel NH Collection Madrid', '2024-09-19', 180.00, 'EUR', 20.15, 3627.00, 'credit_card', 'NH Hotels', 'approved', 'Estadía 2 noches', TRUE, 6),
+        (6, 1, 1, 8, 'Conferencia AWS Re:Invent', '2024-09-15', 1500.00, 'USD', 18.25, 27375.00, 'company_card', 'Amazon Web Services', 'approved', 'Capacitación en cloud computing', FALSE, 1),
+        (7, 3, 4, 6, 'Material de oficina importado', '2024-09-23', 250.00, 'USD', 18.25, 4562.50, 'bank_transfer', 'Office Depot USA', 'pending', 'Material especializado', FALSE, 4)
+    `).run();
+
+    return c.json({ 
+      success: true, 
+      message: 'Base de datos inicializada con datos de prueba',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    return c.json({ 
+      error: 'Failed to initialize database', 
+      details: error.message 
+    }, 500);
+  }
+})
+
+// Companies API
+app.get('/api/companies', async (c) => {
+  const { env } = c;
+  
+  try {
+    const companies = await env.DB.prepare(`
+      SELECT id, name, country, primary_currency, logo_url, active, created_at
+      FROM companies 
+      WHERE active = TRUE
+      ORDER BY country, name
+    `).all();
+    
+    return c.json({ companies: companies.results });
+  } catch (error) {
+    return c.json({ error: 'Failed to fetch companies' }, 500);
+  }
+})
+
+// Expenses API - List with filters
+app.get('/api/expenses', async (c) => {
+  const { env } = c;
+  const query = c.req.query();
+  
+  let sql = `
+    SELECT e.*, c.name as company_name, u.name as user_name, et.name as expense_type_name,
+           c.country, c.primary_currency as company_currency
+    FROM expenses e
+    JOIN companies c ON e.company_id = c.id
+    JOIN users u ON e.user_id = u.id
+    JOIN expense_types et ON e.expense_type_id = et.id
+    WHERE 1=1
+  `;
+  
+  const params = [];
+  
+  // Filters
+  if (query.company_id) {
+    sql += ` AND e.company_id = ?`;
+    params.push(query.company_id);
+  }
+  
+  if (query.user_id) {
+    sql += ` AND e.user_id = ?`;
+    params.push(query.user_id);
+  }
+  
+  if (query.status) {
+    sql += ` AND e.status = ?`;
+    params.push(query.status);
+  }
+  
+  if (query.currency) {
+    sql += ` AND e.currency = ?`;
+    params.push(query.currency);
+  }
+  
+  if (query.date_from) {
+    sql += ` AND e.expense_date >= ?`;
+    params.push(query.date_from);
+  }
+  
+  if (query.date_to) {
+    sql += ` AND e.expense_date <= ?`;
+    params.push(query.date_to);
+  }
+  
+  sql += ` ORDER BY e.expense_date DESC, e.created_at DESC`;
+  
+  if (query.limit) {
+    sql += ` LIMIT ?`;
+    params.push(parseInt(query.limit) || 50);
+  }
+  
+  try {
+    const stmt = env.DB.prepare(sql);
+    const expenses = await stmt.bind(...params).all();
+    
+    return c.json({ 
+      expenses: expenses.results,
+      total: expenses.results.length 
+    });
+  } catch (error) {
+    return c.json({ error: 'Failed to fetch expenses' }, 500);
+  }
+})
+
+// Create new expense
+app.post('/api/expenses', async (c) => {
+  const { env } = c;
+  
+  try {
+    const expense = await c.req.json();
+    
+    // Validate required fields
+    const required = ['company_id', 'expense_type_id', 'description', 'expense_date', 'amount', 'currency'];
+    for (const field of required) {
+      if (!expense[field]) {
+        return c.json({ error: `Missing required field: ${field}` }, 400);
+      }
+    }
+    
+    // Convert amount to MXN (simplified for demo - in production, use real exchange rates)
+    let amount_mxn = expense.amount;
+    let exchange_rate = 1.0;
+    
+    if (expense.currency === 'USD') {
+      exchange_rate = 18.25; // Demo rate
+      amount_mxn = expense.amount * exchange_rate;
+    } else if (expense.currency === 'EUR') {
+      exchange_rate = 20.15; // Demo rate  
+      amount_mxn = expense.amount * exchange_rate;
+    }
+    
+    const result = await env.DB.prepare(`
+      INSERT INTO expenses (
+        company_id, user_id, expense_type_id, description, expense_date, 
+        amount, currency, exchange_rate, amount_mxn, payment_method, 
+        vendor, notes, status, created_by
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      expense.company_id,
+      expense.user_id || 1, // Demo user
+      expense.expense_type_id,
+      expense.description,
+      expense.expense_date,
+      expense.amount,
+      expense.currency,
+      exchange_rate,
+      amount_mxn,
+      expense.payment_method || 'cash',
+      expense.vendor || '',
+      expense.notes || '',
+      'pending',
+      expense.user_id || 1
+    ).run();
+    
+    return c.json({ 
+      success: true, 
+      expense_id: result.meta.last_row_id,
+      message: 'Gasto creado exitosamente'
+    });
+  } catch (error) {
+    return c.json({ error: 'Failed to create expense', details: error.message }, 500);
+  }
+})
+
+// Expense types
+app.get('/api/expense-types', async (c) => {
+  const { env } = c;
+  
+  try {
+    const types = await env.DB.prepare(`
+      SELECT id, name, description, category, active
+      FROM expense_types
+      WHERE active = TRUE
+      ORDER BY category, name
+    `).all();
+    
+    return c.json({ expense_types: types.results });
+  } catch (error) {
+    return c.json({ error: 'Failed to fetch expense types' }, 500);
+  }
+})
+
+// ===== WEB ROUTES =====
+
+// Main redirect route - redirect to analytics dashboard
+app.get('/', (c) => {
+  return c.redirect('/analytics');
+})
+
+// Dashboard Analytics Route - Purple themed with "Ficha de gasto" sidebar
+app.get('/analytics', (c) => {
+  return c.html(`<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📊 Dashboard Analítico - Lyra Expenses</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .purple-gradient { 
+            background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 50%, #c084fc 100%); 
+        }
+        .purple-glass { 
+            background: rgba(139, 92, 246, 0.1); 
+            backdrop-filter: blur(10px); 
+            border: 1px solid rgba(139, 92, 246, 0.2);
+        }
+        .purple-card {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.05), rgba(168, 85, 247, 0.05));
+            border: 1px solid rgba(139, 92, 246, 0.15);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+    <!-- Navigation Header -->
+    <header class="purple-gradient shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-4">
+                    <div class="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-chart-line text-white text-xl"></i>
+                    </div>
+                    <h1 class="text-2xl font-bold text-white">Lyra Expenses</h1>
+                </div>
+                <nav class="flex space-x-6">
+                    <a href="/analytics" class="text-white font-medium px-3 py-2 rounded-md bg-white bg-opacity-20">
+                        <i class="fas fa-chart-pie mr-2"></i>Analytics
+                    </a>
+                    <a href="/empresas" class="text-white hover:text-purple-200 font-medium px-3 py-2 rounded-md hover:bg-white hover:bg-opacity-10 transition">
+                        <i class="fas fa-building mr-2"></i>Empresas
+                    </a>
+                    <a href="/gastos" class="text-white hover:text-purple-200 font-medium px-3 py-2 rounded-md hover:bg-white hover:bg-opacity-10 transition">
+                        <i class="fas fa-receipt mr-2"></i>Gastos
+                    </a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex h-screen pt-0">
+        <!-- Sidebar: Ficha de Gasto -->
+        <div class="w-80 purple-glass shadow-xl overflow-y-auto">
+            <div class="p-6">
+                <h2 class="text-xl font-bold text-purple-900 mb-6">
+                    <i class="fas fa-filter mr-2"></i>Ficha de Gasto
+                </h2>
+                
+                <!-- Filters -->
+                <div class="space-y-4">
+                    <!-- Company Filter -->
+                    <div>
+                        <label class="block text-sm font-medium text-purple-800 mb-2">Empresa</label>
+                        <select id="companyFilter" class="w-full px-3 py-2 border border-purple-200 rounded-md bg-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                            <option value="">Todas las empresas</option>
+                        </select>
+                    </div>
+
+                    <!-- Status Filter -->
+                    <div>
+                        <label class="block text-sm font-medium text-purple-800 mb-2">Estado</label>
+                        <select id="statusFilter" class="w-full px-3 py-2 border border-purple-200 rounded-md bg-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                            <option value="">Todos los estados</option>
+                            <option value="pending">Pendiente</option>
+                            <option value="approved">Aprobado</option>
+                            <option value="rejected">Rechazado</option>
+                            <option value="reimbursed">Reembolsado</option>
+                        </select>
+                    </div>
+
+                    <!-- Currency Filter -->
+                    <div>
+                        <label class="block text-sm font-medium text-purple-800 mb-2">Moneda</label>
+                        <select id="currencyFilter" class="w-full px-3 py-2 border border-purple-200 rounded-md bg-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                            <option value="">Todas las monedas</option>
+                            <option value="MXN">MXN - Peso Mexicano</option>
+                            <option value="USD">USD - Dólar</option>
+                            <option value="EUR">EUR - Euro</option>
+                        </select>
+                    </div>
+
+                    <!-- Date Range -->
+                    <div>
+                        <label class="block text-sm font-medium text-purple-800 mb-2">Fecha Desde</label>
+                        <input type="date" id="dateFromFilter" class="w-full px-3 py-2 border border-purple-200 rounded-md bg-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-purple-800 mb-2">Fecha Hasta</label>
+                        <input type="date" id="dateToFilter" class="w-full px-3 py-2 border border-purple-200 rounded-md bg-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                    </div>
+
+                    <!-- Apply Filters Button -->
+                    <button id="applyFilters" class="w-full bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700 transition font-medium">
+                        <i class="fas fa-search mr-2"></i>Aplicar Filtros
+                    </button>
+                    
+                    <!-- Clear Filters Button -->
+                    <button id="clearFilters" class="w-full bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600 transition font-medium">
+                        <i class="fas fa-eraser mr-2"></i>Limpiar Filtros
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 overflow-auto bg-gray-50">
+            <div class="p-6">
+                <!-- KPI Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                    <!-- Total Amount -->
+                    <div class="purple-card rounded-xl p-6 shadow-sm">
+                        <div class="flex items-center">
+                            <div class="p-3 bg-purple-100 rounded-full mr-4">
+                                <i class="fas fa-euro-sign text-purple-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-purple-600">Total Gastos</p>
+                                <p id="totalAmount" class="text-2xl font-bold text-purple-900">4,563 €</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Total Companies -->
+                    <div class="purple-card rounded-xl p-6 shadow-sm">
+                        <div class="flex items-center">
+                            <div class="p-3 bg-purple-100 rounded-full mr-4">
+                                <i class="fas fa-building text-purple-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-purple-600">Empresas</p>
+                                <p id="totalCompanies" class="text-2xl font-bold text-purple-900">1</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pending Authorization -->
+                    <div class="purple-card rounded-xl p-6 shadow-sm">
+                        <div class="flex items-center">
+                            <div class="p-3 bg-orange-100 rounded-full mr-4">
+                                <i class="fas fa-clock text-orange-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-purple-600">Pend. Autorización</p>
+                                <p id="pendingAuth" class="text-2xl font-bold text-purple-900">1</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Approved Expenses -->
+                    <div class="purple-card rounded-xl p-6 shadow-sm">
+                        <div class="flex items-center">
+                            <div class="p-3 bg-green-100 rounded-full mr-4">
+                                <i class="fas fa-check-circle text-green-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-purple-600">Aprobados</p>
+                                <p id="approvedCount" class="text-2xl font-bold text-purple-900">6</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Section -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                    <!-- Donut Chart -->
+                    <div class="bg-white rounded-xl p-6 shadow-sm border border-purple-100">
+                        <h3 class="text-lg font-semibold text-purple-900 mb-4">
+                            <i class="fas fa-chart-pie mr-2 text-purple-600"></i>Gastos por Estado
+                        </h3>
+                        <div class="relative" style="height: 300px;">
+                            <canvas id="statusChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Bar Chart -->
+                    <div class="bg-white rounded-xl p-6 shadow-sm border border-purple-100">
+                        <h3 class="text-lg font-semibold text-purple-900 mb-4">
+                            <i class="fas fa-chart-bar mr-2 text-purple-600"></i>Gastos por Empresa
+                        </h3>
+                        <div class="relative" style="height: 300px;">
+                            <canvas id="companyChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Expenses Table -->
+                <div class="bg-white rounded-xl shadow-sm border border-purple-100">
+                    <div class="px-6 py-4 border-b border-purple-100">
+                        <h3 class="text-lg font-semibold text-purple-900">
+                            <i class="fas fa-table mr-2 text-purple-600"></i>Gastos Recientes
+                        </h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-purple-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-purple-600 uppercase tracking-wider">Fecha</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-purple-600 uppercase tracking-wider">Descripción</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-purple-600 uppercase tracking-wider">Empresa</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-purple-600 uppercase tracking-wider">Monto</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-purple-600 uppercase tracking-wider">Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="expensesTableBody" class="bg-white divide-y divide-gray-200">
+                                <!-- Table rows will be populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Dashboard variables
+        let currentFilters = {};
+        let dashboardData = {};
+        let statusChart, companyChart;
+
+        // Initialize dashboard on load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCompanies();
+            loadDashboardData();
+            initializeEventListeners();
+        });
+
+        // Load companies for filter
+        async function loadCompanies() {
+            try {
+                const response = await axios.get('/api/companies');
+                const companies = response.data.companies;
+                
+                const select = document.getElementById('companyFilter');
+                companies.forEach(company => {
+                    const option = document.createElement('option');
+                    option.value = company.id;
+                    option.textContent = company.name + ' (' + company.country + ')';
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading companies:', error);
+            }
+        }
+
+        // Load dashboard data
+        async function loadDashboardData() {
+            try {
+                const response = await axios.get('/api/dashboard/metrics', {
+                    params: currentFilters
+                });
+                
+                dashboardData = response.data;
+                updateKPIs();
+                updateCharts();
+                updateTable();
+            } catch (error) {
+                console.error('Error loading dashboard data:', error);
+            }
+        }
+
+        // Update KPI cards
+        function updateKPIs() {
+            const statusMetrics = dashboardData.status_metrics || [];
+            const companyMetrics = dashboardData.company_metrics || [];
+            
+            // Calculate totals
+            const totalAmount = statusMetrics.reduce((sum, metric) => sum + (metric.total_mxn || 0), 0);
+            const totalCompanies = companyMetrics.length;
+            const pendingCount = statusMetrics.find(m => m.status === 'pending')?.count || 0;
+            const approvedCount = statusMetrics.find(m => m.status === 'approved')?.count || 0;
+            
+            // Update KPI displays (convert to EUR for display)
+            document.getElementById('totalAmount').textContent = Math.round(totalAmount / 20.15).toLocaleString() + ' €';
+            document.getElementById('totalCompanies').textContent = totalCompanies;
+            document.getElementById('pendingAuth').textContent = pendingCount;
+            document.getElementById('approvedCount').textContent = approvedCount;
+        }
+
+        // Update charts
+        function updateCharts() {
+            updateStatusChart();
+            updateCompanyChart();
+        }
+
+        // Update status donut chart with purple theme
+        function updateStatusChart() {
+            const ctx = document.getElementById('statusChart').getContext('2d');
+            
+            if (statusChart) {
+                statusChart.destroy();
+            }
+            
+            const statusMetrics = dashboardData.status_metrics || [];
+            const labels = statusMetrics.map(m => getStatusLabel(m.status));
+            const data = statusMetrics.map(m => m.count);
+            
+            statusChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: [
+                            '#8b5cf6', // Purple
+                            '#a855f7', // Purple variant
+                            '#c084fc', // Light purple
+                            '#e879f9', // Pink purple
+                            '#f3e8ff'  // Very light purple
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: '#6b21a8',
+                                font: {
+                                    weight: 'bold'
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update company bar chart with purple theme
+        function updateCompanyChart() {
+            const ctx = document.getElementById('companyChart').getContext('2d');
+            
+            if (companyChart) {
+                companyChart.destroy();
+            }
+            
+            const companyMetrics = dashboardData.company_metrics || [];
+            const labels = companyMetrics.map(m => m.company);
+            const data = companyMetrics.map(m => Math.round((m.total_mxn || 0) / 20.15)); // Convert to EUR
+            
+            companyChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Gastos (EUR)',
+                        data: data,
+                        backgroundColor: 'rgba(139, 92, 246, 0.7)',
+                        borderColor: '#8b5cf6',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#6b21a8',
+                                font: {
+                                    weight: 'bold'
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                color: '#6b21a8'
+                            },
+                            grid: {
+                                color: 'rgba(139, 92, 246, 0.1)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#6b21a8'
+                            },
+                            grid: {
+                                color: 'rgba(139, 92, 246, 0.1)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update expenses table
+        function updateTable() {
+            const tableBody = document.getElementById('expensesTableBody');
+            const expenses = dashboardData.recent_expenses || [];
+            
+            tableBody.innerHTML = '';
+            
+            expenses.forEach(expense => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-purple-50 transition-colors';
+                row.innerHTML = 
+                    '<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">' + formatDate(expense.expense_date) + '</td>' +
+                    '<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">' + expense.description + '</td>' +
+                    '<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">' + expense.company_name + '</td>' +
+                    '<td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">' + expense.currency + ' ' + parseFloat(expense.amount).toLocaleString() + '</td>' +
+                    '<td class="px-6 py-4 whitespace-nowrap">' +
+                        '<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full ' + getStatusBadgeClass(expense.status) + '">' +
+                            getStatusLabel(expense.status) +
+                        '</span>' +
+                    '</td>';
+                tableBody.appendChild(row);
+            });
+        }
+
+        // Event listeners for filters
+        function initializeEventListeners() {
+            document.getElementById('applyFilters').addEventListener('click', applyFilters);
+            document.getElementById('clearFilters').addEventListener('click', clearFilters);
+        }
+
+        // Apply filters
+        function applyFilters() {
+            currentFilters = {
+                company_id: document.getElementById('companyFilter').value,
+                status: document.getElementById('statusFilter').value,
+                currency: document.getElementById('currencyFilter').value,
+                date_from: document.getElementById('dateFromFilter').value,
+                date_to: document.getElementById('dateToFilter').value
+            };
+            
+            // Remove empty filters
+            Object.keys(currentFilters).forEach(key => {
+                if (!currentFilters[key]) {
+                    delete currentFilters[key];
+                }
+            });
+            
+            loadDashboardData();
+        }
+
+        // Clear all filters
+        function clearFilters() {
+            document.getElementById('companyFilter').value = '';
+            document.getElementById('statusFilter').value = '';
+            document.getElementById('currencyFilter').value = '';
+            document.getElementById('dateFromFilter').value = '';
+            document.getElementById('dateToFilter').value = '';
+            
+            currentFilters = {};
+            loadDashboardData();
+        }
+
+        // Utility functions
+        function formatDate(dateString) {
+            return new Date(dateString).toLocaleDateString('es-ES');
+        }
+
+        function getStatusLabel(status) {
+            const labels = {
+                'pending': 'Pendiente',
+                'approved': 'Aprobado',
+                'rejected': 'Rechazado',
+                'reimbursed': 'Reembolsado'
+            };
+            return labels[status] || status;
+        }
+
+        function getStatusBadgeClass(status) {
+            const classes = {
+                'pending': 'bg-yellow-100 text-yellow-800',
+                'approved': 'bg-green-100 text-green-800',
+                'rejected': 'bg-red-100 text-red-800',
+                'reimbursed': 'bg-blue-100 text-blue-800'
+            };
+            return classes[status] || 'bg-gray-100 text-gray-800';
+        }
+    </script>
+</body>
+</html>`);
+})
+
+// Empresas page
+app.get('/empresas', (c) => {
+  return c.html(`<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏢 Empresas - Lyra Expenses</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .purple-gradient { 
+            background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 50%, #c084fc 100%); 
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+    <!-- Navigation Header -->
+    <header class="purple-gradient shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-4">
+                    <div class="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-chart-line text-white text-xl"></i>
+                    </div>
+                    <h1 class="text-2xl font-bold text-white">Lyra Expenses</h1>
+                </div>
+                <nav class="flex space-x-6">
+                    <a href="/analytics" class="text-white hover:text-purple-200 font-medium px-3 py-2 rounded-md hover:bg-white hover:bg-opacity-10 transition">
+                        <i class="fas fa-chart-pie mr-2"></i>Analytics
+                    </a>
+                    <a href="/empresas" class="text-white font-medium px-3 py-2 rounded-md bg-white bg-opacity-20">
+                        <i class="fas fa-building mr-2"></i>Empresas
+                    </a>
+                    <a href="/gastos" class="text-white hover:text-purple-200 font-medium px-3 py-2 rounded-md hover:bg-white hover:bg-opacity-10 transition">
+                        <i class="fas fa-receipt mr-2"></i>Gastos
+                    </a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div class="px-4 py-6 sm:px-0">
+            <h2 class="text-3xl font-bold text-gray-900 mb-6">
+                <i class="fas fa-building mr-2 text-purple-600"></i>Gestión de Empresas
+            </h2>
+            
+            <div class="bg-white shadow rounded-lg">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-medium text-gray-900">Lista de Empresas</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Empresa</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">País</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Moneda</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha Creación</th>
+                            </tr>
+                        </thead>
+                        <tbody id="companiesTableBody" class="bg-white divide-y divide-gray-200">
+                            <!-- Table rows will be populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCompanies();
+        });
+
+        async function loadCompanies() {
+            try {
+                const response = await axios.get('/api/companies');
+                const companies = response.data.companies;
+                
+                const tableBody = document.getElementById('companiesTableBody');
+                tableBody.innerHTML = '';
+                
+                companies.forEach(company => {
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-gray-50';
+                    row.innerHTML = 
+                        '<td class="px-6 py-4 whitespace-nowrap"><div class="flex items-center"><div class="text-sm font-medium text-gray-900">' + company.name + '</div></div></td>' +
+                        '<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">' + (company.country === 'MX' ? '🇲🇽 México' : company.country === 'ES' ? '🇪🇸 España' : company.country) + '</td>' +
+                        '<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">' + company.primary_currency + '</td>' +
+                        '<td class="px-6 py-4 whitespace-nowrap"><span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Activa</span></td>' +
+                        '<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">' + new Date(company.created_at).toLocaleDateString('es-ES') + '</td>';
+                    tableBody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error loading companies:', error);
+            }
+        }
+    </script>
+</body>
+</html>`);
+})
+
+// Gastos page
+app.get('/gastos', (c) => {
+  return c.html(`<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>💸 Gastos - Lyra Expenses</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .purple-gradient { 
+            background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 50%, #c084fc 100%); 
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+    <!-- Navigation Header -->
+    <header class="purple-gradient shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-4">
+                    <div class="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-chart-line text-white text-xl"></i>
+                    </div>
+                    <h1 class="text-2xl font-bold text-white">Lyra Expenses</h1>
+                </div>
+                <nav class="flex space-x-6">
+                    <a href="/analytics" class="text-white hover:text-purple-200 font-medium px-3 py-2 rounded-md hover:bg-white hover:bg-opacity-10 transition">
+                        <i class="fas fa-chart-pie mr-2"></i>Analytics
+                    </a>
+                    <a href="/empresas" class="text-white hover:text-purple-200 font-medium px-3 py-2 rounded-md hover:bg-white hover:bg-opacity-10 transition">
+                        <i class="fas fa-building mr-2"></i>Empresas
+                    </a>
+                    <a href="/gastos" class="text-white font-medium px-3 py-2 rounded-md bg-white bg-opacity-20">
+                        <i class="fas fa-receipt mr-2"></i>Gastos
+                    </a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div class="px-4 py-6 sm:px-0">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-3xl font-bold text-gray-900">
+                    <i class="fas fa-receipt mr-2 text-purple-600"></i>Gestión de Gastos
+                </h2>
+                <button id="addExpenseBtn" class="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition">
+                    <i class="fas fa-plus mr-2"></i>Nuevo Gasto
+                </button>
+            </div>
+            
+            <!-- Filters -->
+            <div class="bg-white p-4 rounded-lg shadow mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Empresa</label>
+                        <select id="companyFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            <option value="">Todas las empresas</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+                        <select id="statusFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            <option value="">Todos los estados</option>
+                            <option value="pending">Pendiente</option>
+                            <option value="approved">Aprobado</option>
+                            <option value="rejected">Rechazado</option>
+                            <option value="reimbursed">Reembolsado</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Moneda</label>
+                        <select id="currencyFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            <option value="">Todas las monedas</option>
+                            <option value="MXN">MXN</option>
+                            <option value="USD">USD</option>
+                            <option value="EUR">EUR</option>
+                        </select>
+                    </div>
+                    <div class="flex items-end">
+                        <button id="applyFiltersBtn" class="w-full bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition">
+                            <i class="fas fa-search mr-2"></i>Filtrar
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white shadow rounded-lg">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-medium text-gray-900">Lista de Gastos</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descripción</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Empresa</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Monto</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuario</th>
+                            </tr>
+                        </thead>
+                        <tbody id="expensesTableBody" class="bg-white divide-y divide-gray-200">
+                            <!-- Table rows will be populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentFilters = {};
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCompanies();
+            loadExpenses();
+            initializeEventListeners();
+        });
+
+        function initializeEventListeners() {
+            document.getElementById('applyFiltersBtn').addEventListener('click', applyFilters);
+        }
+
+        async function loadCompanies() {
+            try {
+                const response = await axios.get('/api/companies');
+                const companies = response.data.companies;
+                
+                const select = document.getElementById('companyFilter');
+                companies.forEach(company => {
+                    const option = document.createElement('option');
+                    option.value = company.id;
+                    option.textContent = company.name + ' (' + company.country + ')';
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading companies:', error);
+            }
+        }
+
+        async function loadExpenses() {
+            try {
+                const response = await axios.get('/api/expenses', {
+                    params: currentFilters
+                });
+                const expenses = response.data.expenses;
+                
+                const tableBody = document.getElementById('expensesTableBody');
+                tableBody.innerHTML = '';
+                
+                expenses.forEach(expense => {
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-gray-50';
+                    row.innerHTML = 
+                        '<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">' + new Date(expense.expense_date).toLocaleDateString('es-ES') + '</td>' +
+                        '<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">' + expense.description + '</td>' +
+                        '<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">' + expense.company_name + '</td>' +
+                        '<td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">' + expense.currency + ' ' + parseFloat(expense.amount).toLocaleString() + '</td>' +
+                        '<td class="px-6 py-4 whitespace-nowrap"><span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full ' + getStatusBadgeClass(expense.status) + '">' + getStatusLabel(expense.status) + '</span></td>' +
+                        '<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">' + expense.user_name + '</td>';
+                    tableBody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error loading expenses:', error);
+            }
+        }
+
+        function applyFilters() {
+            currentFilters = {
+                company_id: document.getElementById('companyFilter').value,
+                status: document.getElementById('statusFilter').value,
+                currency: document.getElementById('currencyFilter').value
+            };
+            
+            // Remove empty filters
+            Object.keys(currentFilters).forEach(key => {
+                if (!currentFilters[key]) {
+                    delete currentFilters[key];
+                }
+            });
+            
+            loadExpenses();
+        }
+
+        function getStatusLabel(status) {
+            const labels = {
+                'pending': 'Pendiente',
+                'approved': 'Aprobado',
+                'rejected': 'Rechazado',
+                'reimbursed': 'Reembolsado'
+            };
+            return labels[status] || status;
+        }
+
+        function getStatusBadgeClass(status) {
+            const classes = {
+                'pending': 'bg-yellow-100 text-yellow-800',
+                'approved': 'bg-green-100 text-green-800',
+                'rejected': 'bg-red-100 text-red-800',
+                'reimbursed': 'bg-blue-100 text-blue-800'
+            };
+            return classes[status] || 'bg-gray-100 text-gray-800';
+        }
+    </script>
+</body>
+</html>`);
+})
+
+export default app
