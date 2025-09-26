@@ -2518,10 +2518,33 @@ app.get('/', (c) => {
 
 // Companies page - List all companies
 app.get('/companies', (c) => {
-  return c.render(
-    <div className="min-h-screen" class="purple-gradient">
-      {/* Premium Navigation */}
-      <!-- Navigation Header -->
+  return c.html(`<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📊 Gestión de Empresas - Lyra Expenses</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .purple-gradient { 
+            background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 50%, #c084fc 100%); 
+        }
+        .purple-glass { 
+            background: rgba(139, 92, 246, 0.1); 
+            backdrop-filter: blur(10px); 
+            border: 1px solid rgba(139, 92, 246, 0.2);
+        }
+        .purple-card {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.05), rgba(168, 85, 247, 0.05));
+            border: 1px solid rgba(139, 92, 246, 0.15);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+    <!-- Navigation Header -->
     <header class="purple-gradient shadow-lg">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center py-4">
@@ -2535,7 +2558,7 @@ app.get('/companies', (c) => {
                     <a href="/" class="text-white hover:text-purple-200 font-medium px-3 py-2 rounded-md hover:bg-white hover:bg-opacity-10 transition">
                         <i class="fas fa-chart-pie mr-2"></i>Dashboard
                     </a>
-                    <a href="/companies" class="text-white hover:text-purple-200 font-medium px-3 py-2 rounded-md hover:bg-white hover:bg-opacity-10 transition">
+                    <a href="/companies" class="text-white font-medium px-3 py-2 rounded-md bg-white bg-opacity-20">
                         <i class="fas fa-building mr-2"></i>Empresas
                     </a>
                     <a href="/expenses" class="text-white hover:text-purple-200 font-medium px-3 py-2 rounded-md hover:bg-white hover:bg-opacity-10 transition">
@@ -2545,323 +2568,189 @@ app.get('/companies', (c) => {
             </div>
         </div>
     </header>
+
+    <div class="min-h-screen bg-gray-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <!-- Header -->
+            <div class="text-center mb-12">
+                <h2 class="text-4xl font-bold text-purple-900 mb-3">
+                    <i class="fas fa-building-columns mr-3"></i>
+                    Portfolio Corporativo
+                </h2>
+                <p class="text-purple-700 text-lg">Gestión multiempresa internacional • MX + ES</p>
+                <div class="flex justify-center mt-4">
+                    <div class="flex items-center space-x-6 text-sm text-purple-600">
+                        <span class="flex items-center">
+                            <div class="w-2 h-2 bg-purple-500 rounded-full mr-2 animate-pulse"></div>
+                            6 empresas activas
+                        </span>
+                        <span class="flex items-center">
+                            <div class="w-2 h-2 bg-purple-500 rounded-full mr-2 animate-pulse"></div>
+                            Operaciones globales
+                        </span>
+                        <span class="flex items-center">
+                            <div class="w-2 h-2 bg-purple-500 rounded-full mr-2 animate-pulse"></div>
+                            Multimoneda: MXN • USD • EUR
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Companies Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               
-              {/* Right Side Actions */}
-              <div className="flex items-center space-x-4 border-l border-glass-border pl-6">
-                <div id="auth-indicator">
-                  {/* Authentication status will be inserted here */}
+                <!-- TechMX Solutions -->
+                <div class="purple-card p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer" onclick="window.location.href='/company/1'">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center space-x-4">
+                            <div class="p-4 rounded-xl bg-purple-100 hover:bg-purple-200 transition-all">
+                                <span class="text-3xl">🇲🇽</span>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold text-purple-900 hover:text-purple-700 transition-colors">TechMX Solutions</h3>
+                                <p class="text-sm text-purple-600">Tecnología • México</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="bg-green-100 text-green-800 px-2 py-1 rounded-md text-sm mb-2">
+                                <i class="fas fa-check-circle mr-1"></i>
+                                Activa
+                            </div>
+                            <p class="text-xs text-purple-600">MXN Principal</p>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        <div class="text-center p-3 bg-purple-50 rounded-lg">
+                            <div class="text-2xl font-bold text-purple-800">24</div>
+                            <div class="text-xs text-purple-600">Empleados</div>
+                        </div>
+                        <div class="text-center p-3 bg-purple-50 rounded-lg">
+                            <div class="text-2xl font-bold text-purple-800">$485K</div>
+                            <div class="text-xs text-purple-600">Gastos MXN</div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center justify-between pt-4 border-t border-purple-200">
+                        <span class="text-sm text-purple-700">Ver dashboard completo</span>
+                        <i class="fas fa-arrow-right text-purple-700 hover:translate-x-1 transition-transform"></i>
+                    </div>
+                </div>
+
+                <!-- Resto de empresas con mismo estilo morado -->
+                <!-- Innovación Digital MX -->
+                <div class="purple-card p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer" onclick="window.location.href='/company/2'">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center space-x-4">
+                            <div class="p-4 rounded-xl bg-purple-100 hover:bg-purple-200 transition-all">
+                                <span class="text-3xl">🇲🇽</span>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold text-purple-900 hover:text-purple-700 transition-colors">Innovación Digital MX</h3>
+                                <p class="text-sm text-purple-600">Digital • México</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="bg-green-100 text-green-800 px-2 py-1 rounded-md text-sm mb-2">
+                                <i class="fas fa-check-circle mr-1"></i>
+                                Activa
+                            </div>
+                            <p class="text-xs text-purple-600">MXN Principal</p>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        <div class="text-center p-3 bg-purple-50 rounded-lg">
+                            <div class="text-2xl font-bold text-purple-800">18</div>
+                            <div class="text-xs text-purple-600">Empleados</div>
+                        </div>
+                        <div class="text-center p-3 bg-purple-50 rounded-lg">
+                            <div class="text-2xl font-bold text-purple-800">$325K</div>
+                            <div class="text-xs text-purple-600">Gastos MXN</div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center justify-between pt-4 border-t border-purple-200">
+                        <span class="text-sm text-purple-700">Ver dashboard completo</span>
+                        <i class="fas fa-arrow-right text-purple-700 hover:translate-x-1 transition-transform"></i>
+                    </div>
+                </div>
+
+                <!-- TechES Barcelona -->
+                <div class="purple-card p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer" onclick="window.location.href='/company/4'">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center space-x-4">
+                            <div class="p-4 rounded-xl bg-purple-100 hover:bg-purple-200 transition-all">
+                                <span class="text-3xl">🇪🇸</span>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold text-purple-900 hover:text-purple-700 transition-colors">TechES Barcelona</h3>
+                                <p class="text-sm text-purple-600">Tecnología • España</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="bg-green-100 text-green-800 px-2 py-1 rounded-md text-sm mb-2">
+                                <i class="fas fa-check-circle mr-1"></i>
+                                Activa
+                            </div>
+                            <p class="text-xs text-purple-600">EUR Principal</p>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        <div class="text-center p-3 bg-purple-50 rounded-lg">
+                            <div class="text-2xl font-bold text-purple-800">32</div>
+                            <div class="text-xs text-purple-600">Empleados</div>
+                        </div>
+                        <div class="text-center p-3 bg-purple-50 rounded-lg">
+                            <div class="text-2xl font-bold text-purple-800">€85K</div>
+                            <div class="text-xs text-purple-600">Gastos EUR</div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center justify-between pt-4 border-t border-purple-200">
+                        <span class="text-sm text-purple-700">Ver dashboard completo</span>
+                        <i class="fas fa-arrow-right text-purple-700 hover:translate-x-1 transition-transform"></i>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Summary Stats -->
+            <div class="mt-16 purple-glass p-8 rounded-xl">
+                <div class="text-center mb-8">
+                    <h3 class="text-2xl font-bold text-purple-900 mb-2">Resumen Consolidado</h3>
+                    <p class="text-purple-700">Vista general del portfolio corporativo</p>
                 </div>
                 
-                <select id="currency-selector" className="form-input-premium bg-glass border-0 text-sm min-w-[120px]">
-                  <option value="MXN">💎 MXN</option>
-                  <option value="USD">🔹 USD</option>
-                  <option value="EUR">🔸 EUR</option>
-                </select>
-                
-                <button onclick="showExpenseForm()" className="btn-premium btn-emerald text-sm">
-                  <i className="fas fa-plus mr-1"></i>
-                  Nuevo
-                </button>
-              </div>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-purple-800 mb-2">136</div>
+                        <div class="text-sm text-purple-600">Total Empleados</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-purple-800 mb-2">$1,120K</div>
+                        <div class="text-sm text-purple-600">Gastos Totales MXN</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-purple-800 mb-2">€215K</div>
+                        <div class="text-sm text-purple-600">Gastos Totales EUR</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-purple-800 mb-2">6</div>
+                        <div class="text-sm text-purple-600">Empresas Activas</div>
+                    </div>
+                </div>
             </div>
-          </div>
+            
         </div>
-      </nav>
-      
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h2 className="text-4xl font-bold gradient-text-gold mb-3">
-            <i className="fas fa-building-columns mr-3"></i>
-            Portfolio Corporativo
-          </h2>
-          <p className="text-secondary text-lg">Gestión multiempresa internacional • MX + ES</p>
-          <div className="flex justify-center mt-4">
-            <div className="flex items-center space-x-6 text-sm text-tertiary">
-              <span className="flex items-center">
-                <div className="w-2 h-2 bg-emerald rounded-full mr-2 animate-pulse"></div>
-                6 empresas activas
-              </span>
-              <span className="flex items-center">
-                <div className="w-2 h-2 bg-gold rounded-full mr-2 animate-pulse"></div>
-                Operaciones globales
-              </span>
-              <span className="flex items-center">
-                <div className="w-2 h-2 bg-sapphire rounded-full mr-2 animate-pulse"></div>
-                Multimoneda: MXN • USD • EUR
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Companies Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          
-          {/* TechMX Solutions */}
-          <div className="company-card-premium animate-slide-up group cursor-pointer" onClick="window.location.href='/company/1'">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center space-x-4">
-                <div className="p-4 rounded-xl bg-glass group-hover:bg-glass-hover transition-all">
-                  <span className="text-3xl">🇲🇽</span>
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-primary group-hover:text-gold transition-colors">TechMX Solutions</h3>
-                  <p className="text-sm text-secondary">Tecnología • México</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="status-badge-premium status-approved-premium mb-2">
-                  <i className="fas fa-check-circle mr-1"></i>
-                  Activa
-                </div>
-                <p className="text-xs text-tertiary">MXN Principal</p>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="text-center p-3 bg-glass rounded-lg">
-                <div className="text-2xl font-bold text-emerald">24</div>
-                <div className="text-xs text-tertiary">Empleados</div>
-              </div>
-              <div className="text-center p-3 bg-glass rounded-lg">
-                <div className="text-2xl font-bold text-gold">$485K</div>
-                <div className="text-xs text-tertiary">Gastos MXN</div>
-              </div>
-            </div>
-            
-            <div className="flex items-center justify-between pt-4 border-t border-glass-border">
-              <span className="text-sm text-secondary">Ver dashboard completo</span>
-              <i className="fas fa-arrow-right text-gold group-hover:translate-x-1 transition-transform"></i>
-            </div>
-          </div>
-
-          {/* Innovación Digital MX */}
-          <div className="company-card-premium animate-slide-up group cursor-pointer" style="animation-delay: 0.1s" onClick="window.location.href='/company/2'">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center space-x-4">
-                <div className="p-4 rounded-xl bg-glass group-hover:bg-glass-hover transition-all">
-                  <span className="text-3xl">🇲🇽</span>
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-primary group-hover:text-gold transition-colors">Innovación Digital MX</h3>
-                  <p className="text-sm text-secondary">Digital • México</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="status-badge-premium status-approved-premium mb-2">
-                  <i className="fas fa-check-circle mr-1"></i>
-                  Activa
-                </div>
-                <p className="text-xs text-tertiary">MXN Principal</p>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="text-center p-3 bg-glass rounded-lg">
-                <div className="text-2xl font-bold text-emerald">18</div>
-                <div className="text-xs text-tertiary">Empleados</div>
-              </div>
-              <div className="text-center p-3 bg-glass rounded-lg">
-                <div className="text-2xl font-bold text-gold">$325K</div>
-                <div className="text-xs text-tertiary">Gastos MXN</div>
-              </div>
-            </div>
-            
-            <div className="flex items-center justify-between pt-4 border-t border-glass-border">
-              <span className="text-sm text-secondary">Ver dashboard completo</span>
-              <i className="fas fa-arrow-right text-gold group-hover:translate-x-1 transition-transform"></i>
-            </div>
-          </div>
-
-          {/* Consultoría Estratégica MX */}
-          <div className="company-card-premium animate-slide-up group cursor-pointer" style="animation-delay: 0.2s" onClick="window.location.href='/company/3'">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center space-x-4">
-                <div className="p-4 rounded-xl bg-glass group-hover:bg-glass-hover transition-all">
-                  <span className="text-3xl">🇲🇽</span>
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-primary group-hover:text-gold transition-colors">Consultoría Estratégica MX</h3>
-                  <p className="text-sm text-secondary">Consultoría • México</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="status-badge-premium status-approved-premium mb-2">
-                  <i className="fas fa-check-circle mr-1"></i>
-                  Activa
-                </div>
-                <p className="text-xs text-tertiary">MXN Principal</p>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="text-center p-3 bg-glass rounded-lg">
-                <div className="text-2xl font-bold text-emerald">12</div>
-                <div className="text-xs text-tertiary">Empleados</div>
-              </div>
-              <div className="text-center p-3 bg-glass rounded-lg">
-                <div className="text-2xl font-bold text-gold">$195K</div>
-                <div className="text-xs text-tertiary">Gastos MXN</div>
-              </div>
-            </div>
-            
-            <div className="flex items-center justify-between pt-4 border-t border-glass-border">
-              <span className="text-sm text-secondary">Ver dashboard completo</span>
-              <i className="fas fa-arrow-right text-gold group-hover:translate-x-1 transition-transform"></i>
-            </div>
-          </div>
-
-          {/* TechES Barcelona */}
-          <div className="company-card-premium animate-slide-up group cursor-pointer" style="animation-delay: 0.3s" onClick="window.location.href='/company/4'">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center space-x-4">
-                <div className="p-4 rounded-xl bg-glass group-hover:bg-glass-hover transition-all">
-                  <span className="text-3xl">🇪🇸</span>
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-primary group-hover:text-gold transition-colors">TechES Barcelona</h3>
-                  <p className="text-sm text-secondary">Tecnología • España</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="status-badge-premium status-approved-premium mb-2">
-                  <i className="fas fa-check-circle mr-1"></i>
-                  Activa
-                </div>
-                <p className="text-xs text-tertiary">EUR Principal</p>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="text-center p-3 bg-glass rounded-lg">
-                <div className="text-2xl font-bold text-emerald">32</div>
-                <div className="text-xs text-tertiary">Empleados</div>
-              </div>
-              <div className="text-center p-3 bg-glass rounded-lg">
-                <div className="text-2xl font-bold text-gold">€85K</div>
-                <div className="text-xs text-tertiary">Gastos EUR</div>
-              </div>
-            </div>
-            
-            <div className="flex items-center justify-between pt-4 border-t border-glass-border">
-              <span className="text-sm text-secondary">Ver dashboard completo</span>
-              <i className="fas fa-arrow-right text-gold group-hover:translate-x-1 transition-transform"></i>
-            </div>
-          </div>
-
-          {/* Innovación Madrid SL */}
-          <div className="company-card-premium animate-slide-up group cursor-pointer" style="animation-delay: 0.4s" onClick="window.location.href='/company/5'">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center space-x-4">
-                <div className="p-4 rounded-xl bg-glass group-hover:bg-glass-hover transition-all">
-                  <span className="text-3xl">🇪🇸</span>
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-primary group-hover:text-gold transition-colors">Innovación Madrid SL</h3>
-                  <p className="text-sm text-secondary">Innovación • España</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="status-badge-premium status-approved-premium mb-2">
-                  <i className="fas fa-check-circle mr-1"></i>
-                  Activa
-                </div>
-                <p className="text-xs text-tertiary">EUR Principal</p>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="text-center p-3 bg-glass rounded-lg">
-                <div className="text-2xl font-bold text-emerald">28</div>
-                <div className="text-xs text-tertiary">Empleados</div>
-              </div>
-              <div className="text-center p-3 bg-glass rounded-lg">
-                <div className="text-2xl font-bold text-gold">€72K</div>
-                <div className="text-xs text-tertiary">Gastos EUR</div>
-              </div>
-            </div>
-            
-            <div className="flex items-center justify-between pt-4 border-t border-glass-border">
-              <span className="text-sm text-secondary">Ver dashboard completo</span>
-              <i className="fas fa-arrow-right text-gold group-hover:translate-x-1 transition-transform"></i>
-            </div>
-          </div>
-
-          {/* Digital Valencia S.A. */}
-          <div className="company-card-premium animate-slide-up group cursor-pointer" style="animation-delay: 0.5s" onClick="window.location.href='/company/6'">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center space-x-4">
-                <div className="p-4 rounded-xl bg-glass group-hover:bg-glass-hover transition-all">
-                  <span className="text-3xl">🇪🇸</span>
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-primary group-hover:text-gold transition-colors">Digital Valencia S.A.</h3>
-                  <p className="text-sm text-secondary">Digital • España</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="status-badge-premium status-approved-premium mb-2">
-                  <i className="fas fa-check-circle mr-1"></i>
-                  Activa
-                </div>
-                <p className="text-xs text-tertiary">EUR Principal</p>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="text-center p-3 bg-glass rounded-lg">
-                <div className="text-2xl font-bold text-emerald">22</div>
-                <div className="text-xs text-tertiary">Empleados</div>
-              </div>
-              <div className="text-center p-3 bg-glass rounded-lg">
-                <div className="text-2xl font-bold text-gold">€58K</div>
-                <div className="text-xs text-tertiary">Gastos EUR</div>
-              </div>
-            </div>
-            
-            <div className="flex items-center justify-between pt-4 border-t border-glass-border">
-              <span className="text-sm text-secondary">Ver dashboard completo</span>
-              <i className="fas fa-arrow-right text-gold group-hover:translate-x-1 transition-transform"></i>
-            </div>
-          </div>
-
-        </div>
-
-        {/* Summary Stats */}
-        <div className="mt-16 glass-panel p-8">
-          <div className="text-center mb-8">
-            <h3 className="text-2xl font-bold text-primary mb-2">Resumen Consolidado</h3>
-            <p className="text-secondary">Vista general del portfolio corporativo</p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-emerald mb-2">136</div>
-              <div className="text-sm text-secondary">Total Empleados</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-gold mb-2">$1,120K</div>
-              <div className="text-sm text-secondary">Gastos Totales MXN</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-sapphire mb-2">€215K</div>
-              <div className="text-sm text-secondary">Gastos Totales EUR</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-ruby mb-2">6</div>
-              <div className="text-sm text-secondary">Empresas Activas</div>
-            </div>
-          </div>
-        </div>
-        
-      </div>
-      
-      <script src="/static/app.js"></script>
     </div>
-  );
+    
+</body>
+</html>`);
 })
 
-// Company individual dashboard
+
 app.get('/company/:id', (c) => {
   const companyId = c.req.param('id');
   
