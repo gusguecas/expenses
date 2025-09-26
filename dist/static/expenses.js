@@ -1189,4 +1189,122 @@ function fillFormWithOCR(ocrText) {
     }, 100);
 }
 
+// FUNCIÓN PARA MANEJAR SUBIDA DE ARCHIVOS CON OCR
+async function handleFileUpload(input) {
+    if (!input.files || input.files.length === 0) {
+        return;
+    }
+    
+    const uploadedFilesContainer = document.getElementById('uploaded-files');
+    const ocrResultsContainer = document.getElementById('ocr-results');
+    const ocrContentContainer = document.getElementById('ocr-content');
+    
+    for (let i = 0; i < input.files.length; i++) {
+        const file = input.files[i];
+        
+        // Crear preview del archivo
+        const fileDiv = document.createElement('div');
+        fileDiv.className = 'glass-panel p-4 border border-accent-gold/30 rounded-lg';
+        fileDiv.innerHTML = `
+            <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center">
+                    <i class="fas fa-file-image text-accent-emerald mr-2"></i>
+                    <span class="text-sm font-semibold text-text-primary">${file.name}</span>
+                </div>
+                <span class="text-xs text-text-secondary">${(file.size / 1024).toFixed(1)} KB</span>
+            </div>
+            <div class="w-full bg-glass-hover rounded-full h-2 mb-2">
+                <div class="bg-gradient-to-r from-accent-gold to-accent-emerald h-2 rounded-full animate-pulse" style="width: 0%" id="progress-${i}"></div>
+            </div>
+            <div class="text-xs text-accent-gold">⚡ Procesando OCR...</div>
+        `;
+        uploadedFilesContainer.appendChild(fileDiv);
+        
+        // Simular progreso
+        let progress = 0;
+        const progressBar = document.getElementById(`progress-${i}`);
+        const progressInterval = setInterval(() => {
+            progress += Math.random() * 20;
+            if (progress >= 100) {
+                progress = 100;
+                clearInterval(progressInterval);
+            }
+            progressBar.style.width = progress + '%';
+        }, 200);
+        
+        // Simular subida y procesamiento OCR
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            // Enviar al endpoint de subida (usamos el mock de OCR)
+            const response = await fetch('/api/attachments', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                
+                // Actualizar el archivo con el resultado exitoso
+                fileDiv.innerHTML = `
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center">
+                            <i class="fas fa-check-circle text-emerald mr-2"></i>
+                            <span class="text-sm font-semibold text-text-primary">${file.name}</span>
+                        </div>
+                        <span class="text-xs text-emerald">✅ Completado</span>
+                    </div>
+                    <div class="text-xs text-text-secondary">
+                        📄 URL: ${result.url}
+                    </div>
+                `;
+                
+                // Si hay resultados de OCR, mostrarlos
+                if (result.ocr_result && result.ocr_result.text) {
+                    ocrResultsContainer.style.display = 'block';
+                    
+                    const ocrDiv = document.createElement('div');
+                    ocrDiv.className = 'glass-panel p-4 border border-accent-emerald/30 rounded-lg';
+                    ocrDiv.innerHTML = `
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center">
+                                <i class="fas fa-eye text-accent-emerald mr-2"></i>
+                                <span class="font-semibold text-text-primary">${file.name}</span>
+                            </div>
+                            <span class="text-xs text-accent-emerald">Confianza: ${(result.ocr_result.confidence * 100).toFixed(0)}%</span>
+                        </div>
+                        <div class="text-sm text-text-primary bg-glass-hover rounded p-3 font-mono">
+                            ${result.ocr_result.text.replace(/\\n/g, '<br>')}
+                        </div>
+                        <div class="mt-3 flex justify-end">
+                            <button onclick="fillFormWithOCR(decodeURIComponent('${encodeURIComponent(result.ocr_result.text)}'))" class="premium-button text-xs">
+                                <i class="fas fa-magic mr-2"></i>
+                                ✨ Llenar Formulario Automáticamente
+                            </button>
+                        </div>
+                    `;
+                    ocrContentContainer.appendChild(ocrDiv);
+                }
+                
+            } else {
+                throw new Error('Error en la subida del archivo');
+            }
+            
+        } catch (error) {
+            console.error('❌ Error procesando archivo:', error);
+            fileDiv.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <i class="fas fa-exclamation-circle text-red-400 mr-2"></i>
+                        <span class="text-sm font-semibold text-text-primary">${file.name}</span>
+                    </div>
+                    <span class="text-xs text-red-400">❌ Error</span>
+                </div>
+                <div class="text-xs text-red-400 mt-1">Error: ${error.message}</div>
+            `;
+        }
+    }
+}
+
 console.log('✅ expenses.js cargado exitosamente');
