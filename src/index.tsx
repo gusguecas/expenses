@@ -2045,6 +2045,7 @@ app.get('/', (c) => {
         <title>Gestión de Gastos Premium</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <link href="/static/styles.css" rel="stylesheet">
         <style>
         body {
@@ -2237,13 +2238,10 @@ app.get('/', (c) => {
             <div class="lg:col-span-3">
                 <div class="glass-panel p-6">
                     <h3 class="text-xl font-bold text-accent-gold mb-4">
-                        <i class="fas fa-chart-bar mr-3"></i>Análisis de Gastos
+                        <i class="fas fa-chart-pie mr-3"></i>Distribución por Estado
                     </h3>
-                    <div class="h-96 flex items-center justify-center text-text-secondary">
-                        <div class="text-center">
-                            <i class="fas fa-chart-line text-6xl text-accent-gold mb-4"></i>
-                            <p>Gráficos de análisis aquí</p>
-                        </div>
+                    <div class="h-96 flex items-center justify-center">
+                        <canvas id="statusChart" width="400" height="300"></canvas>
                     </div>
                 </div>
 
@@ -2279,13 +2277,15 @@ app.get('/', (c) => {
 
     
     <script>
-        // Variables globales para filtros
+        // Variables globales para filtros y gráfica
         let currentFilters = {};
+        let statusChart = null;
         
         // Inicializar al cargar la página
         document.addEventListener('DOMContentLoaded', function() {
             initializeEventListeners();
             loadCompanies();
+            initializeChart();
             loadDashboardData();
         });
         
@@ -2483,6 +2483,9 @@ app.get('/', (c) => {
                 approvalRateEl.textContent = approvalRate + '%';
             }
             
+            // Actualizar también la gráfica de pie
+            updateChart(data);
+            
             console.log('✅ KPIs actualizados:', {
                 totalAmountMxn,
                 totalExpenses,
@@ -2559,6 +2562,113 @@ app.get('/', (c) => {
                 'reimbursed': 'Reembolsado'
             };
             return texts[status] || status;
+        }
+        
+        // Inicializar gráfica de pie
+        function initializeChart() {
+            const ctx = document.getElementById('statusChart');
+            if (!ctx) {
+                console.error('❌ No se encontró el canvas para la gráfica');
+                return;
+            }
+            
+            statusChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['Cargando...'],
+                    datasets: [{
+                        data: [1],
+                        backgroundColor: ['#e5e7eb'],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 20,
+                                usePointStyle: true,
+                                font: {
+                                    size: 14
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return label + ': ' + value + ' (' + percentage + '%)';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            console.log('✅ Gráfica de pie inicializada');
+        }
+        
+        // Actualizar gráfica de pie con datos reales
+        function updateChart(data) {
+            if (!statusChart || !data.status_metrics) {
+                console.log('⚠️ Gráfica o datos no disponibles');
+                return;
+            }
+            
+            const statusData = data.status_metrics;
+            const labels = [];
+            const values = [];
+            const colors = [];
+            
+            const statusConfig = {
+                'pending': { 
+                    label: '⏳ Pendiente', 
+                    color: '#f59e0b' 
+                },
+                'approved': { 
+                    label: '✅ Aprobado', 
+                    color: '#10b981' 
+                },
+                'rejected': { 
+                    label: '❌ Rechazado', 
+                    color: '#ef4444' 
+                },
+                'reimbursed': { 
+                    label: '💰 Reembolsado', 
+                    color: '#3b82f6' 
+                },
+                'invoiced': { 
+                    label: '📄 Facturado', 
+                    color: '#8b5cf6' 
+                }
+            };
+            
+            statusData.forEach(status => {
+                const config = statusConfig[status.status] || { 
+                    label: status.status, 
+                    color: '#6b7280' 
+                };
+                labels.push(config.label);
+                values.push(status.count);
+                colors.push(config.color);
+            });
+            
+            // Actualizar datos de la gráfica
+            statusChart.data.labels = labels;
+            statusChart.data.datasets[0].data = values;
+            statusChart.data.datasets[0].backgroundColor = colors;
+            
+            // Animar la actualización
+            statusChart.update('active');
+            
+            console.log('📊 Gráfica actualizada:', { labels, values });
         }
     </script>
     </body>
