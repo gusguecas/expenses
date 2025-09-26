@@ -1005,6 +1005,109 @@ app.post('/api/companies', async (c) => {
   }
 })
 
+// Companies API - Update existing company (Protected)
+app.put('/api/companies/:id', async (c) => {
+  const { env } = c;
+  const user = await authenticateUser(c);
+  
+  if (!user) {
+    return c.json({ error: 'No autorizado' }, 401);
+  }
+  
+  if (!user.is_cfo) {
+    return c.json({ error: 'Solo CFOs pueden editar empresas' }, 403);
+  }
+  
+  try {
+    const companyId = c.req.param('id');
+    const companyData = await c.req.json();
+    
+    // Validate required fields
+    const requiredFields = ['razon_social', 'commercial_name', 'country', 'tax_id', 'primary_currency'];
+    for (const field of requiredFields) {
+      if (!companyData[field]) {
+        return c.json({ error: `El campo ${field} es requerido` }, 400);
+      }
+    }
+    
+    // Validate country and currency
+    if (!['MX', 'ES', 'US', 'CA'].includes(companyData.country)) {
+      return c.json({ error: 'País no válido' }, 400);
+    }
+    
+    if (!['MXN', 'EUR', 'USD', 'CAD'].includes(companyData.primary_currency)) {
+      return c.json({ error: 'Moneda no válida' }, 400);
+    }
+    
+    // Check if company exists
+    const existingCompany = await env.DB.prepare(`
+      SELECT id FROM companies WHERE id = ? AND active = TRUE
+    `).bind(companyId).first();
+    
+    if (!existingCompany) {
+      return c.json({ error: 'Empresa no encontrada' }, 404);
+    }
+    
+    // Check if tax_id is unique (excluding current company)
+    const duplicateTaxId = await env.DB.prepare(`
+      SELECT id FROM companies WHERE tax_id = ? AND id != ? AND active = TRUE
+    `).bind(companyData.tax_id, companyId).first();
+    
+    if (duplicateTaxId) {
+      return c.json({ error: 'Ya existe otra empresa con ese RFC/NIF/EIN/BN' }, 409);
+    }
+    
+    // Update company
+    await env.DB.prepare(`
+      UPDATE companies SET
+        name = ?, commercial_name = ?, razon_social = ?, country = ?, tax_id = ?, 
+        primary_currency = ?, employees_count = ?, business_category = ?, 
+        website = ?, business_description = ?, address_street = ?, address_city = ?, 
+        address_state = ?, address_postal = ?, phone = ?, brand_color = ?,
+        updated_at = datetime('now')
+      WHERE id = ? AND active = TRUE
+    `).bind(
+      companyData.commercial_name || companyData.razon_social,
+      companyData.commercial_name,
+      companyData.razon_social,
+      companyData.country,
+      companyData.tax_id,
+      companyData.primary_currency,
+      companyData.employees_count || null,
+      companyData.business_category || null,
+      companyData.website || null,
+      companyData.business_description || null,
+      companyData.address_street || null,
+      companyData.address_city || null,
+      companyData.address_state || null,
+      companyData.address_postal || null,
+      companyData.phone || null,
+      companyData.brand_color || '#D4AF37',
+      companyId
+    ).run();
+    
+    // Get updated company
+    const updatedCompany = await env.DB.prepare(`
+      SELECT * FROM companies WHERE id = ?
+    `).bind(companyId).first();
+    
+    console.log(`✅ Empresa actualizada: ${companyData.commercial_name} (ID: ${companyId})`);
+    
+    return c.json({
+      success: true,
+      message: 'Empresa actualizada exitosamente',
+      company: updatedCompany
+    });
+    
+  } catch (error) {
+    console.error('Error updating company:', error);
+    return c.json({ 
+      error: 'Error interno del servidor',
+      details: error.message 
+    }, 500);
+  }
+})
+
 // Companies API - Upload logo (Protected)
 app.post('/api/companies/:id/logo', async (c) => {
   const { env } = c;
@@ -5584,7 +5687,7 @@ app.get('/companies', (c) => {
                     ...(token ? { 'Authorization': \`Bearer \${token}\` } : {})
                 };
 
-                const url = currentEditingCompany ? \`/api/companies/\${currentEditingCompany}\` : '/api/companies';
+                const url = currentEditingCompany ? '/api/companies/' + currentEditingCompany : '/api/companies';
                 const method = currentEditingCompany ? 'PUT' : 'POST';
 
                 const response = await fetch(url, {
@@ -5596,9 +5699,12 @@ app.get('/companies', (c) => {
                 if (response.ok) {
                     const result = await response.json();
                     
-                    // If there's a logo file and we created a new company, upload it
-                    if (window.selectedLogoFile && result.id) {
-                        await uploadLogo(result.id, window.selectedLogoFile);
+                    // If there's a logo file, upload it (for both new and existing companies)
+                    if (window.selectedLogoFile) {
+                        const companyId = currentEditingCompany || result.id;
+                        if (companyId) {
+                            await uploadLogo(companyId, window.selectedLogoFile);
+                        }
                     }
                     
                     showMessage('Empresa ' + (currentEditingCompany ? 'actualizada' : 'creada') + ' exitosamente', 'success');
@@ -5741,9 +5847,57 @@ app.get('/companies', (c) => {
         }
 
         // Edit company
-        function editCompany(companyId) {
-            // TODO: Implement edit functionality
-            showMessage('Función de edición en desarrollo', 'info');
+        async function editCompany(companyId) {
+            try {
+                // Find company in current data
+                const company = companies.find(c => c.id == companyId);
+                if (!company) {
+                    showMessage('Empresa no encontrada', 'error');
+                    return;
+                }
+                
+                // Set editing mode
+                currentEditingCompany = companyId;
+                
+                // Update modal title
+                document.getElementById('modal-title').innerHTML = '<i class="fas fa-edit mr-3"></i>Editar Empresa';
+                
+                // Pre-fill all form fields
+                document.getElementById('razon-social').value = company.razon_social || company.name || '';
+                document.getElementById('commercial-name').value = company.commercial_name || company.name || '';
+                document.getElementById('country').value = company.country || '';
+                document.getElementById('tax-id').value = company.tax_id || '';
+                document.getElementById('primary-currency').value = company.primary_currency || '';
+                document.getElementById('employees-count').value = company.employees_count || '';
+                document.getElementById('business-category').value = company.business_category || '';
+                document.getElementById('website').value = company.website || '';
+                document.getElementById('business-description').value = company.business_description || '';
+                document.getElementById('address-street').value = company.address_street || '';
+                document.getElementById('address-city').value = company.address_city || '';
+                document.getElementById('address-state').value = company.address_state || '';
+                document.getElementById('address-postal').value = company.address_postal || '';
+                document.getElementById('phone').value = company.phone || '';
+                document.getElementById('brand-color').value = company.brand_color || '#D4AF37';
+                
+                // Show existing logo if available
+                if (company.logo_url) {
+                    document.getElementById('logo-img').src = company.logo_url;
+                    document.getElementById('logo-preview').classList.remove('hidden');
+                    document.getElementById('logo-placeholder').classList.add('hidden');
+                } else {
+                    resetLogoPreview();
+                }
+                
+                // Update country-specific fields
+                updateCountryFields();
+                
+                // Show modal
+                document.getElementById('company-modal').classList.remove('hidden');
+                
+            } catch (error) {
+                console.error('Error loading company for edit:', error);
+                showMessage('Error al cargar datos de la empresa', 'error');
+            }
         }
 
         // Show message helper
