@@ -2307,12 +2307,22 @@ app.get('/', (c) => {
         
         // Aplicar filtros
         function applyFilters() {
+            const dateFromFilter = document.getElementById('filter-date-from');
+            const dateToFilter = document.getElementById('filter-date-to');
             const companyFilter = document.getElementById('companyFilter');
+            const userFilter = document.getElementById('userFilter');
+            const typeFilter = document.getElementById('typeFilter');
+            const categoryFilter = document.getElementById('categoryFilter');
             const statusFilter = document.getElementById('statusFilter');
             const currencyFilter = document.getElementById('currencyFilter');
             
             currentFilters = {
+                date_from: dateFromFilter ? dateFromFilter.value : '',
+                date_to: dateToFilter ? dateToFilter.value : '',
                 company_id: companyFilter ? companyFilter.value : '',
+                user_id: userFilter ? userFilter.value : '',
+                type: typeFilter ? typeFilter.value : '',
+                category: categoryFilter ? categoryFilter.value : '',
                 status: statusFilter ? statusFilter.value : '',
                 currency: currencyFilter ? currencyFilter.value : ''
             };
@@ -2333,11 +2343,21 @@ app.get('/', (c) => {
         
         // Limpiar filtros
         function clearFilters() {
+            const dateFromFilter = document.getElementById('filter-date-from');
+            const dateToFilter = document.getElementById('filter-date-to');
             const companyFilter = document.getElementById('companyFilter');
+            const userFilter = document.getElementById('userFilter');
+            const typeFilter = document.getElementById('typeFilter');
+            const categoryFilter = document.getElementById('categoryFilter');
             const statusFilter = document.getElementById('statusFilter');
             const currencyFilter = document.getElementById('currencyFilter');
             
+            if (dateFromFilter) dateFromFilter.value = '';
+            if (dateToFilter) dateToFilter.value = '';
             if (companyFilter) companyFilter.value = '';
+            if (userFilter) userFilter.value = '';
+            if (typeFilter) typeFilter.value = '';
+            if (categoryFilter) categoryFilter.value = '';
             if (statusFilter) statusFilter.value = '';
             if (currencyFilter) currencyFilter.value = '';
             
@@ -2361,20 +2381,21 @@ app.get('/', (c) => {
         function loadCompanies() {
             fetch('/api/companies')
                 .then(response => response.json())
-                .then(companies => {
+                .then(data => {
                     const companySelect = document.getElementById('companyFilter');
-                    if (companySelect) {
+                    if (companySelect && data.companies) {
                         // Limpiar opciones existentes excepto la primera
                         companySelect.innerHTML = '<option value="">Todas las empresas</option>';
                         
-                        companies.forEach(company => {
+                        data.companies.forEach(company => {
                             const option = document.createElement('option');
                             option.value = company.id;
-                            option.textContent = company.name;
+                            const flag = company.country === 'MX' ? '🇲🇽' : company.country === 'ES' ? '🇪🇸' : '🌍';
+                            option.textContent = flag + ' ' + company.name;
                             companySelect.appendChild(option);
                         });
                         
-                        console.log('✅ Empresas cargadas en filtro:', companies.length);
+                        console.log('✅ Empresas cargadas en filtro:', data.companies.length);
                     }
                 })
                 .catch(error => {
