@@ -927,7 +927,7 @@ ID VIAJE: 1234-5678-9012`,confidence:.89}};let s="ticket";return a&&(a.toLowerCa
                 </div>
                 <div class="glass-panel p-4 text-center">
                     <div id="pendingExpenses" class="text-3xl font-bold text-accent-gold">-</div>
-                    <div class="text-text-secondary text-sm">Pendientes</div>
+                    <div class="text-text-secondary text-sm">Pendiente Autorización</div>
                 </div>
                 <div class="glass-panel p-4 text-center">
                     <div id="approvalRate" class="text-3xl font-bold text-accent-emerald">-</div>
