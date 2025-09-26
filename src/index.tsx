@@ -2040,209 +2040,184 @@ app.get('/', (c) => {
   return c.html(`<!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📊 Dashboard Analítico - Lyra Expenses</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
-    <style>
-        .purple-gradient { 
-            background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 50%, #c084fc 100%); 
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Gestión de Gastos Premium</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <link href="/static/styles.css" rel="stylesheet">
+        <style>
+        body {
+            background: linear-gradient(135deg, 
+                var(--color-bg-primary) 0%, 
+                var(--color-bg-secondary) 50%, 
+                var(--color-bg-tertiary) 100%);
+            min-height: 100vh;
+            color: var(--color-text-primary);
         }
-        .purple-glass { 
-            background: rgba(139, 92, 246, 0.1); 
-            backdrop-filter: blur(10px); 
-            border: 1px solid rgba(139, 92, 246, 0.2);
+        
+        .premium-button {
+            background: var(--gradient-emerald);
+            border: 1px solid var(--color-glass-border);
+            border-radius: var(--radius-md);
+            padding: 12px 24px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
         }
-        .purple-card {
-            background: linear-gradient(135deg, rgba(139, 92, 246, 0.05), rgba(168, 85, 247, 0.05));
-            border: 1px solid rgba(139, 92, 246, 0.15);
+        
+        .premium-button:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-glow);
+            background: var(--gradient-gold);
         }
-    </style>
-</head>
-<body class="bg-gray-50 font-sans">
-    <!-- Navigation Header -->
-    <header class="purple-gradient shadow-lg">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center py-4">
-                <div class="flex items-center space-x-4">
-                    <div class="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
-                        <i class="fas fa-chart-line text-white text-xl"></i>
-                    </div>
-                    <h1 class="text-2xl font-bold text-white">Lyra Expenses</h1>
+        </style>
+    </head>
+<body>
+    <!-- Navigation Header (estilo gastos) -->
+    <div class="container mx-auto px-6 py-8">
+        <div class="glass-panel p-8 mb-8">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-4xl font-bold text-accent-gold">
+                        <i class="fas fa-chart-pie mr-4"></i>
+                        Dashboard Analítico - Lyra Expenses
+                    </h1>
+                    <p class="text-text-secondary text-lg mt-2">
+                        Sistema ejecutivo de control financiero empresarial
+                    </p>
                 </div>
-                <nav class="flex space-x-6">
-                    <a href="/" class="text-white font-medium px-3 py-2 rounded-md bg-white bg-opacity-20">
-                        <i class="fas fa-chart-pie mr-2"></i>Dashboard
+                <div class="flex gap-4">
+                    <a href="/" class="premium-button style="background: var(--gradient-gold);"">
+                        <i class="fas fa-chart-pie mr-3"></i>Dashboard
                     </a>
-                    <a href="/companies" class="text-white hover:text-purple-200 font-medium px-3 py-2 rounded-md hover:bg-white hover:bg-opacity-10 transition">
-                        <i class="fas fa-building mr-2"></i>Empresas
+                    <a href="/companies" class="premium-button ">
+                        <i class="fas fa-building mr-3"></i>Empresas
                     </a>
-                    <a href="/expenses" class="text-white hover:text-purple-200 font-medium px-3 py-2 rounded-md hover:bg-white hover:bg-opacity-10 transition">
-                        <i class="fas fa-receipt mr-2"></i>Gastos
+                    <a href="/expenses" class="premium-button ">
+                        <i class="fas fa-receipt mr-3"></i>Gastos
                     </a>
-                </nav>
+                </div>
             </div>
         </div>
-    </header>
+    </div>
+    
+    <!-- Contenido Principal -->
+    <div class="container mx-auto px-6 pb-8">
+        <!-- Dashboard Content con estilo gastos -->
+        <div class="glass-panel p-6 mb-8">
+            <h3 class="text-xl font-bold text-accent-gold flex items-center mb-4">
+                <i class="fas fa-chart-pie mr-3"></i>
+                KPIs Principales
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div class="glass-panel p-4 text-center">
+                    <div class="text-3xl font-bold text-accent-gold">4563 €</div>
+                    <div class="text-text-secondary text-sm">Total Gastos</div>
+                </div>
+                <div class="glass-panel p-4 text-center">
+                    <div class="text-3xl font-bold text-accent-emerald">1</div>
+                    <div class="text-text-secondary text-sm">Empresa</div>
+                </div>
+                <div class="glass-panel p-4 text-center">
+                    <div class="text-3xl font-bold text-accent-gold">1</div>
+                    <div class="text-text-secondary text-sm">Pendiente Autorización</div>
+                </div>
+                <div class="glass-panel p-4 text-center">
+                    <div class="text-3xl font-bold text-accent-emerald">85%</div>
+                    <div class="text-text-secondary text-sm">Aprobación</div>
+                </div>
+            </div>
+        </div>
 
-    <div class="flex h-screen pt-0">
-        <!-- Sidebar: Ficha de Gasto -->
-        <div class="w-80 purple-glass shadow-xl overflow-y-auto">
-            <div class="p-6">
-                <h2 class="text-xl font-bold text-purple-900 mb-6">
-                    <i class="fas fa-filter mr-2"></i>Ficha de Gasto
-                </h2>
-                
-                <!-- Filters -->
-                <div class="space-y-4">
-                    <!-- Company Filter -->
-                    <div>
-                        <label class="block text-sm font-medium text-purple-800 mb-2">Empresa</label>
-                        <select id="companyFilter" class="w-full px-3 py-2 border border-purple-200 rounded-md bg-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
-                            <option value="">Todas las empresas</option>
-                        </select>
-                    </div>
-
-                    <!-- Status Filter -->
-                    <div>
-                        <label class="block text-sm font-medium text-purple-800 mb-2">Estado</label>
-                        <select id="statusFilter" class="w-full px-3 py-2 border border-purple-200 rounded-md bg-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
-                            <option value="">Todos los estados</option>
-                            <option value="pending">Pendiente</option>
-                            <option value="approved">Aprobado</option>
-                            <option value="rejected">Rechazado</option>
-                            <option value="reimbursed">Reembolsado</option>
-                        </select>
-                    </div>
-
-                    <!-- Currency Filter -->
-                    <div>
-                        <label class="block text-sm font-medium text-purple-800 mb-2">Moneda</label>
-                        <select id="currencyFilter" class="w-full px-3 py-2 border border-purple-200 rounded-md bg-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
-                            <option value="">Todas las monedas</option>
-                            <option value="MXN">MXN - Peso Mexicano</option>
-                            <option value="USD">USD - Dólar</option>
-                            <option value="EUR">EUR - Euro</option>
-                        </select>
-                    </div>
-
-                    <!-- Apply Filters Button -->
-                    <button id="applyFilters" class="w-full bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700 transition font-medium">
-                        <i class="fas fa-search mr-2"></i>Aplicar Filtros
-                    </button>
+        <!-- Filtros de Gasto (sidebar style) -->
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <div class="lg:col-span-1">
+                <div class="glass-panel p-6">
+                    <h3 class="text-xl font-bold text-accent-gold mb-6">
+                        <i class="fas fa-filter mr-2"></i>Ficha de Gasto
+                    </h3>
                     
-                    <!-- Clear Filters Button -->
-                    <button id="clearFilters" class="w-full bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600 transition font-medium">
-                        <i class="fas fa-eraser mr-2"></i>Limpiar Filtros
-                    </button>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-accent-gold mb-2">Empresa</label>
+                            <select id="companyFilter" class="w-full p-3 rounded-lg border border-glass-border bg-glass text-text-primary focus:border-accent-gold focus:outline-none">
+                                <option value="">Todas las empresas</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-accent-gold mb-2">Estado</label>
+                            <select id="statusFilter" class="w-full p-3 rounded-lg border border-glass-border bg-glass text-text-primary focus:border-accent-gold focus:outline-none">
+                                <option value="">Todos los estados</option>
+                                <option value="pending">Pendiente</option>
+                                <option value="approved">Aprobado</option>
+                                <option value="rejected">Rechazado</option>
+                                <option value="reimbursed">Reembolsado</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-accent-gold mb-2">Moneda</label>
+                            <select id="currencyFilter" class="w-full p-3 rounded-lg border border-glass-border bg-glass text-text-primary focus:border-accent-gold focus:outline-none">
+                                <option value="">Todas las monedas</option>
+                                <option value="MXN">MXN - Peso Mexicano</option>
+                                <option value="USD">USD - Dólar</option>
+                                <option value="EUR">EUR - Euro</option>
+                            </select>
+                        </div>
+
+                        <button id="applyFilters" class="w-full premium-button">
+                            <i class="fas fa-search mr-2"></i>Aplicar Filtros
+                        </button>
+                        
+                        <button id="clearFilters" class="w-full premium-button" style="background: var(--gradient-accent);">
+                            <i class="fas fa-broom mr-2"></i>Limpiar Filtros
+                        </button>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Main Content -->
-        <div class="flex-1 overflow-auto bg-gray-50">
-            <div class="p-6">
-                <!-- KPI Cards -->
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                    <!-- Total Amount -->
-                    <div class="purple-card rounded-xl p-6 shadow-sm">
-                        <div class="flex items-center">
-                            <div class="p-3 bg-purple-100 rounded-full mr-4">
-                                <i class="fas fa-euro-sign text-purple-600 text-xl"></i>
-                            </div>
-                            <div>
-                                <p class="text-sm font-medium text-purple-600">Total Gastos</p>
-                                <p id="totalAmount" class="text-2xl font-bold text-purple-900">4,563 €</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Total Companies -->
-                    <div class="purple-card rounded-xl p-6 shadow-sm">
-                        <div class="flex items-center">
-                            <div class="p-3 bg-purple-100 rounded-full mr-4">
-                                <i class="fas fa-building text-purple-600 text-xl"></i>
-                            </div>
-                            <div>
-                                <p class="text-sm font-medium text-purple-600">Empresas</p>
-                                <p id="totalCompanies" class="text-2xl font-bold text-purple-900">1</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Pending Authorization -->
-                    <div class="purple-card rounded-xl p-6 shadow-sm">
-                        <div class="flex items-center">
-                            <div class="p-3 bg-orange-100 rounded-full mr-4">
-                                <i class="fas fa-clock text-orange-600 text-xl"></i>
-                            </div>
-                            <div>
-                                <p class="text-sm font-medium text-purple-600">Pend. Autorización</p>
-                                <p id="pendingAuth" class="text-2xl font-bold text-purple-900">1</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Approved Expenses -->
-                    <div class="purple-card rounded-xl p-6 shadow-sm">
-                        <div class="flex items-center">
-                            <div class="p-3 bg-green-100 rounded-full mr-4">
-                                <i class="fas fa-check-circle text-green-600 text-xl"></i>
-                            </div>
-                            <div>
-                                <p class="text-sm font-medium text-purple-600">Aprobados</p>
-                                <p id="approvedCount" class="text-2xl font-bold text-purple-900">6</p>
-                            </div>
+            <div class="lg:col-span-3">
+                <div class="glass-panel p-6">
+                    <h3 class="text-xl font-bold text-accent-gold mb-4">
+                        <i class="fas fa-chart-bar mr-3"></i>Análisis de Gastos
+                    </h3>
+                    <div class="h-96 flex items-center justify-center text-text-secondary">
+                        <div class="text-center">
+                            <i class="fas fa-chart-line text-6xl text-accent-gold mb-4"></i>
+                            <p>Gráficos de análisis aquí</p>
                         </div>
                     </div>
                 </div>
 
-                <!-- Charts Section -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                    <!-- Donut Chart -->
-                    <div class="bg-white rounded-xl p-6 shadow-sm border border-purple-100">
-                        <h3 class="text-lg font-semibold text-purple-900 mb-4">
-                            <i class="fas fa-chart-pie mr-2 text-purple-600"></i>Gastos por Estado
-                        </h3>
-                        <div class="relative" style="height: 300px;">
-                            <canvas id="statusChart"></canvas>
-                        </div>
-                    </div>
-
-                    <!-- Bar Chart -->
-                    <div class="bg-white rounded-xl p-6 shadow-sm border border-purple-100">
-                        <h3 class="text-lg font-semibold text-purple-900 mb-4">
-                            <i class="fas fa-chart-bar mr-2 text-purple-600"></i>Gastos por Empresa
-                        </h3>
-                        <div class="relative" style="height: 300px;">
-                            <canvas id="companyChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Expenses Table -->
-                <div class="bg-white rounded-xl shadow-sm border border-purple-100">
-                    <div class="px-6 py-4 border-b border-purple-100">
-                        <h3 class="text-lg font-semibold text-purple-900">
-                            <i class="fas fa-table mr-2 text-purple-600"></i>Gastos Recientes
-                        </h3>
-                    </div>
+                <div class="glass-panel p-6 mt-8">
+                    <h3 class="text-xl font-bold text-accent-gold mb-4">
+                        <i class="fas fa-table mr-3"></i>Tabla de Gastos Recientes
+                    </h3>
                     <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-purple-50">
-                                <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-purple-600 uppercase tracking-wider">Fecha</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-purple-600 uppercase tracking-wider">Descripción</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-purple-600 uppercase tracking-wider">Empresa</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-purple-600 uppercase tracking-wider">Monto</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-purple-600 uppercase tracking-wider">Estado</th>
+                        <table class="min-w-full">
+                            <thead>
+                                <tr class="border-b border-glass-border">
+                                    <th class="text-left py-3 px-4 text-accent-gold">Descripción</th>
+                                    <th class="text-left py-3 px-4 text-accent-gold">Empresa</th>
+                                    <th class="text-left py-3 px-4 text-accent-gold">Monto</th>
+                                    <th class="text-left py-3 px-4 text-accent-gold">Estado</th>
+                                    <th class="text-left py-3 px-4 text-accent-gold">Fecha</th>
                                 </tr>
                             </thead>
-                            <tbody id="expensesTableBody" class="bg-white divide-y divide-gray-200">
-                                <!-- Table rows will be populated by JavaScript -->
+                            <tbody>
+                                <tr class="border-b border-glass-border">
+                                    <td class="py-3 px-4 text-text-primary">Almuerzo de negocio</td>
+                                    <td class="py-3 px-4 text-text-secondary">TechMX Solutions</td>
+                                    <td class="py-3 px-4 text-accent-emerald font-bold">$850 MXN</td>
+                                    <td class="py-3 px-4"><span class="premium-badge">Aprobado</span></td>
+                                    <td class="py-3 px-4 text-text-secondary">2024-01-15</td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
@@ -2250,600 +2225,288 @@ app.get('/', (c) => {
             </div>
         </div>
     </div>
-
-    <script>
-        // Dashboard variables
-        let currentFilters = {};
-        let dashboardData = {};
-        let statusChart, companyChart;
-
-        // Initialize dashboard on load
-        document.addEventListener('DOMContentLoaded', function() {
-            loadCompanies();
-            loadDashboardData();
-            initializeEventListeners();
-        });
-
-        // Load companies for filter
-        async function loadCompanies() {
-            try {
-                const response = await axios.get('/api/companies');
-                const companies = response.data.companies;
-                
-                const select = document.getElementById('companyFilter');
-                companies.forEach(company => {
-                    const option = document.createElement('option');
-                    option.value = company.id;
-                    option.textContent = company.name + ' (' + company.country + ')';
-                    select.appendChild(option);
-                });
-            } catch (error) {
-                console.error('Error loading companies:', error);
-            }
-        }
-
-        // Load dashboard data
-        async function loadDashboardData() {
-            try {
-                const response = await axios.get('/api/dashboard/metrics', {
-                    params: currentFilters
-                });
-                
-                dashboardData = response.data;
-                updateKPIs();
-                updateCharts();
-                updateTable();
-            } catch (error) {
-                console.error('Error loading dashboard data:', error);
-            }
-        }
-
-        // Update KPI cards
-        function updateKPIs() {
-            const statusMetrics = dashboardData.status_metrics || [];
-            const companyMetrics = dashboardData.company_metrics || [];
-            
-            // Calculate totals
-            const totalAmount = statusMetrics.reduce((sum, metric) => sum + (metric.total_mxn || 0), 0);
-            const totalCompanies = companyMetrics.length;
-            const pendingCount = statusMetrics.find(m => m.status === 'pending')?.count || 0;
-            const approvedCount = statusMetrics.find(m => m.status === 'approved')?.count || 0;
-            
-            // Update KPI displays (convert to EUR for display)
-            document.getElementById('totalAmount').textContent = Math.round(totalAmount / 20.15).toLocaleString() + ' €';
-            document.getElementById('totalCompanies').textContent = totalCompanies;
-            document.getElementById('pendingAuth').textContent = pendingCount;
-            document.getElementById('approvedCount').textContent = approvedCount;
-        }
-
-        // Update charts
-        function updateCharts() {
-            updateStatusChart();
-            updateCompanyChart();
-        }
-
-        // Update status donut chart with purple theme
-        function updateStatusChart() {
-            const ctx = document.getElementById('statusChart').getContext('2d');
-            
-            if (statusChart) {
-                statusChart.destroy();
-            }
-            
-            const statusMetrics = dashboardData.status_metrics || [];
-            const labels = statusMetrics.map(m => getStatusLabel(m.status));
-            const data = statusMetrics.map(m => m.count);
-            
-            statusChart = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: data,
-                        backgroundColor: [
-                            '#8b5cf6', // Purple
-                            '#a855f7', // Purple variant
-                            '#c084fc', // Light purple
-                            '#e879f9', // Pink purple
-                            '#f3e8ff'  // Very light purple
-                        ],
-                        borderWidth: 2,
-                        borderColor: '#ffffff'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                color: '#6b21a8',
-                                font: {
-                                    weight: 'bold'
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        // Update company bar chart with purple theme
-        function updateCompanyChart() {
-            const ctx = document.getElementById('companyChart').getContext('2d');
-            
-            if (companyChart) {
-                companyChart.destroy();
-            }
-            
-            const companyMetrics = dashboardData.company_metrics || [];
-            const labels = companyMetrics.map(m => m.company);
-            const data = companyMetrics.map(m => Math.round((m.total_mxn || 0) / 20.15)); // Convert to EUR
-            
-            companyChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Gastos (EUR)',
-                        data: data,
-                        backgroundColor: 'rgba(139, 92, 246, 0.7)',
-                        borderColor: '#8b5cf6',
-                        borderWidth: 2
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            labels: {
-                                color: '#6b21a8',
-                                font: {
-                                    weight: 'bold'
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                color: '#6b21a8'
-                            },
-                            grid: {
-                                color: 'rgba(139, 92, 246, 0.1)'
-                            }
-                        },
-                        x: {
-                            ticks: {
-                                color: '#6b21a8'
-                            },
-                            grid: {
-                                color: 'rgba(139, 92, 246, 0.1)'
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        // Update expenses table
-        function updateTable() {
-            const tableBody = document.getElementById('expensesTableBody');
-            const expenses = dashboardData.recent_expenses || [];
-            
-            tableBody.innerHTML = '';
-            
-            expenses.forEach(expense => {
-                const row = document.createElement('tr');
-                row.className = 'hover:bg-purple-50 transition-colors';
-                row.innerHTML = 
-                    '<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">' + formatDate(expense.expense_date) + '</td>' +
-                    '<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">' + expense.description + '</td>' +
-                    '<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">' + expense.company_name + '</td>' +
-                    '<td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">' + expense.currency + ' ' + parseFloat(expense.amount).toLocaleString() + '</td>' +
-                    '<td class="px-6 py-4 whitespace-nowrap">' +
-                        '<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full ' + getStatusBadgeClass(expense.status) + '">' +
-                            getStatusLabel(expense.status) +
-                        '</span>' +
-                    '</td>';
-                tableBody.appendChild(row);
-            });
-        }
-
-        // Event listeners for filters
-        function initializeEventListeners() {
-            document.getElementById('applyFilters').addEventListener('click', applyFilters);
-            document.getElementById('clearFilters').addEventListener('click', clearFilters);
-        }
-
-        // Apply filters
-        function applyFilters() {
-            currentFilters = {
-                company_id: document.getElementById('companyFilter').value,
-                status: document.getElementById('statusFilter').value,
-                currency: document.getElementById('currencyFilter').value
-            };
-            
-            // Remove empty filters
-            Object.keys(currentFilters).forEach(key => {
-                if (!currentFilters[key]) {
-                    delete currentFilters[key];
-                }
-            });
-            
-            loadDashboardData();
-        }
-
-        // Clear all filters
-        function clearFilters() {
-            document.getElementById('companyFilter').value = '';
-            document.getElementById('statusFilter').value = '';
-            document.getElementById('currencyFilter').value = '';
-            
-            currentFilters = {};
-            loadDashboardData();
-        }
-
-        // Utility functions
-        function formatDate(dateString) {
-            return new Date(dateString).toLocaleDateString('es-ES');
-        }
-
-        function getStatusLabel(status) {
-            const labels = {
-                'pending': 'Pendiente',
-                'approved': 'Aprobado',
-                'rejected': 'Rechazado',
-                'reimbursed': 'Reembolsado'
-            };
-            return labels[status] || status;
-        }
-
-        function getStatusBadgeClass(status) {
-            const classes = {
-                'pending': 'bg-yellow-100 text-yellow-800',
-                'approved': 'bg-green-100 text-green-800',
-                'rejected': 'bg-red-100 text-red-800',
-                'reimbursed': 'bg-blue-100 text-blue-800'
-            };
-            return classes[status] || 'bg-gray-100 text-gray-800';
-        }
-    </script>
+    
 </body>
 </html>`);
 })
 
-// Companies page - List all companies
+
 app.get('/companies', (c) => {
   return c.html(`<!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📊 Gestión de Empresas - Lyra Expenses</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
-    <style>
-        .purple-gradient { 
-            background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 50%, #c084fc 100%); 
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Gestión de Gastos Premium</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <link href="/static/styles.css" rel="stylesheet">
+        <style>
+        body {
+            background: linear-gradient(135deg, 
+                var(--color-bg-primary) 0%, 
+                var(--color-bg-secondary) 50%, 
+                var(--color-bg-tertiary) 100%);
+            min-height: 100vh;
+            color: var(--color-text-primary);
         }
-        .purple-glass { 
-            background: rgba(139, 92, 246, 0.1); 
-            backdrop-filter: blur(10px); 
-            border: 1px solid rgba(139, 92, 246, 0.2);
+        
+        .premium-button {
+            background: var(--gradient-emerald);
+            border: 1px solid var(--color-glass-border);
+            border-radius: var(--radius-md);
+            padding: 12px 24px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
         }
-        .purple-card {
-            background: linear-gradient(135deg, rgba(139, 92, 246, 0.05), rgba(168, 85, 247, 0.05));
-            border: 1px solid rgba(139, 92, 246, 0.15);
+        
+        .premium-button:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-glow);
+            background: var(--gradient-gold);
         }
-    </style>
-</head>
-<body class="bg-gray-50 font-sans">
-    <!-- Navigation Header -->
-    <header class="purple-gradient shadow-lg">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center py-4">
-                <div class="flex items-center space-x-4">
-                    <div class="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
-                        <i class="fas fa-chart-line text-white text-xl"></i>
-                    </div>
-                    <h1 class="text-2xl font-bold text-white">Lyra Expenses</h1>
+        </style>
+    </head>
+<body>
+    <!-- Navigation Header (estilo gastos) -->
+    <div class="container mx-auto px-6 py-8">
+        <div class="glass-panel p-8 mb-8">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-4xl font-bold text-accent-gold">
+                        <i class="fas fa-building mr-4"></i>
+                        Gestión de Empresas Premium
+                    </h1>
+                    <p class="text-text-secondary text-lg mt-2">
+                        Sistema ejecutivo de control corporativo empresarial
+                    </p>
                 </div>
-                <nav class="flex space-x-6">
-                    <a href="/" class="text-white hover:text-purple-200 font-medium px-3 py-2 rounded-md hover:bg-white hover:bg-opacity-10 transition">
-                        <i class="fas fa-chart-pie mr-2"></i>Dashboard
+                <div class="flex gap-4">
+                    <a href="/" class="premium-button ">
+                        <i class="fas fa-chart-pie mr-3"></i>Dashboard
                     </a>
-                    <a href="/companies" class="text-white font-medium px-3 py-2 rounded-md bg-white bg-opacity-20">
-                        <i class="fas fa-building mr-2"></i>Empresas
+                    <a href="/companies" class="premium-button style="background: var(--gradient-gold);"">
+                        <i class="fas fa-building mr-3"></i>Empresas
                     </a>
-                    <a href="/expenses" class="text-white hover:text-purple-200 font-medium px-3 py-2 rounded-md hover:bg-white hover:bg-opacity-10 transition">
-                        <i class="fas fa-receipt mr-2"></i>Gastos
+                    <a href="/expenses" class="premium-button ">
+                        <i class="fas fa-receipt mr-3"></i>Gastos
                     </a>
-                </nav>
+                </div>
             </div>
         </div>
-    </header>
-
-    <div class="min-h-screen bg-gray-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-            <!-- Header -->
-            <div class="text-center mb-12">
-                <h2 class="text-4xl font-bold text-purple-900 mb-3">
-                    <i class="fas fa-building-columns mr-3"></i>
-                    Portfolio Corporativo
-                </h2>
-                <p class="text-purple-700 text-lg">Gestión multiempresa internacional • MX + ES</p>
-                <div class="flex justify-center mt-4">
-                    <div class="flex items-center space-x-6 text-sm text-purple-600">
-                        <span class="flex items-center">
-                            <div class="w-2 h-2 bg-purple-500 rounded-full mr-2 animate-pulse"></div>
-                            6 empresas activas
-                        </span>
-                        <span class="flex items-center">
-                            <div class="w-2 h-2 bg-purple-500 rounded-full mr-2 animate-pulse"></div>
-                            Operaciones globales
-                        </span>
-                        <span class="flex items-center">
-                            <div class="w-2 h-2 bg-purple-500 rounded-full mr-2 animate-pulse"></div>
-                            Multimoneda: MXN • USD • EUR
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Companies Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              
-                <!-- 1. TechMX Solutions -->
-                <div class="purple-card p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer" onclick="window.location.href='/company/1'">
-                    <div class="flex items-center justify-between mb-6">
-                        <div class="flex items-center space-x-4">
-                            <div class="p-4 rounded-xl bg-purple-100 hover:bg-purple-200 transition-all">
-                                <span class="text-3xl">🇲🇽</span>
-                            </div>
-                            <div>
-                                <h3 class="text-xl font-bold text-purple-900 hover:text-purple-700 transition-colors">TechMX Solutions</h3>
-                                <p class="text-sm text-purple-600">Tecnología • México</p>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <div class="bg-green-100 text-green-800 px-2 py-1 rounded-md text-sm mb-2">
-                                <i class="fas fa-check-circle mr-1"></i>
-                                Activa
-                            </div>
-                            <p class="text-xs text-purple-600">MXN Principal</p>
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4 mb-6">
-                        <div class="text-center p-3 bg-purple-50 rounded-lg">
-                            <div class="text-2xl font-bold text-purple-800">24</div>
-                            <div class="text-xs text-purple-600">Empleados</div>
-                        </div>
-                        <div class="text-center p-3 bg-purple-50 rounded-lg">
-                            <div class="text-2xl font-bold text-purple-800">$485K</div>
-                            <div class="text-xs text-purple-600">Gastos MXN</div>
-                        </div>
-                    </div>
-                    <div class="flex items-center justify-between pt-4 border-t border-purple-200">
-                        <span class="text-sm text-purple-700">Ver dashboard completo</span>
-                        <i class="fas fa-arrow-right text-purple-700 hover:translate-x-1 transition-transform"></i>
-                    </div>
-                </div>
-
-                <!-- 2. Innovación Digital MX -->
-                <div class="purple-card p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer" onclick="window.location.href='/company/2'">
-                    <div class="flex items-center justify-between mb-6">
-                        <div class="flex items-center space-x-4">
-                            <div class="p-4 rounded-xl bg-purple-100 hover:bg-purple-200 transition-all">
-                                <span class="text-3xl">🇲🇽</span>
-                            </div>
-                            <div>
-                                <h3 class="text-xl font-bold text-purple-900 hover:text-purple-700 transition-colors">Innovación Digital MX</h3>
-                                <p class="text-sm text-purple-600">Digital • México</p>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <div class="bg-green-100 text-green-800 px-2 py-1 rounded-md text-sm mb-2">
-                                <i class="fas fa-check-circle mr-1"></i>
-                                Activa
-                            </div>
-                            <p class="text-xs text-purple-600">MXN Principal</p>
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4 mb-6">
-                        <div class="text-center p-3 bg-purple-50 rounded-lg">
-                            <div class="text-2xl font-bold text-purple-800">18</div>
-                            <div class="text-xs text-purple-600">Empleados</div>
-                        </div>
-                        <div class="text-center p-3 bg-purple-50 rounded-lg">
-                            <div class="text-2xl font-bold text-purple-800">$325K</div>
-                            <div class="text-xs text-purple-600">Gastos MXN</div>
-                        </div>
-                    </div>
-                    <div class="flex items-center justify-between pt-4 border-t border-purple-200">
-                        <span class="text-sm text-purple-700">Ver dashboard completo</span>
-                        <i class="fas fa-arrow-right text-purple-700 hover:translate-x-1 transition-transform"></i>
-                    </div>
-                </div>
-
-                <!-- 3. Consultoría Estratégica MX -->
-                <div class="purple-card p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer" onclick="window.location.href='/company/3'">
-                    <div class="flex items-center justify-between mb-6">
-                        <div class="flex items-center space-x-4">
-                            <div class="p-4 rounded-xl bg-purple-100 hover:bg-purple-200 transition-all">
-                                <span class="text-3xl">🇲🇽</span>
-                            </div>
-                            <div>
-                                <h3 class="text-xl font-bold text-purple-900 hover:text-purple-700 transition-colors">Consultoría Estratégica MX</h3>
-                                <p class="text-sm text-purple-600">Consultoría • México</p>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <div class="bg-green-100 text-green-800 px-2 py-1 rounded-md text-sm mb-2">
-                                <i class="fas fa-check-circle mr-1"></i>
-                                Activa
-                            </div>
-                            <p class="text-xs text-purple-600">MXN Principal</p>
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4 mb-6">
-                        <div class="text-center p-3 bg-purple-50 rounded-lg">
-                            <div class="text-2xl font-bold text-purple-800">12</div>
-                            <div class="text-xs text-purple-600">Empleados</div>
-                        </div>
-                        <div class="text-center p-3 bg-purple-50 rounded-lg">
-                            <div class="text-2xl font-bold text-purple-800">$195K</div>
-                            <div class="text-xs text-purple-600">Gastos MXN</div>
-                        </div>
-                    </div>
-                    <div class="flex items-center justify-between pt-4 border-t border-purple-200">
-                        <span class="text-sm text-purple-700">Ver dashboard completo</span>
-                        <i class="fas fa-arrow-right text-purple-700 hover:translate-x-1 transition-transform"></i>
-                    </div>
-                </div>
-
-                <!-- 4. TechES Barcelona -->
-                <div class="purple-card p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer" onclick="window.location.href='/company/4'">
-                    <div class="flex items-center justify-between mb-6">
-                        <div class="flex items-center space-x-4">
-                            <div class="p-4 rounded-xl bg-purple-100 hover:bg-purple-200 transition-all">
-                                <span class="text-3xl">🇪🇸</span>
-                            </div>
-                            <div>
-                                <h3 class="text-xl font-bold text-purple-900 hover:text-purple-700 transition-colors">TechES Barcelona</h3>
-                                <p class="text-sm text-purple-600">Tecnología • España</p>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <div class="bg-green-100 text-green-800 px-2 py-1 rounded-md text-sm mb-2">
-                                <i class="fas fa-check-circle mr-1"></i>
-                                Activa
-                            </div>
-                            <p class="text-xs text-purple-600">EUR Principal</p>
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4 mb-6">
-                        <div class="text-center p-3 bg-purple-50 rounded-lg">
-                            <div class="text-2xl font-bold text-purple-800">32</div>
-                            <div class="text-xs text-purple-600">Empleados</div>
-                        </div>
-                        <div class="text-center p-3 bg-purple-50 rounded-lg">
-                            <div class="text-2xl font-bold text-purple-800">€85K</div>
-                            <div class="text-xs text-purple-600">Gastos EUR</div>
-                        </div>
-                    </div>
-                    <div class="flex items-center justify-between pt-4 border-t border-purple-200">
-                        <span class="text-sm text-purple-700">Ver dashboard completo</span>
-                        <i class="fas fa-arrow-right text-purple-700 hover:translate-x-1 transition-transform"></i>
-                    </div>
-                </div>
-
-                <!-- 5. Innovación Madrid SL -->
-                <div class="purple-card p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer" onclick="window.location.href='/company/5'">
-                    <div class="flex items-center justify-between mb-6">
-                        <div class="flex items-center space-x-4">
-                            <div class="p-4 rounded-xl bg-purple-100 hover:bg-purple-200 transition-all">
-                                <span class="text-3xl">🇪🇸</span>
-                            </div>
-                            <div>
-                                <h3 class="text-xl font-bold text-purple-900 hover:text-purple-700 transition-colors">Innovación Madrid SL</h3>
-                                <p class="text-sm text-purple-600">Innovación • España</p>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <div class="bg-green-100 text-green-800 px-2 py-1 rounded-md text-sm mb-2">
-                                <i class="fas fa-check-circle mr-1"></i>
-                                Activa
-                            </div>
-                            <p class="text-xs text-purple-600">EUR Principal</p>
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4 mb-6">
-                        <div class="text-center p-3 bg-purple-50 rounded-lg">
-                            <div class="text-2xl font-bold text-purple-800">28</div>
-                            <div class="text-xs text-purple-600">Empleados</div>
-                        </div>
-                        <div class="text-center p-3 bg-purple-50 rounded-lg">
-                            <div class="text-2xl font-bold text-purple-800">€72K</div>
-                            <div class="text-xs text-purple-600">Gastos EUR</div>
-                        </div>
-                    </div>
-                    <div class="flex items-center justify-between pt-4 border-t border-purple-200">
-                        <span class="text-sm text-purple-700">Ver dashboard completo</span>
-                        <i class="fas fa-arrow-right text-purple-700 hover:translate-x-1 transition-transform"></i>
-                    </div>
-                </div>
-
-                <!-- 6. Digital Valencia S.A. -->
-                <div class="purple-card p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer" onclick="window.location.href='/company/6'">
-                    <div class="flex items-center justify-between mb-6">
-                        <div class="flex items-center space-x-4">
-                            <div class="p-4 rounded-xl bg-purple-100 hover:bg-purple-200 transition-all">
-                                <span class="text-3xl">🇪🇸</span>
-                            </div>
-                            <div>
-                                <h3 class="text-xl font-bold text-purple-900 hover:text-purple-700 transition-colors">Digital Valencia S.A.</h3>
-                                <p class="text-sm text-purple-600">Digital • España</p>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <div class="bg-green-100 text-green-800 px-2 py-1 rounded-md text-sm mb-2">
-                                <i class="fas fa-check-circle mr-1"></i>
-                                Activa
-                            </div>
-                            <p class="text-xs text-purple-600">EUR Principal</p>
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4 mb-6">
-                        <div class="text-center p-3 bg-purple-50 rounded-lg">
-                            <div class="text-2xl font-bold text-purple-800">22</div>
-                            <div class="text-xs text-purple-600">Empleados</div>
-                        </div>
-                        <div class="text-center p-3 bg-purple-50 rounded-lg">
-                            <div class="text-2xl font-bold text-purple-800">€58K</div>
-                            <div class="text-xs text-purple-600">Gastos EUR</div>
-                        </div>
-                    </div>
-                    <div class="flex items-center justify-between pt-4 border-t border-purple-200">
-                        <span class="text-sm text-purple-700">Ver dashboard completo</span>
-                        <i class="fas fa-arrow-right text-purple-700 hover:translate-x-1 transition-transform"></i>
-                    </div>
-                </div>
-
-            </div>
-
-            <!-- Summary Stats -->
-            <div class="mt-16 purple-glass p-8 rounded-xl">
-                <div class="text-center mb-8">
-                    <h3 class="text-2xl font-bold text-purple-900 mb-2">Resumen Consolidado</h3>
-                    <p class="text-purple-700">Vista general del portfolio corporativo</p>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <div class="text-center">
-                        <div class="text-3xl font-bold text-purple-800 mb-2">136</div>
-                        <div class="text-sm text-purple-600">Total Empleados</div>
-                    </div>
-                    <div class="text-center">
-                        <div class="text-3xl font-bold text-purple-800 mb-2">$1,120K</div>
-                        <div class="text-sm text-purple-600">Gastos Totales MXN</div>
-                    </div>
-                    <div class="text-center">
-                        <div class="text-3xl font-bold text-purple-800 mb-2">€215K</div>
-                        <div class="text-sm text-purple-600">Gastos Totales EUR</div>
-                    </div>
-                    <div class="text-center">
-                        <div class="text-3xl font-bold text-purple-800 mb-2">6</div>
-                        <div class="text-sm text-purple-600">Empresas Activas</div>
-                    </div>
-                </div>
-            </div>
+    </div>
+    
+    <!-- Contenido Principal -->
+    <div class="container mx-auto px-6 pb-8">
+        <!-- Companies Content con estilo gastos -->
+        <div class="glass-panel p-6 mb-8">
+            <h3 class="text-xl font-bold text-accent-gold flex items-center mb-4">
+                <i class="fas fa-building-columns mr-3"></i>
+                Portfolio Corporativo
+            </h3>
+            <p class="text-text-secondary mb-6">Gestión multiempresa internacional • MX + ES</p>
             
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                
+                <!-- TechMX Solutions -->
+                <div class="glass-panel p-6 hover:border-accent-gold transition-all cursor-pointer" onclick="window.location.href='/company/1'">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center space-x-3">
+                            <span class="text-2xl">🇲🇽</span>
+                            <div>
+                                <h4 class="text-lg font-bold text-accent-gold">TechMX Solutions</h4>
+                                <p class="text-sm text-text-secondary">Tecnología • México</p>
+                            </div>
+                        </div>
+                        <div class="premium-badge">Activa</div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div class="text-center p-2 bg-glass rounded">
+                            <div class="text-xl font-bold text-accent-emerald">24</div>
+                            <div class="text-xs text-text-secondary">Empleados</div>
+                        </div>
+                        <div class="text-center p-2 bg-glass rounded">
+                            <div class="text-xl font-bold text-accent-gold">$485K</div>
+                            <div class="text-xs text-text-secondary">Gastos MXN</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between pt-3 border-t border-glass-border">
+                        <span class="text-sm text-text-secondary">Ver dashboard</span>
+                        <i class="fas fa-arrow-right text-accent-gold"></i>
+                    </div>
+                </div>
+
+                <!-- Innovación Digital MX -->
+                <div class="glass-panel p-6 hover:border-accent-gold transition-all cursor-pointer" onclick="window.location.href='/company/2'">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center space-x-3">
+                            <span class="text-2xl">🇲🇽</span>
+                            <div>
+                                <h4 class="text-lg font-bold text-accent-gold">Innovación Digital MX</h4>
+                                <p class="text-sm text-text-secondary">Digital • México</p>
+                            </div>
+                        </div>
+                        <div class="premium-badge">Activa</div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div class="text-center p-2 bg-glass rounded">
+                            <div class="text-xl font-bold text-accent-emerald">18</div>
+                            <div class="text-xs text-text-secondary">Empleados</div>
+                        </div>
+                        <div class="text-center p-2 bg-glass rounded">
+                            <div class="text-xl font-bold text-accent-gold">$325K</div>
+                            <div class="text-xs text-text-secondary">Gastos MXN</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between pt-3 border-t border-glass-border">
+                        <span class="text-sm text-text-secondary">Ver dashboard</span>
+                        <i class="fas fa-arrow-right text-accent-gold"></i>
+                    </div>
+                </div>
+
+                <!-- Consultoría Estratégica MX -->
+                <div class="glass-panel p-6 hover:border-accent-gold transition-all cursor-pointer" onclick="window.location.href='/company/3'">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center space-x-3">
+                            <span class="text-2xl">🇲🇽</span>
+                            <div>
+                                <h4 class="text-lg font-bold text-accent-gold">Consultoría Estratégica MX</h4>
+                                <p class="text-sm text-text-secondary">Consultoría • México</p>
+                            </div>
+                        </div>
+                        <div class="premium-badge">Activa</div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div class="text-center p-2 bg-glass rounded">
+                            <div class="text-xl font-bold text-accent-emerald">12</div>
+                            <div class="text-xs text-text-secondary">Empleados</div>
+                        </div>
+                        <div class="text-center p-2 bg-glass rounded">
+                            <div class="text-xl font-bold text-accent-gold">$195K</div>
+                            <div class="text-xs text-text-secondary">Gastos MXN</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between pt-3 border-t border-glass-border">
+                        <span class="text-sm text-text-secondary">Ver dashboard</span>
+                        <i class="fas fa-arrow-right text-accent-gold"></i>
+                    </div>
+                </div>
+
+                <!-- TechES Barcelona -->
+                <div class="glass-panel p-6 hover:border-accent-gold transition-all cursor-pointer" onclick="window.location.href='/company/4'">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center space-x-3">
+                            <span class="text-2xl">🇪🇸</span>
+                            <div>
+                                <h4 class="text-lg font-bold text-accent-gold">TechES Barcelona</h4>
+                                <p class="text-sm text-text-secondary">Tecnología • España</p>
+                            </div>
+                        </div>
+                        <div class="premium-badge">Activa</div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div class="text-center p-2 bg-glass rounded">
+                            <div class="text-xl font-bold text-accent-emerald">32</div>
+                            <div class="text-xs text-text-secondary">Empleados</div>
+                        </div>
+                        <div class="text-center p-2 bg-glass rounded">
+                            <div class="text-xl font-bold text-accent-gold">€85K</div>
+                            <div class="text-xs text-text-secondary">Gastos EUR</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between pt-3 border-t border-glass-border">
+                        <span class="text-sm text-text-secondary">Ver dashboard</span>
+                        <i class="fas fa-arrow-right text-accent-gold"></i>
+                    </div>
+                </div>
+
+                <!-- Innovación Madrid SL -->
+                <div class="glass-panel p-6 hover:border-accent-gold transition-all cursor-pointer" onclick="window.location.href='/company/5'">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center space-x-3">
+                            <span class="text-2xl">🇪🇸</span>
+                            <div>
+                                <h4 class="text-lg font-bold text-accent-gold">Innovación Madrid SL</h4>
+                                <p class="text-sm text-text-secondary">Innovación • España</p>
+                            </div>
+                        </div>
+                        <div class="premium-badge">Activa</div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div class="text-center p-2 bg-glass rounded">
+                            <div class="text-xl font-bold text-accent-emerald">28</div>
+                            <div class="text-xs text-text-secondary">Empleados</div>
+                        </div>
+                        <div class="text-center p-2 bg-glass rounded">
+                            <div class="text-xl font-bold text-accent-gold">€72K</div>
+                            <div class="text-xs text-text-secondary">Gastos EUR</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between pt-3 border-t border-glass-border">
+                        <span class="text-sm text-text-secondary">Ver dashboard</span>
+                        <i class="fas fa-arrow-right text-accent-gold"></i>
+                    </div>
+                </div>
+
+                <!-- Digital Valencia S.A. -->
+                <div class="glass-panel p-6 hover:border-accent-gold transition-all cursor-pointer" onclick="window.location.href='/company/6'">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center space-x-3">
+                            <span class="text-2xl">🇪🇸</span>
+                            <div>
+                                <h4 class="text-lg font-bold text-accent-gold">Digital Valencia S.A.</h4>
+                                <p class="text-sm text-text-secondary">Digital • España</p>
+                            </div>
+                        </div>
+                        <div class="premium-badge">Activa</div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div class="text-center p-2 bg-glass rounded">
+                            <div class="text-xl font-bold text-accent-emerald">22</div>
+                            <div class="text-xs text-text-secondary">Empleados</div>
+                        </div>
+                        <div class="text-center p-2 bg-glass rounded">
+                            <div class="text-xl font-bold text-accent-gold">€58K</div>
+                            <div class="text-xs text-text-secondary">Gastos EUR</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between pt-3 border-t border-glass-border">
+                        <span class="text-sm text-text-secondary">Ver dashboard</span>
+                        <i class="fas fa-arrow-right text-accent-gold"></i>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Resumen Consolidado -->
+        <div class="glass-panel p-6">
+            <h3 class="text-xl font-bold text-accent-gold mb-4">
+                <i class="fas fa-chart-bar mr-3"></i>Resumen Consolidado
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div class="text-center">
+                    <div class="text-3xl font-bold text-accent-emerald mb-2">136</div>
+                    <div class="text-sm text-text-secondary">Total Empleados</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-3xl font-bold text-accent-gold mb-2">$1,120K</div>
+                    <div class="text-sm text-text-secondary">Gastos Totales MXN</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-3xl font-bold text-accent-gold mb-2">€215K</div>
+                    <div class="text-sm text-text-secondary">Gastos Totales EUR</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-3xl font-bold text-accent-emerald mb-2">6</div>
+                    <div class="text-sm text-text-secondary">Empresas Activas</div>
+                </div>
+            </div>
         </div>
     </div>
     
