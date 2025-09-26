@@ -250,7 +250,7 @@ function displayExpenses() {
         return `
             <tr class="hover:bg-glass-hover transition-colors cursor-pointer" onclick="viewExpenseDetails(${expense.id})">
                 <!-- 1. FECHA -->
-                <td class="px-4 py-3 text-sm">${gusbitData.fecha || expense.expense_date || 'N/A'}</td>
+                <td class="px-4 py-3 text-sm w-32 min-w-32 whitespace-nowrap">${gusbitData.fecha || expense.expense_date || 'N/A'}</td>
                 <!-- 2. EMPRESA -->
                 <td class="px-4 py-3 text-sm font-semibold">
                     ${getCompanyName(expense.company_id)}

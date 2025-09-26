@@ -3655,7 +3655,7 @@ app.get('/expenses', (c) => {
                     <table class="w-full text-sm">
                         <thead>
                             <tr class="border-b border-accent-gold/30">
-                                <th class="text-left py-4 px-4 font-semibold text-accent-gold">📅 Fecha</th>
+                                <th class="text-left py-4 px-4 font-semibold text-accent-gold w-32 min-w-32">📅 Fecha</th>
                                 <th class="text-left py-4 px-4 font-semibold text-accent-gold">🏢 Empresa</th>
                                 <th class="text-left py-4 px-4 font-semibold text-accent-gold">👤 Usuario</th>
                                 <th class="text-left py-4 px-4 font-semibold text-accent-gold">🏷️ Tipo</th>
