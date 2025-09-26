@@ -1005,6 +1005,60 @@ app.post('/api/companies', async (c) => {
   }
 })
 
+// Companies API - Upload logo (Protected)
+app.post('/api/companies/:id/logo', async (c) => {
+  const { env } = c;
+  const user = await authenticateUser(c);
+  
+  if (!user) {
+    return c.json({ error: 'No autorizado' }, 401);
+  }
+  
+  if (!user.is_cfo) {
+    return c.json({ error: 'Solo CFOs pueden subir logos' }, 403);
+  }
+  
+  try {
+    const companyId = c.req.param('id');
+    const formData = await c.req.formData();
+    const file = formData.get('logo') as File;
+    
+    if (!file) {
+      return c.json({ error: 'No se proporcionó archivo' }, 400);
+    }
+    
+    // Validate file type and size
+    if (!file.type.startsWith('image/')) {
+      return c.json({ error: 'Solo se permiten imágenes' }, 400);
+    }
+    
+    if (file.size > 5 * 1024 * 1024) { // 5MB
+      return c.json({ error: 'Archivo muy grande (máximo 5MB)' }, 400);
+    }
+    
+    // Convert file to base64 for simple storage
+    const arrayBuffer = await file.arrayBuffer();
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    const dataUrl = 'data:' + file.type + ';base64,' + base64;
+    
+    // Update company logo_url
+    await env.DB.prepare(`
+      UPDATE companies SET logo_url = ?, updated_at = datetime('now')
+      WHERE id = ? AND active = TRUE
+    `).bind(dataUrl, companyId).run();
+    
+    return c.json({
+      success: true,
+      message: 'Logo subido exitosamente',
+      logo_url: dataUrl
+    });
+    
+  } catch (error) {
+    console.error('Error uploading logo:', error);
+    return c.json({ error: 'Error interno del servidor' }, 500);
+  }
+})
+
 // Users API - Protected: Only users with management permissions
 app.get('/api/users', async (c) => {
   const { env } = c;
@@ -5431,8 +5485,8 @@ app.get('/companies', (c) => {
                 }[company.primary_currency] || '';
 
                 const logoHtml = company.logo_url ? 
-                    '<img src="' + company.logo_url + '" alt="' + company.name + '" class="w-8 h-8 object-contain">' :
-                    '<span class="text-2xl">' + countryFlag + '</span>';
+                    '<img src="' + company.logo_url + '" alt="' + company.name + '" class="w-10 h-10 object-contain rounded-lg">' :
+                    '<span class="text-3xl">' + countryFlag + '</span>';
 
                 return '<div class="glass-panel p-6 hover:shadow-xl transition-all group cursor-pointer">' +
                     '<div class="flex items-center justify-between mb-6">' +
@@ -5491,6 +5545,7 @@ app.get('/companies', (c) => {
             document.getElementById('company-form').reset();
             document.getElementById('company-modal').classList.remove('hidden');
             resetLogoPreview();
+            window.selectedLogoFile = null;
         }
 
         // Close modal
@@ -5540,6 +5595,12 @@ app.get('/companies', (c) => {
 
                 if (response.ok) {
                     const result = await response.json();
+                    
+                    // If there's a logo file and we created a new company, upload it
+                    if (window.selectedLogoFile && result.id) {
+                        await uploadLogo(result.id, window.selectedLogoFile);
+                    }
+                    
                     showMessage('Empresa ' + (currentEditingCompany ? 'actualizada' : 'creada') + ' exitosamente', 'success');
                     closeCompanyModal();
                     await loadCompanies();
@@ -5626,6 +5687,9 @@ app.get('/companies', (c) => {
                 return;
             }
 
+            // Store file for later upload
+            window.selectedLogoFile = file;
+
             const reader = new FileReader();
             reader.onload = (e) => {
                 document.getElementById('logo-img').src = e.target.result;
@@ -5635,11 +5699,35 @@ app.get('/companies', (c) => {
             reader.readAsDataURL(file);
         }
 
+        // Upload logo to company
+        async function uploadLogo(companyId, file) {
+            try {
+                const token = localStorage.getItem('auth_token');
+                const formData = new FormData();
+                formData.append('logo', file);
+                
+                const response = await fetch('/api/companies/' + companyId + '/logo', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    console.error('Error uploading logo:', response.status);
+                }
+            } catch (error) {
+                console.error('Error uploading logo:', error);
+            }
+        }
+
         // Reset logo preview
         function resetLogoPreview() {
             document.getElementById('logo-preview').classList.add('hidden');
             document.getElementById('logo-placeholder').classList.remove('hidden');
             document.getElementById('logo-file').value = '';
+            window.selectedLogoFile = null;
         }
 
         // Set brand color
