@@ -1549,7 +1549,7 @@ function generateReportHtml(expenses, company, format, filters) {
                 font-family: 'Inter', system-ui, -apple-system, sans-serif; 
                 margin: 0; 
                 padding: 0; 
-                background: linear-gradient(135deg, #0a0b0d 0%, #12141a 50%, #1a1d25 100%);
+                background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 50%, #c084fc 100%);
                 color: #e5e7eb;
                 line-height: 1.6;
             }
@@ -2514,54 +2514,37 @@ app.get('/', (c) => {
     </script>
 </body>
 </html>`);
-})})
+})
 
 // Companies page - List all companies
 app.get('/companies', (c) => {
   return c.render(
-    <div className="min-h-screen" style="background: linear-gradient(135deg, #0a0b0d 0%, #12141a 50%, #1a1d25 100%);">
+    <div className="min-h-screen" class="purple-gradient">
       {/* Premium Navigation */}
-      <nav className="nav-premium border-b" style="border-color: rgba(255, 255, 255, 0.1);">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            {/* Logo & Branding */}
-            <div className="flex items-center space-x-6">
-              <div className="flex items-center space-x-3">
-                <div className="relative">
-                  <i className="fas fa-gem text-3xl text-gold animate-pulse-gold"></i>
-                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full animate-ping"></div>
+      <!-- Navigation Header -->
+    <header class="purple-gradient shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-4">
+                    <div class="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-chart-line text-white text-xl"></i>
+                    </div>
+                    <h1 class="text-2xl font-bold text-white">Lyra Expenses</h1>
                 </div>
-                <div>
-                  <h1 className="nav-logo text-3xl">Lyra Expenses</h1>
-                  <p className="text-xs text-secondary opacity-75 font-medium">Executive Financial Management</p>
-                </div>
-              </div>
-              <span className="nav-badge">
-                Sistema 4-D Premium
-              </span>
+                <nav class="flex space-x-6">
+                    <a href="/" class="text-white hover:text-purple-200 font-medium px-3 py-2 rounded-md hover:bg-white hover:bg-opacity-10 transition">
+                        <i class="fas fa-chart-pie mr-2"></i>Dashboard
+                    </a>
+                    <a href="/companies" class="text-white hover:text-purple-200 font-medium px-3 py-2 rounded-md hover:bg-white hover:bg-opacity-10 transition">
+                        <i class="fas fa-building mr-2"></i>Empresas
+                    </a>
+                    <a href="/expenses" class="text-white hover:text-purple-200 font-medium px-3 py-2 rounded-md hover:bg-white hover:bg-opacity-10 transition">
+                        <i class="fas fa-receipt mr-2"></i>Gastos
+                    </a>
+                </nav>
             </div>
-
-            {/* Navigation Menu */}
-            <div className="flex items-center space-x-8">
-              {/* Main Navigation Links */}
-              <nav className="flex space-x-6">
-                <a href="/" className="nav-link text-secondary hover:text-gold transition-colors duration-200 flex items-center space-x-2">
-                  <i className="fas fa-chart-pie"></i>
-                  <span>Dashboard</span>
-                </a>
-                <a href="/companies" className="nav-link text-gold active flex items-center space-x-2">
-                  <i className="fas fa-building"></i>
-                  <span>Empresas</span>
-                </a>
-                <a href="/expenses" className="nav-link text-secondary hover:text-gold transition-colors duration-200 flex items-center space-x-2">
-                  <i className="fas fa-receipt"></i>
-                  <span>Gastos</span>
-                </a>
-                <a href="/analytics" className="nav-link text-secondary hover:text-gold transition-colors duration-200 flex items-center space-x-2">
-                  <i className="fas fa-chart-line"></i>
-                  <span>Analytics</span>
-                </a>
-              </nav>
+        </div>
+    </header>
               
               {/* Right Side Actions */}
               <div className="flex items-center space-x-4 border-l border-glass-border pl-6">
@@ -2898,7 +2881,7 @@ app.get('/company/:id', (c) => {
   }
 
   return c.render(
-    <div className="min-h-screen" style="background: linear-gradient(135deg, #0a0b0d 0%, #12141a 50%, #1a1d25 100%);">
+    <div className="min-h-screen" style="background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 50%, #c084fc 100%);">
       {/* Premium Navigation */}
       <nav className="nav-premium border-b" style="border-color: rgba(255, 255, 255, 0.1);">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -4759,7 +4742,7 @@ app.get('/api/auth/companies', authMiddleware, async (c) => {
 // Analytics page - Advanced analytics and reports
 app.get('/analytics', (c) => {
   return c.render(
-    <div className="min-h-screen" style="background: linear-gradient(135deg, #0a0b0d 0%, #12141a 50%, #1a1d25 100%);">
+    <div className="min-h-screen" style="background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 50%, #c084fc 100%);">
       {/* Premium Navigation */}
       <nav className="nav-premium border-b" style="border-color: rgba(255, 255, 255, 0.1);">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
