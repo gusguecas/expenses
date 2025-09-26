@@ -331,30 +331,30 @@ function updateExpenseTotals() {
     // Actualizar elementos
     totalCountEl.textContent = totalCount.toLocaleString();
     
-    // Mostrar totales organizados por moneda
+    // Mostrar totales organizados por moneda - FORMATO VERTICAL CON LETRA PEQUEÑA
     let amountText = '';
     
-    // Separar cada moneda con su total
-    const currencyTotals = [];
+    // Separar cada moneda en filas separadas
+    const currencyRows = [];
     
     // Agregar MXN (siempre presente, incluso si es 0)
     const totalMXNPesos = filteredExpenses
         .filter(expense => expense.currency === 'MXN' || !expense.currency)
         .reduce((sum, expense) => sum + (parseFloat(expense.amount) || 0), 0);
     
-    currencyTotals.push(`💰 MXN: $${totalMXNPesos.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+    currencyRows.push(`<div class="text-sm"><span class="font-medium">💰 MXN:</span> $${totalMXNPesos.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>`);
     
     // Agregar USD si hay gastos en dólares
     if (totalUSD > 0) {
-        currencyTotals.push(`💵 USD: $${totalUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+        currencyRows.push(`<div class="text-sm"><span class="font-medium">💵 USD:</span> $${totalUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>`);
     }
     
     // Agregar EUR si hay gastos en euros
     if (totalEUR > 0) {
-        currencyTotals.push(`💶 EUR: €${totalEUR.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+        currencyRows.push(`<div class="text-sm"><span class="font-medium">💶 EUR:</span> €${totalEUR.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>`);
     }
     
-    amountText = currencyTotals.join(' • ');
+    amountText = `<div class="space-y-1">${currencyRows.join('')}</div>`;
     
     totalAmountEl.innerHTML = amountText;
     
