@@ -2599,7 +2599,7 @@ app.get('/companies', (c) => {
             <!-- Companies Grid -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               
-                <!-- TechMX Solutions -->
+                <!-- 1. TechMX Solutions -->
                 <div class="purple-card p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer" onclick="window.location.href='/company/1'">
                     <div class="flex items-center justify-between mb-6">
                         <div class="flex items-center space-x-4">
@@ -2619,7 +2619,6 @@ app.get('/companies', (c) => {
                             <p class="text-xs text-purple-600">MXN Principal</p>
                         </div>
                     </div>
-                    
                     <div class="grid grid-cols-2 gap-4 mb-6">
                         <div class="text-center p-3 bg-purple-50 rounded-lg">
                             <div class="text-2xl font-bold text-purple-800">24</div>
@@ -2630,15 +2629,13 @@ app.get('/companies', (c) => {
                             <div class="text-xs text-purple-600">Gastos MXN</div>
                         </div>
                     </div>
-                    
                     <div class="flex items-center justify-between pt-4 border-t border-purple-200">
                         <span class="text-sm text-purple-700">Ver dashboard completo</span>
                         <i class="fas fa-arrow-right text-purple-700 hover:translate-x-1 transition-transform"></i>
                     </div>
                 </div>
 
-                <!-- Resto de empresas con mismo estilo morado -->
-                <!-- Innovación Digital MX -->
+                <!-- 2. Innovación Digital MX -->
                 <div class="purple-card p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer" onclick="window.location.href='/company/2'">
                     <div class="flex items-center justify-between mb-6">
                         <div class="flex items-center space-x-4">
@@ -2658,7 +2655,6 @@ app.get('/companies', (c) => {
                             <p class="text-xs text-purple-600">MXN Principal</p>
                         </div>
                     </div>
-                    
                     <div class="grid grid-cols-2 gap-4 mb-6">
                         <div class="text-center p-3 bg-purple-50 rounded-lg">
                             <div class="text-2xl font-bold text-purple-800">18</div>
@@ -2669,14 +2665,49 @@ app.get('/companies', (c) => {
                             <div class="text-xs text-purple-600">Gastos MXN</div>
                         </div>
                     </div>
-                    
                     <div class="flex items-center justify-between pt-4 border-t border-purple-200">
                         <span class="text-sm text-purple-700">Ver dashboard completo</span>
                         <i class="fas fa-arrow-right text-purple-700 hover:translate-x-1 transition-transform"></i>
                     </div>
                 </div>
 
-                <!-- TechES Barcelona -->
+                <!-- 3. Consultoría Estratégica MX -->
+                <div class="purple-card p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer" onclick="window.location.href='/company/3'">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center space-x-4">
+                            <div class="p-4 rounded-xl bg-purple-100 hover:bg-purple-200 transition-all">
+                                <span class="text-3xl">🇲🇽</span>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold text-purple-900 hover:text-purple-700 transition-colors">Consultoría Estratégica MX</h3>
+                                <p class="text-sm text-purple-600">Consultoría • México</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="bg-green-100 text-green-800 px-2 py-1 rounded-md text-sm mb-2">
+                                <i class="fas fa-check-circle mr-1"></i>
+                                Activa
+                            </div>
+                            <p class="text-xs text-purple-600">MXN Principal</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        <div class="text-center p-3 bg-purple-50 rounded-lg">
+                            <div class="text-2xl font-bold text-purple-800">12</div>
+                            <div class="text-xs text-purple-600">Empleados</div>
+                        </div>
+                        <div class="text-center p-3 bg-purple-50 rounded-lg">
+                            <div class="text-2xl font-bold text-purple-800">$195K</div>
+                            <div class="text-xs text-purple-600">Gastos MXN</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between pt-4 border-t border-purple-200">
+                        <span class="text-sm text-purple-700">Ver dashboard completo</span>
+                        <i class="fas fa-arrow-right text-purple-700 hover:translate-x-1 transition-transform"></i>
+                    </div>
+                </div>
+
+                <!-- 4. TechES Barcelona -->
                 <div class="purple-card p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer" onclick="window.location.href='/company/4'">
                     <div class="flex items-center justify-between mb-6">
                         <div class="flex items-center space-x-4">
@@ -2696,7 +2727,6 @@ app.get('/companies', (c) => {
                             <p class="text-xs text-purple-600">EUR Principal</p>
                         </div>
                     </div>
-                    
                     <div class="grid grid-cols-2 gap-4 mb-6">
                         <div class="text-center p-3 bg-purple-50 rounded-lg">
                             <div class="text-2xl font-bold text-purple-800">32</div>
@@ -2707,7 +2737,78 @@ app.get('/companies', (c) => {
                             <div class="text-xs text-purple-600">Gastos EUR</div>
                         </div>
                     </div>
-                    
+                    <div class="flex items-center justify-between pt-4 border-t border-purple-200">
+                        <span class="text-sm text-purple-700">Ver dashboard completo</span>
+                        <i class="fas fa-arrow-right text-purple-700 hover:translate-x-1 transition-transform"></i>
+                    </div>
+                </div>
+
+                <!-- 5. Innovación Madrid SL -->
+                <div class="purple-card p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer" onclick="window.location.href='/company/5'">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center space-x-4">
+                            <div class="p-4 rounded-xl bg-purple-100 hover:bg-purple-200 transition-all">
+                                <span class="text-3xl">🇪🇸</span>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold text-purple-900 hover:text-purple-700 transition-colors">Innovación Madrid SL</h3>
+                                <p class="text-sm text-purple-600">Innovación • España</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="bg-green-100 text-green-800 px-2 py-1 rounded-md text-sm mb-2">
+                                <i class="fas fa-check-circle mr-1"></i>
+                                Activa
+                            </div>
+                            <p class="text-xs text-purple-600">EUR Principal</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        <div class="text-center p-3 bg-purple-50 rounded-lg">
+                            <div class="text-2xl font-bold text-purple-800">28</div>
+                            <div class="text-xs text-purple-600">Empleados</div>
+                        </div>
+                        <div class="text-center p-3 bg-purple-50 rounded-lg">
+                            <div class="text-2xl font-bold text-purple-800">€72K</div>
+                            <div class="text-xs text-purple-600">Gastos EUR</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between pt-4 border-t border-purple-200">
+                        <span class="text-sm text-purple-700">Ver dashboard completo</span>
+                        <i class="fas fa-arrow-right text-purple-700 hover:translate-x-1 transition-transform"></i>
+                    </div>
+                </div>
+
+                <!-- 6. Digital Valencia S.A. -->
+                <div class="purple-card p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer" onclick="window.location.href='/company/6'">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center space-x-4">
+                            <div class="p-4 rounded-xl bg-purple-100 hover:bg-purple-200 transition-all">
+                                <span class="text-3xl">🇪🇸</span>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold text-purple-900 hover:text-purple-700 transition-colors">Digital Valencia S.A.</h3>
+                                <p class="text-sm text-purple-600">Digital • España</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="bg-green-100 text-green-800 px-2 py-1 rounded-md text-sm mb-2">
+                                <i class="fas fa-check-circle mr-1"></i>
+                                Activa
+                            </div>
+                            <p class="text-xs text-purple-600">EUR Principal</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        <div class="text-center p-3 bg-purple-50 rounded-lg">
+                            <div class="text-2xl font-bold text-purple-800">22</div>
+                            <div class="text-xs text-purple-600">Empleados</div>
+                        </div>
+                        <div class="text-center p-3 bg-purple-50 rounded-lg">
+                            <div class="text-2xl font-bold text-purple-800">€58K</div>
+                            <div class="text-xs text-purple-600">Gastos EUR</div>
+                        </div>
+                    </div>
                     <div class="flex items-center justify-between pt-4 border-t border-purple-200">
                         <span class="text-sm text-purple-700">Ver dashboard completo</span>
                         <i class="fas fa-arrow-right text-purple-700 hover:translate-x-1 transition-transform"></i>
