@@ -2723,7 +2723,76 @@ app.get('/companies', (c) => {
         </div>
     </div>
     
-</body>
+
+    
+    <script>
+        // Variables para empresas
+        let allCompanies = [];
+        let filteredCompanies = [];
+        
+        // Inicializar al cargar
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCompaniesData();
+            console.log('✅ Página de empresas cargada');
+        });
+        
+        // Cargar datos de empresas
+        function loadCompaniesData() {
+            fetch('/api/companies')
+                .then(response => response.json())
+                .then(companies => {
+                    allCompanies = companies;
+                    filteredCompanies = companies;
+                    displayCompanies(companies);
+                    console.log('✅ Empresas cargadas:', companies.length);
+                })
+                .catch(error => {
+                    console.error('❌ Error cargando empresas:', error);
+                });
+        }
+        
+        // Mostrar empresas en el grid
+        function displayCompanies(companies) {
+            // Esta función actualizaría las tarjetas de empresas
+            // Por ahora solo mostramos en consola
+            console.log('📊 Mostrando', companies.length, 'empresas');
+        }
+        
+        // Filtros básicos (para futuro uso)
+        function filterByCountry(country) {
+            if (!country) {
+                filteredCompanies = allCompanies;
+            } else {
+                filteredCompanies = allCompanies.filter(company => 
+                    company.country === country
+                );
+            }
+            displayCompanies(filteredCompanies);
+            console.log('🔍 Filtrado por país:', country, '- Resultados:', filteredCompanies.length);
+        }
+        
+        function filterByStatus(status) {
+            if (!status) {
+                filteredCompanies = allCompanies;
+            } else {
+                filteredCompanies = allCompanies.filter(company => 
+                    company.status === status
+                );
+            }
+            displayCompanies(filteredCompanies);
+            console.log('🔍 Filtrado por estado:', status, '- Resultados:', filteredCompanies.length);
+        }
+        
+        // Función para hacer las tarjetas clicables
+        function goToCompany(companyId) {
+            window.location.href = '/company/' + companyId;
+            console.log('🏢 Navegando a empresa:', companyId);
+        }
+        
+        // Mensaje de confirmación que los scripts están funcionando
+        console.log('🚀 JavaScript de empresas inicializado correctamente');
+    </script>
+    </body>
 </html>`);
 })
 
