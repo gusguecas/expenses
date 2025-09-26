@@ -309,7 +309,7 @@ function updateExpenseTotals() {
     const pendingCountEl = document.getElementById('pending-count');
     const approvedCountEl = document.getElementById('approved-count');
     const companiesCountEl = document.getElementById('companies-count');
-    const mainCurrencyEl = document.getElementById('main-currency');
+    const reimbursedAmountEl = document.getElementById('reimbursed-amount');
     
     if (!totalCountEl || !totalAmountEl) {
         console.warn('⚠️ Elementos de totales no encontrados');
@@ -325,8 +325,10 @@ function updateExpenseTotals() {
     // Calcular KPIs avanzados
     let pendingCount = 0;
     let approvedCount = 0;
+    let reimbursedTotalMXN = 0;
+    let reimbursedTotalUSD = 0;
+    let reimbursedTotalEUR = 0;
     const uniqueCompanies = new Set();
-    const currencyStats = { MXN: 0, USD: 0, EUR: 0 };
     
     filteredExpenses.forEach(expense => {
         const amount = parseFloat(expense.amount) || 0;
@@ -335,14 +337,11 @@ function updateExpenseTotals() {
         if (expense.currency === 'USD') {
             totalUSD += amount;
             totalMXN += amount * 18.25; // Conversión aproximada
-            currencyStats.USD += amount;
         } else if (expense.currency === 'EUR') {
             totalEUR += amount;
             totalMXN += amount * 20.15; // Conversión aproximada
-            currencyStats.EUR += amount;
         } else {
             totalMXN += amount;
-            currencyStats.MXN += amount;
         }
         
         // Contar por status
@@ -352,19 +351,22 @@ function updateExpenseTotals() {
             approvedCount++;
         }
         
+        // Calcular total por reembolsar (aprobados que no han sido reembolsados)
+        if (expense.status === 'approved') {
+            if (expense.currency === 'USD') {
+                reimbursedTotalUSD += amount;
+            } else if (expense.currency === 'EUR') {
+                reimbursedTotalEUR += amount;
+            } else {
+                reimbursedTotalMXN += amount;
+            }
+        }
+        
         // Contar empresas únicas
         if (expense.company_id) {
             uniqueCompanies.add(expense.company_id);
         }
     });
-    
-    // Determinar moneda principal
-    let mainCurrency = 'MXN';
-    if (currencyStats.USD > currencyStats.MXN && currencyStats.USD > currencyStats.EUR) {
-        mainCurrency = 'USD';
-    } else if (currencyStats.EUR > currencyStats.MXN && currencyStats.EUR > currencyStats.USD) {
-        mainCurrency = 'EUR';
-    }
     
     // Actualizar KPIs básicos
     totalCountEl.textContent = totalCount.toLocaleString();
@@ -405,8 +407,21 @@ function updateExpenseTotals() {
         companiesCountEl.textContent = uniqueCompanies.size.toLocaleString();
     }
     
-    if (mainCurrencyEl) {
-        mainCurrencyEl.textContent = mainCurrency;
+    if (reimbursedAmountEl) {
+        // Mostrar total por reembolsar en formato compacto
+        let reimbursedDisplay = '';
+        
+        if (reimbursedTotalMXN > 0 || (reimbursedTotalUSD === 0 && reimbursedTotalEUR === 0)) {
+            reimbursedDisplay = `$${reimbursedTotalMXN.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        } else if (reimbursedTotalUSD > reimbursedTotalEUR) {
+            reimbursedDisplay = `$${reimbursedTotalUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`;
+        } else if (reimbursedTotalEUR > 0) {
+            reimbursedDisplay = `€${reimbursedTotalEUR.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        } else {
+            reimbursedDisplay = '$0.00';
+        }
+        
+        reimbursedAmountEl.textContent = reimbursedDisplay;
     }
     
     // Actualizar fila de totales en tabla
@@ -417,7 +432,9 @@ function updateExpenseTotals() {
         pending: pendingCount,
         approved: approvedCount,
         companies: uniqueCompanies.size,
-        mainCurrency: mainCurrency,
+        reimbursedMXN: reimbursedTotalMXN,
+        reimbursedUSD: reimbursedTotalUSD,
+        reimbursedEUR: reimbursedTotalEUR,
         totalMXN: totalMXN,
         totalUSD: totalUSD,
         totalEUR: totalEUR
