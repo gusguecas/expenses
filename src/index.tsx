@@ -2448,43 +2448,43 @@ app.get('/companies', (c) => {
   return c.html(`<!DOCTYPE html>
 <html lang="es">
 <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Gestión de Gastos Premium</title>
-        <script src="https://cdn.tailwindcss.com"></script>
-        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
-        <link href="/static/styles.css" rel="stylesheet">
-        <style>
-        body {
-            background: linear-gradient(135deg, 
-                var(--color-bg-primary) 0%, 
-                var(--color-bg-secondary) 50%, 
-                var(--color-bg-tertiary) 100%);
-            min-height: 100vh;
-            color: var(--color-text-primary);
-        }
-        
-        .premium-button {
-            background: var(--gradient-emerald);
-            border: 1px solid var(--color-glass-border);
-            border-radius: var(--radius-md);
-            padding: 12px 24px;
-            color: white;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-        }
-        
-        .premium-button:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-glow);
-            background: var(--gradient-gold);
-        }
-        </style>
-    </head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Empresas Premium</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/styles.css" rel="stylesheet">
+    <style>
+    body {
+        background: linear-gradient(135deg, 
+            var(--color-bg-primary) 0%, 
+            var(--color-bg-secondary) 50%, 
+            var(--color-bg-tertiary) 100%);
+        min-height: 100vh;
+        color: var(--color-text-primary);
+    }
+    
+    .premium-button {
+        background: var(--gradient-emerald);
+        border: 1px solid var(--color-glass-border);
+        border-radius: var(--radius-md);
+        padding: 12px 24px;
+        color: white;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+    }
+    
+    .premium-button:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-glow);
+        background: var(--gradient-gold);
+    }
+    </style>
+</head>
 <body>
     <!-- Navigation Header (estilo gastos) -->
     <div class="container mx-auto px-6 py-8">
@@ -2500,13 +2500,13 @@ app.get('/companies', (c) => {
                     </p>
                 </div>
                 <div class="flex gap-4">
-                    <a href="/" class="premium-button ">
+                    <a href="/" class="premium-button">
                         <i class="fas fa-chart-pie mr-3"></i>Dashboard
                     </a>
-                    <a href="/companies" class="premium-button style="background: var(--gradient-gold);"">
+                    <a href="/companies" class="premium-button" style="background: var(--gradient-gold);">
                         <i class="fas fa-building mr-3"></i>Empresas
                     </a>
-                    <a href="/expenses" class="premium-button ">
+                    <a href="/expenses" class="premium-button">
                         <i class="fas fa-receipt mr-3"></i>Gastos
                     </a>
                 </div>
@@ -2514,285 +2514,334 @@ app.get('/companies', (c) => {
         </div>
     </div>
     
-    <!-- Contenido Principal -->
+    <!-- Contenido Principal CON SIDEBAR DE FILTROS -->
     <div class="container mx-auto px-6 pb-8">
-        <!-- Companies Content con estilo gastos -->
-        <div class="glass-panel p-6 mb-8">
-            <h3 class="text-xl font-bold text-accent-gold flex items-center mb-4">
-                <i class="fas fa-building-columns mr-3"></i>
-                Portfolio Corporativo
-            </h3>
-            <p class="text-text-secondary mb-6">Gestión multiempresa internacional • MX + ES</p>
+        <!-- Layout con Sidebar igual que gastos -->
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
             
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                
-                <!-- TechMX Solutions -->
-                <div class="glass-panel p-6 hover:border-accent-gold transition-all cursor-pointer" onclick="window.location.href='/company/1'">
-                    <div class="flex items-center justify-between mb-4">
-                        <div class="flex items-center space-x-3">
-                            <span class="text-2xl">🇲🇽</span>
-                            <div>
-                                <h4 class="text-lg font-bold text-accent-gold">TechMX Solutions</h4>
-                                <p class="text-sm text-text-secondary">Tecnología • México</p>
-                            </div>
+            <!-- SIDEBAR DE FILTROS (igual que dashboard/gastos) -->
+            <div class="lg:col-span-1">
+                <div class="glass-panel p-6">
+                    <h3 class="text-xl font-bold text-accent-gold mb-6">
+                        <i class="fas fa-filter mr-2"></i>Filtros de Empresas
+                    </h3>
+                    
+                    <div class="space-y-4">
+                        <!-- Filtro por País -->
+                        <div>
+                            <label class="block text-sm font-medium text-accent-gold mb-2">País</label>
+                            <select id="countryFilter" class="w-full p-3 rounded-lg border border-glass-border bg-glass text-text-primary focus:border-accent-gold focus:outline-none">
+                                <option value="">Todos los países</option>
+                                <option value="MX">🇲🇽 México</option>
+                                <option value="ES">🇪🇸 España</option>
+                            </select>
                         </div>
-                        <div class="premium-badge">Activa</div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3 mb-4">
-                        <div class="text-center p-2 bg-glass rounded">
-                            <div class="text-xl font-bold text-accent-emerald">24</div>
-                            <div class="text-xs text-text-secondary">Empleados</div>
-                        </div>
-                        <div class="text-center p-2 bg-glass rounded">
-                            <div class="text-xl font-bold text-accent-gold">$485K</div>
-                            <div class="text-xs text-text-secondary">Gastos MXN</div>
-                        </div>
-                    </div>
-                    <div class="flex items-center justify-between pt-3 border-t border-glass-border">
-                        <span class="text-sm text-text-secondary">Ver dashboard</span>
-                        <i class="fas fa-arrow-right text-accent-gold"></i>
-                    </div>
-                </div>
 
-                <!-- Innovación Digital MX -->
-                <div class="glass-panel p-6 hover:border-accent-gold transition-all cursor-pointer" onclick="window.location.href='/company/2'">
-                    <div class="flex items-center justify-between mb-4">
-                        <div class="flex items-center space-x-3">
-                            <span class="text-2xl">🇲🇽</span>
-                            <div>
-                                <h4 class="text-lg font-bold text-accent-gold">Innovación Digital MX</h4>
-                                <p class="text-sm text-text-secondary">Digital • México</p>
-                            </div>
+                        <!-- Filtro por Estado -->
+                        <div>
+                            <label class="block text-sm font-medium text-accent-gold mb-2">Estado</label>
+                            <select id="statusFilter" class="w-full p-3 rounded-lg border border-glass-border bg-glass text-text-primary focus:border-accent-gold focus:outline-none">
+                                <option value="">Todos los estados</option>
+                                <option value="active">✅ Activa</option>
+                                <option value="inactive">❌ Inactiva</option>
+                                <option value="pending">⏳ Pendiente</option>
+                            </select>
                         </div>
-                        <div class="premium-badge">Activa</div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3 mb-4">
-                        <div class="text-center p-2 bg-glass rounded">
-                            <div class="text-xl font-bold text-accent-emerald">18</div>
-                            <div class="text-xs text-text-secondary">Empleados</div>
-                        </div>
-                        <div class="text-center p-2 bg-glass rounded">
-                            <div class="text-xl font-bold text-accent-gold">$325K</div>
-                            <div class="text-xs text-text-secondary">Gastos MXN</div>
-                        </div>
-                    </div>
-                    <div class="flex items-center justify-between pt-3 border-t border-glass-border">
-                        <span class="text-sm text-text-secondary">Ver dashboard</span>
-                        <i class="fas fa-arrow-right text-accent-gold"></i>
-                    </div>
-                </div>
 
-                <!-- Consultoría Estratégica MX -->
-                <div class="glass-panel p-6 hover:border-accent-gold transition-all cursor-pointer" onclick="window.location.href='/company/3'">
-                    <div class="flex items-center justify-between mb-4">
-                        <div class="flex items-center space-x-3">
-                            <span class="text-2xl">🇲🇽</span>
-                            <div>
-                                <h4 class="text-lg font-bold text-accent-gold">Consultoría Estratégica MX</h4>
-                                <p class="text-sm text-text-secondary">Consultoría • México</p>
-                            </div>
+                        <!-- Filtro por Sector -->
+                        <div>
+                            <label class="block text-sm font-medium text-accent-gold mb-2">Sector</label>
+                            <select id="sectorFilter" class="w-full p-3 rounded-lg border border-glass-border bg-glass text-text-primary focus:border-accent-gold focus:outline-none">
+                                <option value="">Todos los sectores</option>
+                                <option value="technology">💻 Tecnología</option>
+                                <option value="digital">🌐 Digital</option>
+                                <option value="consulting">📊 Consultoría</option>
+                                <option value="innovation">💡 Innovación</option>
+                            </select>
                         </div>
-                        <div class="premium-badge">Activa</div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3 mb-4">
-                        <div class="text-center p-2 bg-glass rounded">
-                            <div class="text-xl font-bold text-accent-emerald">12</div>
-                            <div class="text-xs text-text-secondary">Empleados</div>
-                        </div>
-                        <div class="text-center p-2 bg-glass rounded">
-                            <div class="text-xl font-bold text-accent-gold">$195K</div>
-                            <div class="text-xs text-text-secondary">Gastos MXN</div>
-                        </div>
-                    </div>
-                    <div class="flex items-center justify-between pt-3 border-t border-glass-border">
-                        <span class="text-sm text-text-secondary">Ver dashboard</span>
-                        <i class="fas fa-arrow-right text-accent-gold"></i>
-                    </div>
-                </div>
 
-                <!-- TechES Barcelona -->
-                <div class="glass-panel p-6 hover:border-accent-gold transition-all cursor-pointer" onclick="window.location.href='/company/4'">
-                    <div class="flex items-center justify-between mb-4">
-                        <div class="flex items-center space-x-3">
-                            <span class="text-2xl">🇪🇸</span>
-                            <div>
-                                <h4 class="text-lg font-bold text-accent-gold">TechES Barcelona</h4>
-                                <p class="text-sm text-text-secondary">Tecnología • España</p>
-                            </div>
-                        </div>
-                        <div class="premium-badge">Activa</div>
+                        <!-- Botones de filtros -->
+                        <button id="applyFilters" class="w-full premium-button">
+                            <i class="fas fa-search mr-2"></i>Aplicar Filtros
+                        </button>
+                        
+                        <button id="clearFilters" class="w-full premium-button" style="background: var(--gradient-accent);">
+                            <i class="fas fa-broom mr-2"></i>Limpiar Filtros
+                        </button>
                     </div>
-                    <div class="grid grid-cols-2 gap-3 mb-4">
-                        <div class="text-center p-2 bg-glass rounded">
-                            <div class="text-xl font-bold text-accent-emerald">32</div>
-                            <div class="text-xs text-text-secondary">Empleados</div>
-                        </div>
-                        <div class="text-center p-2 bg-glass rounded">
-                            <div class="text-xl font-bold text-accent-gold">€85K</div>
-                            <div class="text-xs text-text-secondary">Gastos EUR</div>
-                        </div>
-                    </div>
-                    <div class="flex items-center justify-between pt-3 border-t border-glass-border">
-                        <span class="text-sm text-text-secondary">Ver dashboard</span>
-                        <i class="fas fa-arrow-right text-accent-gold"></i>
-                    </div>
-                </div>
-
-                <!-- Innovación Madrid SL -->
-                <div class="glass-panel p-6 hover:border-accent-gold transition-all cursor-pointer" onclick="window.location.href='/company/5'">
-                    <div class="flex items-center justify-between mb-4">
-                        <div class="flex items-center space-x-3">
-                            <span class="text-2xl">🇪🇸</span>
-                            <div>
-                                <h4 class="text-lg font-bold text-accent-gold">Innovación Madrid SL</h4>
-                                <p class="text-sm text-text-secondary">Innovación • España</p>
-                            </div>
-                        </div>
-                        <div class="premium-badge">Activa</div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3 mb-4">
-                        <div class="text-center p-2 bg-glass rounded">
-                            <div class="text-xl font-bold text-accent-emerald">28</div>
-                            <div class="text-xs text-text-secondary">Empleados</div>
-                        </div>
-                        <div class="text-center p-2 bg-glass rounded">
-                            <div class="text-xl font-bold text-accent-gold">€72K</div>
-                            <div class="text-xs text-text-secondary">Gastos EUR</div>
-                        </div>
-                    </div>
-                    <div class="flex items-center justify-between pt-3 border-t border-glass-border">
-                        <span class="text-sm text-text-secondary">Ver dashboard</span>
-                        <i class="fas fa-arrow-right text-accent-gold"></i>
-                    </div>
-                </div>
-
-                <!-- Digital Valencia S.A. -->
-                <div class="glass-panel p-6 hover:border-accent-gold transition-all cursor-pointer" onclick="window.location.href='/company/6'">
-                    <div class="flex items-center justify-between mb-4">
-                        <div class="flex items-center space-x-3">
-                            <span class="text-2xl">🇪🇸</span>
-                            <div>
-                                <h4 class="text-lg font-bold text-accent-gold">Digital Valencia S.A.</h4>
-                                <p class="text-sm text-text-secondary">Digital • España</p>
-                            </div>
-                        </div>
-                        <div class="premium-badge">Activa</div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3 mb-4">
-                        <div class="text-center p-2 bg-glass rounded">
-                            <div class="text-xl font-bold text-accent-emerald">22</div>
-                            <div class="text-xs text-text-secondary">Empleados</div>
-                        </div>
-                        <div class="text-center p-2 bg-glass rounded">
-                            <div class="text-xl font-bold text-accent-gold">€58K</div>
-                            <div class="text-xs text-text-secondary">Gastos EUR</div>
-                        </div>
-                    </div>
-                    <div class="flex items-center justify-between pt-3 border-t border-glass-border">
-                        <span class="text-sm text-text-secondary">Ver dashboard</span>
-                        <i class="fas fa-arrow-right text-accent-gold"></i>
-                    </div>
-                </div>
-
-            </div>
-        </div>
-
-        <!-- Resumen Consolidado -->
-        <div class="glass-panel p-6">
-            <h3 class="text-xl font-bold text-accent-gold mb-4">
-                <i class="fas fa-chart-bar mr-3"></i>Resumen Consolidado
-            </h3>
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div class="text-center">
-                    <div class="text-3xl font-bold text-accent-emerald mb-2">136</div>
-                    <div class="text-sm text-text-secondary">Total Empleados</div>
-                </div>
-                <div class="text-center">
-                    <div class="text-3xl font-bold text-accent-gold mb-2">$1,120K</div>
-                    <div class="text-sm text-text-secondary">Gastos Totales MXN</div>
-                </div>
-                <div class="text-center">
-                    <div class="text-3xl font-bold text-accent-gold mb-2">€215K</div>
-                    <div class="text-sm text-text-secondary">Gastos Totales EUR</div>
-                </div>
-                <div class="text-center">
-                    <div class="text-3xl font-bold text-accent-emerald mb-2">6</div>
-                    <div class="text-sm text-text-secondary">Empresas Activas</div>
                 </div>
             </div>
+
+            <!-- CONTENIDO PRINCIPAL (empresas) -->
+            <div class="lg:col-span-3">
+                <!-- Portfolio Corporativo -->
+                <div class="glass-panel p-6 mb-8">
+                    <h3 class="text-xl font-bold text-accent-gold flex items-center mb-4">
+                        <i class="fas fa-building-columns mr-3"></i>
+                        Portfolio Corporativo
+                    </h3>
+                    <p class="text-text-secondary mb-6">Gestión multiempresa internacional • MX + ES</p>
+                    
+                    <div id="companiesGrid" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        
+                        <!-- Las empresas se cargarán aquí dinámicamente -->
+                        <div class="text-center py-8">
+                            <i class="fas fa-spinner fa-spin text-4xl text-accent-gold mb-4"></i>
+                            <p class="text-text-secondary">Cargando empresas...</p>
+                        </div>
+                        
+                    </div>
+                </div>
+
+                <!-- Resumen Consolidado -->
+                <div class="glass-panel p-6">
+                    <h3 class="text-xl font-bold text-accent-gold mb-4">
+                        <i class="fas fa-chart-bar mr-3"></i>Resumen Consolidado
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6" id="summaryStats">
+                        <div class="text-center">
+                            <div class="text-3xl font-bold text-accent-emerald mb-2">136</div>
+                            <div class="text-sm text-text-secondary">Total Empleados</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-3xl font-bold text-accent-gold mb-2">$1,120K</div>
+                            <div class="text-sm text-text-secondary">Gastos Totales MXN</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-3xl font-bold text-accent-gold mb-2">€215K</div>
+                            <div class="text-sm text-text-secondary">Gastos Totales EUR</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-3xl font-bold text-accent-emerald mb-2">6</div>
+                            <div class="text-sm text-text-secondary">Empresas Activas</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
         </div>
     </div>
     
-
-    
     <script>
-        // Variables para empresas
+        // Variables globales para filtros de empresas
         let allCompanies = [];
-        let filteredCompanies = [];
+        let currentFilters = {};
         
-        // Inicializar al cargar
+        // Datos de empresas hardcodeados (mientras no hay API)
+        const companiesData = [
+            {
+                id: 1,
+                name: "TechMX Solutions",
+                country: "MX",
+                sector: "technology",
+                status: "active",
+                employees: 24,
+                expenses: "$485K",
+                currency: "MXN",
+                flag: "🇲🇽"
+            },
+            {
+                id: 2,
+                name: "Innovación Digital MX",
+                country: "MX", 
+                sector: "digital",
+                status: "active",
+                employees: 18,
+                expenses: "$325K",
+                currency: "MXN",
+                flag: "🇲🇽"
+            },
+            {
+                id: 3,
+                name: "Consultoría Estratégica MX",
+                country: "MX",
+                sector: "consulting", 
+                status: "active",
+                employees: 12,
+                expenses: "$195K",
+                currency: "MXN",
+                flag: "🇲🇽"
+            },
+            {
+                id: 4,
+                name: "TechES Barcelona",
+                country: "ES",
+                sector: "technology",
+                status: "active", 
+                employees: 32,
+                expenses: "€85K",
+                currency: "EUR",
+                flag: "🇪🇸"
+            },
+            {
+                id: 5,
+                name: "Innovación Madrid SL",
+                country: "ES",
+                sector: "innovation",
+                status: "active",
+                employees: 28,
+                expenses: "€72K", 
+                currency: "EUR",
+                flag: "🇪🇸"
+            },
+            {
+                id: 6,
+                name: "Digital Valencia S.A.",
+                country: "ES",
+                sector: "digital",
+                status: "active",
+                employees: 22,
+                expenses: "€58K",
+                currency: "EUR", 
+                flag: "🇪🇸"
+            }
+        ];
+        
+        // Inicializar al cargar la página
         document.addEventListener('DOMContentLoaded', function() {
-            loadCompaniesData();
-            console.log('✅ Página de empresas cargada');
+            allCompanies = companiesData;
+            displayCompanies(allCompanies);
+            initializeEventListeners();
+            console.log('✅ Página de empresas con filtros cargada');
         });
         
-        // Cargar datos de empresas
-        function loadCompaniesData() {
-            fetch('/api/companies')
-                .then(response => response.json())
-                .then(companies => {
-                    allCompanies = companies;
-                    filteredCompanies = companies;
-                    displayCompanies(companies);
-                    console.log('✅ Empresas cargadas:', companies.length);
-                })
-                .catch(error => {
-                    console.error('❌ Error cargando empresas:', error);
-                });
+        // Event listeners para filtros
+        function initializeEventListeners() {
+            const applyBtn = document.getElementById('applyFilters');
+            const clearBtn = document.getElementById('clearFilters');
+            
+            if (applyBtn) {
+                applyBtn.addEventListener('click', applyFilters);
+            }
+            
+            if (clearBtn) {
+                clearBtn.addEventListener('click', clearFilters);
+            }
         }
         
-        // Mostrar empresas en el grid
+        // Aplicar filtros
+        function applyFilters() {
+            const countryFilter = document.getElementById('countryFilter');
+            const statusFilter = document.getElementById('statusFilter');
+            const sectorFilter = document.getElementById('sectorFilter');
+            
+            currentFilters = {
+                country: countryFilter ? countryFilter.value : '',
+                status: statusFilter ? statusFilter.value : '',
+                sector: sectorFilter ? sectorFilter.value : ''
+            };
+            
+            console.log('🔍 Aplicando filtros empresas:', currentFilters);
+            
+            // Filtrar empresas
+            let filtered = allCompanies;
+            
+            if (currentFilters.country) {
+                filtered = filtered.filter(company => company.country === currentFilters.country);
+            }
+            
+            if (currentFilters.status) {
+                filtered = filtered.filter(company => company.status === currentFilters.status);
+            }
+            
+            if (currentFilters.sector) {
+                filtered = filtered.filter(company => company.sector === currentFilters.sector);
+            }
+            
+            // Mostrar feedback visual
+            const applyBtn = document.getElementById('applyFilters');
+            if (applyBtn) {
+                applyBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Filtrando...';
+                setTimeout(() => {
+                    applyBtn.innerHTML = '<i class="fas fa-search mr-2"></i>Aplicar Filtros';
+                }, 1000);
+            }
+            
+            displayCompanies(filtered);
+        }
+        
+        // Limpiar filtros
+        function clearFilters() {
+            const countryFilter = document.getElementById('countryFilter');
+            const statusFilter = document.getElementById('statusFilter');
+            const sectorFilter = document.getElementById('sectorFilter');
+            
+            if (countryFilter) countryFilter.value = '';
+            if (statusFilter) statusFilter.value = '';
+            if (sectorFilter) sectorFilter.value = '';
+            
+            currentFilters = {};
+            
+            console.log('🧹 Filtros de empresas limpiados');
+            
+            // Mostrar feedback visual
+            const clearBtn = document.getElementById('clearFilters');
+            if (clearBtn) {
+                clearBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Limpiando...';
+                setTimeout(() => {
+                    clearBtn.innerHTML = '<i class="fas fa-broom mr-2"></i>Limpiar Filtros';
+                }, 1000);
+            }
+            
+            displayCompanies(allCompanies);
+        }
+        
+        // Mostrar empresas
         function displayCompanies(companies) {
-            // Esta función actualizaría las tarjetas de empresas
-            // Por ahora solo mostramos en consola
-            console.log('📊 Mostrando', companies.length, 'empresas');
-        }
-        
-        // Filtros básicos (para futuro uso)
-        function filterByCountry(country) {
-            if (!country) {
-                filteredCompanies = allCompanies;
-            } else {
-                filteredCompanies = allCompanies.filter(company => 
-                    company.country === country
-                );
+            const grid = document.getElementById('companiesGrid');
+            if (!grid) return;
+            
+            if (companies.length === 0) {
+                grid.innerHTML = 
+                    '<div class="col-span-2 text-center py-8">' +
+                        '<i class="fas fa-info-circle text-4xl text-accent-gold mb-4"></i>' +
+                        '<p class="text-text-secondary">No se encontraron empresas con los filtros aplicados</p>' +
+                    '</div>';
+                return;
             }
-            displayCompanies(filteredCompanies);
-            console.log('🔍 Filtrado por país:', country, '- Resultados:', filteredCompanies.length);
+            
+            const html = companies.map(company => 
+                '<div class="glass-panel p-6 hover:border-accent-gold transition-all cursor-pointer" onclick="goToCompany(' + company.id + ')">' +
+                    '<div class="flex items-center justify-between mb-4">' +
+                        '<div class="flex items-center space-x-3">' +
+                            '<span class="text-2xl">' + company.flag + '</span>' +
+                            '<div>' +
+                                '<h4 class="text-lg font-bold text-accent-gold">' + company.name + '</h4>' +
+                                '<p class="text-sm text-text-secondary">' + company.sector + ' • ' + (company.country === 'MX' ? 'México' : 'España') + '</p>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="premium-badge">Activa</div>' +
+                    '</div>' +
+                    '<div class="grid grid-cols-2 gap-3 mb-4">' +
+                        '<div class="text-center p-2 bg-glass rounded">' +
+                            '<div class="text-xl font-bold text-accent-emerald">' + company.employees + '</div>' +
+                            '<div class="text-xs text-text-secondary">Empleados</div>' +
+                        '</div>' +
+                        '<div class="text-center p-2 bg-glass rounded">' +
+                            '<div class="text-xl font-bold text-accent-gold">' + company.expenses + '</div>' +
+                            '<div class="text-xs text-text-secondary">Gastos ' + company.currency + '</div>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="flex items-center justify-between pt-3 border-t border-glass-border">' +
+                        '<span class="text-sm text-text-secondary">Ver dashboard</span>' +
+                        '<i class="fas fa-arrow-right text-accent-gold"></i>' +
+                    '</div>' +
+                '</div>'
+            ).join('');
+            
+            grid.innerHTML = html;
+            
+            console.log('📊 Mostrando', companies.length, 'empresas filtradas');
         }
         
-        function filterByStatus(status) {
-            if (!status) {
-                filteredCompanies = allCompanies;
-            } else {
-                filteredCompanies = allCompanies.filter(company => 
-                    company.status === status
-                );
-            }
-            displayCompanies(filteredCompanies);
-            console.log('🔍 Filtrado por estado:', status, '- Resultados:', filteredCompanies.length);
-        }
-        
-        // Función para hacer las tarjetas clicables
+        // Navegación a empresa específica
         function goToCompany(companyId) {
             window.location.href = '/company/' + companyId;
             console.log('🏢 Navegando a empresa:', companyId);
         }
-        
-        // Mensaje de confirmación que los scripts están funcionando
-        console.log('🚀 JavaScript de empresas inicializado correctamente');
     </script>
-    </body>
+    
+</body>
 </html>`);
 })
 
