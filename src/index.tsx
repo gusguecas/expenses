@@ -3857,7 +3857,7 @@ app.get('/', (c) => {
                 </div>
             </div>
             <div class="flex gap-4 justify-center">
-                <a href="/" class="premium-button style="background: var(--gradient-gold);"">
+                <a href="/" class="premium-button" style="background: var(--gradient-gold);">
                     <i class="fas fa-chart-pie mr-3"></i>Dashboard
                 </a>
                 <a href="/companies" class="premium-button ">
@@ -4909,39 +4909,44 @@ app.get('/companies', (c) => {
     </style>
 </head>
 <body>
-    <!-- Navigation Header -->
+    <!-- Navigation Header (estilo gastos) -->
     <div class="container mx-auto px-6 py-8">
         <div class="glass-panel p-8 mb-8">
-            <div class="flex justify-between items-center">
+            <div class="flex justify-between items-center mb-6">
                 <div>
                     <h1 class="text-4xl font-bold text-accent-gold">
                         <i class="fas fa-building mr-4"></i>
-                        Gestión de Empresas Premium
+                        Gestión de Empresas - Lyra Expenses
                     </h1>
                     <p class="text-text-secondary text-lg mt-2">
-                        Sistema ejecutivo de control corporativo empresarial
+                        Sistema ejecutivo de control financiero empresarial
                     </p>
                 </div>
-                <div class="flex gap-4">
-                    <a href="/" class="premium-button">
-                        <i class="fas fa-chart-pie mr-3"></i>Dashboard
-                    </a>
-                    <a href="/companies" class="premium-button" style="background: var(--gradient-gold);">
-                        <i class="fas fa-building mr-3"></i>Empresas
-                    </a>
-                    <a href="/users" class="premium-button">
-                        <i class="fas fa-users mr-3"></i>Usuarios
-                    </a>
-                    <a href="/employees" class="premium-button">
-                        <i class="fas fa-user-tie mr-3"></i>Empleados
-                    </a>
-                    <a href="/expenses" class="premium-button">
-                        <i class="fas fa-receipt mr-3"></i>Gastos
-                    </a>
+                <div id="userInfo" class="text-white">
+                    <!-- User info will be populated by JavaScript -->
                 </div>
+            </div>
+            <div class="flex gap-4 justify-center">
+                <a href="/" class="premium-button ">
+                    <i class="fas fa-chart-pie mr-3"></i>Dashboard
+                </a>
+                <a href="/companies" class="premium-button" style="background: var(--gradient-gold);">
+                    <i class="fas fa-building mr-3"></i>Empresas
+                </a>
+                <a href="/users" class="premium-button ">
+                    <i class="fas fa-users mr-3"></i>Usuarios
+                </a>
+                <a href="/employees" class="premium-button ">
+                    <i class="fas fa-user-tie mr-3"></i>Empleados
+                </a>
+                <a href="/expenses" class="premium-button ">
+                    <i class="fas fa-receipt mr-3"></i>Gastos
+                </a>
             </div>
         </div>
     </div>
+    
+    <!-- Contenido Principal -->
 
     <!-- Main Content -->
     <div class="container mx-auto px-6 pb-8">
@@ -5999,27 +6004,56 @@ app.get('/expenses', (c) => {
         </style>
     </head>
     <body>
+        <!-- Navigation Header (estilo gastos) -->
         <div class="container mx-auto px-6 py-8">
-            <!-- Premium Header -->
             <div class="glass-panel p-8 mb-8">
-                <div class="flex justify-between items-center">
+                <div class="flex justify-between items-center mb-6">
                     <div>
                         <h1 class="text-4xl font-bold text-accent-gold">
                             <i class="fas fa-receipt mr-4"></i>
-                            Gestión de Gastos Premium
+                            Gestión de Gastos - Lyra Expenses
                         </h1>
                         <p class="text-text-secondary text-lg mt-2">
                             Sistema ejecutivo de control financiero empresarial
                         </p>
                     </div>
-                    <div class="flex gap-4">
-                        <button onclick="showAddExpenseModal()" class="premium-button">
-                            <i class="fas fa-plus mr-3"></i>AGREGAR GASTO
-                        </button>
-                        <a href="/" class="premium-button" style="background: var(--gradient-primary);">
-                            <i class="fas fa-home mr-3"></i>Dashboard
-                        </a>
+                    <div id="userInfo" class="text-white">
+                        <!-- User info will be populated by JavaScript -->
                     </div>
+                </div>
+                <div class="flex gap-4 justify-center">
+                    <a href="/" class="premium-button ">
+                        <i class="fas fa-chart-pie mr-3"></i>Dashboard
+                    </a>
+                    <a href="/companies" class="premium-button ">
+                        <i class="fas fa-building mr-3"></i>Empresas
+                    </a>
+                    <a href="/users" class="premium-button ">
+                        <i class="fas fa-users mr-3"></i>Usuarios
+                    </a>
+                    <a href="/employees" class="premium-button ">
+                        <i class="fas fa-user-tie mr-3"></i>Empleados
+                    </a>
+                    <a href="/expenses" class="premium-button" style="background: var(--gradient-gold);">
+                        <i class="fas fa-receipt mr-3"></i>Gastos
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Contenido Principal -->
+        <div class="container mx-auto px-6 pb-8">
+            <!-- Header with Add Button -->
+            <div class="flex justify-between items-center mb-8">
+                <div>
+                    <h2 class="text-2xl font-bold text-accent-gold">Gestión de Gastos</h2>
+                    <p class="text-text-secondary">Sistema premium de control financiero</p>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="showAddExpenseModal()" class="premium-button">
+                        <i class="fas fa-plus mr-2"></i>
+                        Nuevo Gasto
+                    </button>
                 </div>
             </div>
         </div>
@@ -8358,352 +8392,198 @@ app.get('/users', (c) => {
             min-height: 100vh;
             color: var(--color-text-primary);
         }
-        
-        .premium-button {
-            background: var(--gradient-emerald);
-            border: none;
-            color: white;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-        }
-        
-        .premium-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
-        }
-        
-        .premium-button.secondary {
-            background: var(--gradient-sapphire);
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-        }
-        
-        .premium-button.secondary:hover {
-            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
-        }
-        
-        .premium-button.danger {
-            background: var(--gradient-accent);
-            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
-        }
-        
-        .premium-button.danger:hover {
-            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
-        }
-        
-        .glass-panel {
-            background: var(--color-glass);
-            backdrop-filter: blur(10px);
-            border: 1px solid var(--color-border);
-            border-radius: 12px;
-            box-shadow: var(--shadow-glass);
-        }
-        
-        .role-badge {
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-        
-        .role-viewer { background-color: #e0f2fe; color: #0277bd; }
-        .role-editor { background-color: #e8f5e8; color: #2e7d32; }
-        .role-advanced { background-color: #fff3e0; color: #f57c00; }
-        .role-admin { background-color: #fce4ec; color: #c2185b; }
-        
-        .status-active { color: #10b981; }
-        .status-inactive { color: #ef4444; }
+    
+    .premium-button {
+        background: var(--gradient-emerald);
+        border: 1px solid var(--color-glass-border);
+        border-radius: var(--radius-md);
+        padding: 12px 24px;
+        color: white;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+    }
+    
+    .premium-button:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-glow);
+        background: var(--gradient-gold);
+    }
         </style>
     </head>
     <body>
-        <!-- Navigation -->
-        <nav class="glass-panel border-b sticky top-0 z-40 mb-8">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-between items-center h-16">
-                    <div class="flex items-center space-x-8">
-                        <a href="/" class="text-2xl font-bold bg-gradient-to-r from-accent-gold to-accent-emerald bg-clip-text text-transparent">
-                            <i class="fas fa-gem mr-2"></i>LYRA
-                        </a>
-                        <div class="hidden md:flex space-x-6">
-                            <a href="/" class="text-text-secondary hover:text-accent-emerald transition-colors">
-                                <i class="fas fa-chart-line mr-2"></i>Dashboard
-                            </a>
-                            <a href="/expenses" class="text-text-secondary hover:text-accent-emerald transition-colors">
-                                <i class="fas fa-receipt mr-2"></i>Gastos
-                            </a>
-                            <a href="/users" class="text-accent-emerald font-semibold">
-                                <i class="fas fa-users-cog mr-2"></i>Usuarios del Sistema
-                            </a>
-                            <a href="/employees" class="text-text-secondary hover:text-accent-emerald transition-colors">
-                                <i class="fas fa-id-card mr-2"></i>Empleados
-                            </a>
-                        </div>
-                    </div>
+    <!-- Navigation Header (estilo gastos) -->
+    <div class="container mx-auto px-6 py-8">
+        <div class="glass-panel p-8 mb-8">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h1 class="text-4xl font-bold text-accent-gold">
+                        <i class="fas fa-users mr-4"></i>
+                        Gestión de Usuarios - Lyra Expenses
+                    </h1>
+                    <p class="text-text-secondary text-lg mt-2">
+                        Sistema ejecutivo de control financiero empresarial
+                    </p>
+                </div>
+                <div id="userInfo" class="text-white">
+                    <!-- User info will be populated by JavaScript -->
                 </div>
             </div>
-        </nav>
-
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <!-- Header Section -->
-            <div class="mb-8">
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between">
-                    <div>
-                        <h1 class="text-4xl font-bold bg-gradient-to-r from-accent-gold to-accent-emerald bg-clip-text text-transparent mb-4">
-                            <i class="fas fa-users-cog mr-3"></i>
-                            Gestión de Usuarios del Sistema
-                        </h1>
-                        <p class="text-text-secondary text-lg">
-                            Administra usuarios con acceso al sistema de gastos • Roles y Privilegios
-                        </p>
-                    </div>
-                    <div class="flex gap-3 mt-4 md:mt-0">
-                        <button onclick="showAddUserModal()" class="premium-button">
-                            <i class="fas fa-user-plus"></i>
-                            Nuevo Usuario
-                        </button>
-                        <button onclick="exportUsers()" class="premium-button secondary">
-                            <i class="fas fa-download"></i>
-                            Exportar
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Statistics Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <div class="glass-panel p-6 text-center">
-                    <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-blue-500 to-blue-600">
-                        <i class="fas fa-users text-2xl text-white"></i>
-                    </div>
-                    <p class="text-2xl font-bold text-accent-emerald" id="total-users-count">-</p>
-                    <p class="text-text-secondary">Total Usuarios</p>
-                </div>
-                
-                <div class="glass-panel p-6 text-center">
-                    <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-green-500 to-green-600">
-                        <i class="fas fa-user-check text-2xl text-white"></i>
-                    </div>
-                    <p class="text-2xl font-bold text-accent-emerald" id="active-users-count">-</p>
-                    <p class="text-text-secondary">Usuarios Activos</p>
-                </div>
-                
-                <div class="glass-panel p-6 text-center">
-                    <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-amber-500 to-amber-600">
-                        <i class="fas fa-crown text-2xl text-white"></i>
-                    </div>
-                    <p class="text-2xl font-bold text-accent-emerald" id="admin-users-count">-</p>
-                    <p class="text-text-secondary">Administradores</p>
-                </div>
-                
-                <div class="glass-panel p-6 text-center">
-                    <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-purple-500 to-purple-600">
-                        <i class="fas fa-clock text-2xl text-white"></i>
-                    </div>
-                    <p class="text-2xl font-bold text-accent-emerald" id="recent-logins-count">-</p>
-                    <p class="text-text-secondary">Últimos 30 días</p>
-                </div>
-            </div>
-
-            <!-- Filters -->
-            <div class="glass-panel p-6 mb-8">
-                <div class="flex flex-col md:flex-row gap-4">
-                    <div class="flex-1">
-                        <label class="block text-sm font-medium text-text-primary mb-2">Buscar Usuario</label>
-                        <input 
-                            type="text" 
-                            id="search-user" 
-                            placeholder="Nombre, email o ID..."
-                            class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary placeholder-text-secondary focus:outline-none focus:ring-2 focus:ring-accent-emerald focus:border-transparent"
-                        >
-                    </div>
-                    <div class="flex-1">
-                        <label class="block text-sm font-medium text-text-primary mb-2">Filtrar por Rol</label>
-                        <select 
-                            id="filter-role" 
-                            class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-emerald focus:border-transparent"
-                        >
-                            <option value="">Todos los Roles</option>
-                            <option value="viewer">👀 Solo Lectura</option>
-                            <option value="editor">✏️ Editor</option>
-                            <option value="advanced">⭐ Avanzado</option>
-                            <option value="admin">👑 Administrador</option>
-                        </select>
-                    </div>
-                    <div class="flex-1">
-                        <label class="block text-sm font-medium text-text-primary mb-2">Estado</label>
-                        <select 
-                            id="filter-status" 
-                            class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-emerald focus:border-transparent"
-                        >
-                            <option value="">Todos</option>
-                            <option value="active">✅ Activo</option>
-                            <option value="inactive">❌ Inactivo</option>
-                        </select>
-                    </div>
-                    <div class="flex items-end gap-2">
-                        <button onclick="applyUserFilters()" class="premium-button">
-                            <i class="fas fa-filter"></i>
-                            Filtrar
-                        </button>
-                        <button onclick="clearUserFilters()" class="premium-button secondary">
-                            <i class="fas fa-eraser"></i>
-                            Limpiar
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Users Table -->
-            <div class="glass-panel overflow-hidden">
-                <div class="overflow-x-auto">
-                    <table class="w-full">
-                        <thead class="bg-gradient-to-r from-accent-gold/10 to-accent-emerald/10">
-                            <tr>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-text-primary uppercase tracking-wider">Usuario</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-text-primary uppercase tracking-wider">Email</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-text-primary uppercase tracking-wider">Rol</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-text-primary uppercase tracking-wider">Estado</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-text-primary uppercase tracking-wider">Último Acceso</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-text-primary uppercase tracking-wider">Empresas Asignadas</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-text-primary uppercase tracking-wider">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody id="users-list" class="divide-y divide-border-primary">
-                            <!-- Users will be loaded here -->
-                        </tbody>
-                    </table>
-                </div>
+            <div class="flex gap-4 justify-center">
+                <a href="/" class="premium-button ">
+                    <i class="fas fa-chart-pie mr-3"></i>Dashboard
+                </a>
+                <a href="/companies" class="premium-button ">
+                    <i class="fas fa-building mr-3"></i>Empresas
+                </a>
+                <a href="/users" class="premium-button" style="background: var(--gradient-gold);">
+                    <i class="fas fa-users mr-3"></i>Usuarios
+                </a>
+                <a href="/employees" class="premium-button ">
+                    <i class="fas fa-user-tie mr-3"></i>Empleados
+                </a>
+                <a href="/expenses" class="premium-button ">
+                    <i class="fas fa-receipt mr-3"></i>Gastos
+                </a>
             </div>
         </div>
-
-        <!-- Add/Edit User Modal -->
-        <div id="userModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 hidden flex items-center justify-center">
-            <div class="glass-panel p-8 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-                <div class="flex items-center justify-between mb-6">
-                    <h3 class="text-2xl font-bold text-text-primary">
-                        <i class="fas fa-user-plus mr-2 text-accent-emerald"></i>
-                        <span id="modal-title">Nuevo Usuario del Sistema</span>
-                    </h3>
-                    <button onclick="closeUserModal()" class="text-text-secondary hover:text-accent-gold">
-                        <i class="fas fa-times text-2xl"></i>
-                    </button>
+    </div>
+    
+    <!-- Contenido Principal -->
+   
+ <div class="container mx-auto px-6 pb-8">
+        <!-- Dashboard Content con estilo gastos -->
+        <div class="glass-panel p-6 mb-8">
+            <h3 class="text-xl font-bold text-accent-gold flex items-center mb-4">
+                <i class="fas fa-users mr-3"></i>
+                KPIs de Usuarios
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div class="glass-panel p-4 text-center">
+                    <div id="totalUsers" class="text-3xl font-bold text-accent-gold">Cargando...</div>
+                    <div class="text-text-secondary text-sm">Total Usuarios</div>
                 </div>
-                
-                <form id="userForm" onsubmit="saveUser(event)">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                        <!-- Basic Info -->
+                <div class="glass-panel p-4 text-center">
+                    <div id="activeUsers" class="text-3xl font-bold text-accent-emerald">-</div>
+                    <div class="text-text-secondary text-sm">Usuarios Activos</div>
+                </div>
+                <div class="glass-panel p-4 text-center">
+                    <div id="adminUsers" class="text-3xl font-bold text-accent-gold">-</div>
+                    <div class="text-text-secondary text-sm">Administradores</div>
+                </div>
+                <div class="glass-panel p-4 text-center">
+                    <div id="recentLogins" class="text-3xl font-bold text-accent-emerald">-</div>
+                    <div class="text-text-secondary text-sm">Últimos 30 días</div>
+                </div>
+            </div>
+
+        <!-- Filtros de Usuario (sidebar style) -->
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <div class="lg:col-span-1">
+                <div class="glass-panel p-6">
+                    <h3 class="text-xl font-bold text-accent-gold mb-6">
+                        <i class="fas fa-filter mr-2"></i>Ficha de Usuario
+                    </h3>
+                    
+                    <div class="space-y-4">
+                        <!-- Filtro por Fecha -->
                         <div>
-                            <label class="block text-sm font-medium text-text-primary mb-2">
-                                <i class="fas fa-user mr-2 text-accent-emerald"></i>
-                                Nombre Completo *
-                            </label>
-                            <input 
-                                type="text" 
-                                id="user-name" 
-                                required
-                                class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-emerald"
-                                placeholder="Ej: Juan Pérez García"
-                            >
+                            <label class="block text-sm font-medium text-accent-gold mb-2">📅 Fecha</label>
+                            <div class="flex gap-2">
+                                <input type="date" id="filter-date-from" class="flex-1 p-3 rounded-lg border border-glass-border bg-glass text-text-primary focus:border-accent-gold focus:outline-none text-sm">
+                                <input type="date" id="filter-date-to" class="flex-1 p-3 rounded-lg border border-glass-border bg-glass text-text-primary focus:border-accent-gold focus:outline-none text-sm">
+                            </div>
                         </div>
-                        
+
+                        <!-- Filtro por Rol -->
                         <div>
-                            <label class="block text-sm font-medium text-text-primary mb-2">
-                                <i class="fas fa-envelope mr-2 text-accent-emerald"></i>
-                                Email *
-                            </label>
-                            <input 
-                                type="email" 
-                                id="user-email" 
-                                required
-                                class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-emerald"
-                                placeholder="juan.perez@empresa.com"
-                            >
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-text-primary mb-2">
-                                <i class="fas fa-lock mr-2 text-accent-emerald"></i>
-                                Contraseña *
-                            </label>
-                            <input 
-                                type="password" 
-                                id="user-password" 
-                                required
-                                class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-emerald"
-                                placeholder="Mínimo 8 caracteres"
-                            >
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-text-primary mb-2">
-                                <i class="fas fa-user-tag mr-2 text-accent-emerald"></i>
-                                Rol del Usuario *
-                            </label>
-                            <select 
-                                id="user-role" 
-                                required
-                                class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-emerald"
-                            >
-                                <option value="">Seleccionar Rol...</option>
-                                <option value="viewer">👀 Solo Lectura - Puede ver gastos y reportes</option>
-                                <option value="editor">✏️ Editor - Puede crear y editar gastos</option>
-                                <option value="advanced">⭐ Avanzado - Editor + Aprobaciones limitadas</option>
-                                <option value="admin">👑 Administrador - Acceso completo</option>
+                            <label class="block text-sm font-medium text-accent-gold mb-2">👥 Rol</label>
+                            <select id="roleFilter" class="w-full p-3 rounded-lg border border-glass-border bg-glass text-text-primary focus:border-accent-gold focus:outline-none">
+                                <option value="">Todos los roles</option>
+                                <option value="admin">👑 Administrador</option>
+                                <option value="advanced">⭐ Avanzado</option>
+                                <option value="editor">✏️ Editor</option>
+                                <option value="viewer">👀 Solo Lectura</option>
                             </select>
                         </div>
-                    </div>
-                    
-                    <!-- Company Permissions -->
-                    <div class="mb-6">
-                        <label class="block text-sm font-medium text-text-primary mb-4">
-                            <i class="fas fa-building mr-2 text-accent-emerald"></i>
-                            Permisos por Empresa
-                        </label>
-                        <div id="company-permissions" class="space-y-3">
-                            <!-- Company permissions will be loaded here -->
+
+                        <!-- Filtro por Estado -->
+                        <div>
+                            <label class="block text-sm font-medium text-accent-gold mb-2">📊 Estado</label>
+                            <select id="statusFilter" class="w-full p-3 rounded-lg border border-glass-border bg-glass text-text-primary focus:border-accent-gold focus:outline-none">
+                                <option value="">Todos los estados</option>
+                                <option value="active">✅ Activo</option>
+                                <option value="inactive">❌ Inactivo</option>
+                            </select>
                         </div>
+
+                        <button onclick="showAddUserModal()" class="w-full premium-button">
+                            <i class="fas fa-user-plus mr-2"></i>Nuevo Usuario
+                        </button>
+                        
+                        <button id="applyFilters" class="w-full premium-button">
+                            <i class="fas fa-search mr-2"></i>Aplicar Filtros
+                        </button>
+                        
+                        <button id="clearFilters" class="w-full premium-button" style="background: var(--gradient-accent);">
+                            <i class="fas fa-broom mr-2"></i>Limpiar Filtros
+                        </button>
+                    </div></div>
+            </div>
+
+            <div class="lg:col-span-3">
+                <div class="glass-panel p-6">
+                    <h3 class="text-xl font-bold text-accent-gold mb-4">
+                        <i class="fas fa-chart-pie mr-3"></i>Distribución de Usuarios
+                    </h3>
+                    <div class="h-96 flex items-center justify-center">
+                        <canvas id="userChart" width="400" height="300"></canvas>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-6 mt-8">
+                    <h3 class="text-xl font-bold text-accent-gold mb-4">
+                        <i class="fas fa-table mr-3"></i>Tabla de Usuarios del Sistema
+                    </h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full">
+                            <thead>
+                                <tr class="border-b border-glass-border">
+                                    <th class="text-left py-3 px-4 text-accent-gold">Usuario</th>
+                                    <th class="text-left py-3 px-4 text-accent-gold">Email</th>
+                                    <th class="text-left py-3 px-4 text-accent-gold">Rol</th>
+                                    <th class="text-left py-3 px-4 text-accent-gold">Estado</th>
+                                    <th class="text-left py-3 px-4 text-accent-gold">Último Acceso</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTable">
+                                <tr>
+                                    <td colspan="5" class="py-8 text-center text-text-secondary">
+                                        <i class="fas fa-spinner fa-spin mr-2"></i>Cargando usuarios del sistema...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                     
-                    <!-- Status -->
-                    <div class="mb-6">
-                        <label class="flex items-center text-sm font-medium text-text-primary">
-                            <input 
-                                type="checkbox" 
-                                id="user-active" 
-                                checked
-                                class="mr-3 w-4 h-4 text-accent-emerald bg-glass-input border-border-primary rounded focus:ring-accent-emerald focus:ring-2"
-                            >
-                            <i class="fas fa-check-circle mr-2 text-accent-emerald"></i>
-                            Usuario Activo (puede iniciar sesión)
-                        </label>
-                    </div>
-                    
-                    <div class="flex justify-end gap-4">
-                        <button type="button" onclick="closeUserModal()" class="premium-button secondary">
-                            <i class="fas fa-times mr-2"></i>
-                            Cancelar
+                    <!-- Botones de Acción Dashboard -->
+                    <div class="mt-6 flex gap-4 justify-end">
+                        <button onclick="printUsers()" class="premium-button" style="background: var(--gradient-accent);">
+                            <i class="fas fa-print mr-2"></i>Imprimir Lista
                         </button>
-                        <button type="submit" class="premium-button">
-                            <i class="fas fa-save mr-2"></i>
-                            Guardar Usuario
+                        <button onclick="generateUsersPDF()" class="premium-button">
+                            <i class="fas fa-file-pdf mr-2"></i>Generar PDF
                         </button>
                     </div>
-                </form>
+                </div>
             </div>
         </div>
-        
-        <script src="/static/permissions-ui.js"></script>
-        <script src="/static/users.js"></script></script>
-    </body>
-    </html>`);
+    </div>    
+</body>
+</html>`);
 })
 
 // ===== GESTIÓN DE EMPLEADOS =====
@@ -8728,52 +8608,25 @@ app.get('/employees', (c) => {
             color: var(--color-text-primary);
         }
         
-        .premium-button {
-            background: var(--gradient-emerald);
-            border: none;
-            color: white;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-        }
-        
-        .premium-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
-        }
-        
-        .premium-button.secondary {
-            background: var(--gradient-sapphire);
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-        }
-        
-        .premium-button.secondary:hover {
-            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
-        }
-        
-        .premium-button.danger {
-            background: var(--gradient-accent);
-            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
-        }
-        
-        .premium-button.danger:hover {
-            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
-        }
-        
-        .glass-panel {
-            background: var(--color-glass);
-            backdrop-filter: blur(10px);
-            border: 1px solid var(--color-border);
-            border-radius: 12px;
-            box-shadow: var(--shadow-glass);
-        }
+    .premium-button {
+        background: var(--gradient-emerald);
+        border: 1px solid var(--color-glass-border);
+        border-radius: var(--radius-md);
+        padding: 12px 24px;
+        color: white;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+    }
+    
+    .premium-button:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-glow);
+        background: var(--gradient-gold);
+    }
         
         .department-badge {
             padding: 4px 12px;
@@ -8792,386 +8645,181 @@ app.get('/employees', (c) => {
         </style>
     </head>
     <body>
-        <!-- Navigation -->
-        <nav class="glass-panel border-b sticky top-0 z-40 mb-8">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-between items-center h-16">
-                    <div class="flex items-center space-x-8">
-                        <a href="/" class="text-2xl font-bold bg-gradient-to-r from-accent-gold to-accent-emerald bg-clip-text text-transparent">
-                            <i class="fas fa-gem mr-2"></i>LYRA
-                        </a>
-                        <div class="hidden md:flex space-x-6">
-                            <a href="/" class="text-text-secondary hover:text-accent-emerald transition-colors">
-                                <i class="fas fa-chart-line mr-2"></i>Dashboard
-                            </a>
-                            <a href="/expenses" class="text-text-secondary hover:text-accent-emerald transition-colors">
-                                <i class="fas fa-receipt mr-2"></i>Gastos
-                            </a>
-                            <a href="/users" class="text-text-secondary hover:text-accent-emerald transition-colors">
-                                <i class="fas fa-users-cog mr-2"></i>Usuarios del Sistema
-                            </a>
-                            <a href="/employees" class="text-accent-emerald font-semibold">
-                                <i class="fas fa-id-card mr-2"></i>Empleados
-                            </a>
-                        </div>
-                    </div>
+    <!-- Navigation Header (estilo gastos) -->
+    <div class="container mx-auto px-6 py-8">
+        <div class="glass-panel p-8 mb-8">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h1 class="text-4xl font-bold text-accent-gold">
+                        <i class="fas fa-user-tie mr-4"></i>
+                        Gestión de Empleados - Lyra Expenses
+                    </h1>
+                    <p class="text-text-secondary text-lg mt-2">
+                        Sistema ejecutivo de control financiero empresarial
+                    </p>
+                </div>
+                <div id="userInfo" class="text-white">
+                    <!-- User info will be populated by JavaScript -->
                 </div>
             </div>
-        </nav>
-
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <!-- Header Section -->
-            <div class="mb-8">
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between">
-                    <div>
-                        <h1 class="text-4xl font-bold bg-gradient-to-r from-accent-gold to-accent-emerald bg-clip-text text-transparent mb-4">
-                            <i class="fas fa-id-card mr-3"></i>
-                            Gestión de Empleados
-                        </h1>
-                        <p class="text-text-secondary text-lg">
-                            Administra empleados que generan gastos y viáticos • Información Personal y Laboral
-                        </p>
-                    </div>
-                    <div class="flex gap-3 mt-4 md:mt-0">
-                        <button onclick="showAddEmployeeModal()" class="premium-button">
-                            <i class="fas fa-user-plus"></i>
-                            Nuevo Empleado
-                        </button>
-                        <button onclick="exportEmployees()" class="premium-button secondary">
-                            <i class="fas fa-download"></i>
-                            Exportar
-                        </button>
-                    </div>
-                </div>
+            <div class="flex gap-4 justify-center">
+                <a href="/" class="premium-button ">
+                    <i class="fas fa-chart-pie mr-3"></i>Dashboard
+                </a>
+                <a href="/companies" class="premium-button ">
+                    <i class="fas fa-building mr-3"></i>Empresas
+                </a>
+                <a href="/users" class="premium-button ">
+                    <i class="fas fa-users mr-3"></i>Usuarios
+                </a>
+                <a href="/employees" class="premium-button" style="background: var(--gradient-gold);">
+                    <i class="fas fa-user-tie mr-3"></i>Empleados
+                </a>
+                <a href="/expenses" class="premium-button ">
+                    <i class="fas fa-receipt mr-3"></i>Gastos
+                </a>
             </div>
+        </div>
+    </div>
+    
+    <!-- Contenido Principal -->
+   
+ <div class="container mx-auto px-6 pb-8">
 
-            <!-- Statistics Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <div class="glass-panel p-6 text-center">
-                    <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-blue-500 to-blue-600">
-                        <i class="fas fa-users text-2xl text-white"></i>
-                    </div>
-                    <p class="text-2xl font-bold text-accent-emerald" id="total-employees-count">-</p>
-                    <p class="text-text-secondary">Total Empleados</p>
+    <!-- Main Content -->
+    <div class="container mx-auto px-6 pb-8">
+        <!-- Dashboard Content con estilo gastos -->
+        <div class="glass-panel p-6 mb-8">
+            <h3 class="text-xl font-bold text-accent-gold flex items-center mb-4">
+                <i class="fas fa-user-tie mr-3"></i>
+                KPIs de Empleados
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div class="glass-panel p-4 text-center">
+                    <div id="totalEmployees" class="text-3xl font-bold text-accent-gold">Cargando...</div>
+                    <div class="text-text-secondary text-sm">Total Empleados</div>
                 </div>
-                
-                <div class="glass-panel p-6 text-center">
-                    <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-green-500 to-green-600">
-                        <i class="fas fa-user-check text-2xl text-white"></i>
-                    </div>
-                    <p class="text-2xl font-bold text-accent-emerald" id="active-employees-count">-</p>
-                    <p class="text-text-secondary">Empleados Activos</p>
+                <div class="glass-panel p-4 text-center">
+                    <div id="activeEmployees" class="text-3xl font-bold text-accent-emerald">-</div>
+                    <div class="text-text-secondary text-sm">Empleados Activos</div>
                 </div>
-                
-                <div class="glass-panel p-6 text-center">
-                    <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-amber-500 to-amber-600">
-                        <i class="fas fa-building text-2xl text-white"></i>
-                    </div>
-                    <p class="text-2xl font-bold text-accent-emerald" id="departments-count">-</p>
-                    <p class="text-text-secondary">Departamentos</p>
+                <div class="glass-panel p-4 text-center">
+                    <div id="departmentCount" class="text-3xl font-bold text-accent-gold">-</div>
+                    <div class="text-text-secondary text-sm">Departamentos</div>
                 </div>
-                
-                <div class="glass-panel p-6 text-center">
-                    <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-purple-500 to-purple-600">
-                        <i class="fas fa-receipt text-2xl text-white"></i>
-                    </div>
-                    <p class="text-2xl font-bold text-accent-emerald" id="with-expenses-count">-</p>
-                    <p class="text-text-secondary">Con Gastos</p>
-                </div>
-            </div>
-
-            <!-- Filters -->
-            <div class="glass-panel p-6 mb-8">
-                <div class="flex flex-col md:flex-row gap-4">
-                    <div class="flex-1">
-                        <label class="block text-sm font-medium text-text-primary mb-2">Buscar Empleado</label>
-                        <input 
-                            type="text" 
-                            id="search-employee" 
-                            placeholder="Nombre, email, ID o puesto..."
-                            class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary placeholder-text-secondary focus:outline-none focus:ring-2 focus:ring-accent-emerald focus:border-transparent"
-                        >
-                    </div>
-                    <div class="flex-1">
-                        <label class="block text-sm font-medium text-text-primary mb-2">Filtrar por Departamento</label>
-                        <select 
-                            id="filter-department" 
-                            class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-emerald focus:border-transparent"
-                        >
-                            <option value="">Todos los Departamentos</option>
-                            <option value="it">💻 Tecnología</option>
-                            <option value="sales">💼 Ventas</option>
-                            <option value="hr">👥 Recursos Humanos</option>
-                            <option value="finance">💰 Finanzas</option>
-                            <option value="operations">⚙️ Operaciones</option>
-                            <option value="management">👔 Dirección</option>
-                        </select>
-                    </div>
-                    <div class="flex-1">
-                        <label class="block text-sm font-medium text-text-primary mb-2">Empresa</label>
-                        <select 
-                            id="filter-company" 
-                            class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-emerald focus:border-transparent"
-                        >
-                            <option value="">Todas las Empresas</option>
-                            <!-- Companies will be loaded here -->
-                        </select>
-                    </div>
-                    <div class="flex items-end gap-2">
-                        <button onclick="applyEmployeeFilters()" class="premium-button">
-                            <i class="fas fa-filter"></i>
-                            Filtrar
-                        </button>
-                        <button onclick="clearEmployeeFilters()" class="premium-button secondary">
-                            <i class="fas fa-eraser"></i>
-                            Limpiar
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Employees Table -->
-            <div class="glass-panel overflow-hidden">
-                <div class="overflow-x-auto">
-                    <table class="w-full">
-                        <thead class="bg-gradient-to-r from-accent-gold/10 to-accent-emerald/10">
-                            <tr>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-text-primary uppercase tracking-wider">Empleado</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-text-primary uppercase tracking-wider">Puesto</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-text-primary uppercase tracking-wider">Departamento</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-text-primary uppercase tracking-wider">Empresa</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-text-primary uppercase tracking-wider">Email</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-text-primary uppercase tracking-wider">Teléfono</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-text-primary uppercase tracking-wider">Estado</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-text-primary uppercase tracking-wider">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody id="employees-list" class="divide-y divide-border-primary">
-                            <!-- Employees will be loaded here -->
-                        </tbody>
-                    </table>
+                <div class="glass-panel p-4 text-center">
+                    <div id="recentHires" class="text-3xl font-bold text-accent-emerald">-</div>
+                    <div class="text-text-secondary text-sm">Últimas Contrataciones</div>
                 </div>
             </div>
         </div>
 
-        <!-- Add/Edit Employee Modal -->
-        <div id="employeeModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 hidden flex items-center justify-center">
-            <div class="glass-panel p-8 max-w-6xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-                <div class="flex items-center justify-between mb-6">
-                    <h3 class="text-2xl font-bold text-text-primary">
-                        <i class="fas fa-user-plus mr-2 text-accent-emerald"></i>
-                        <span id="employee-modal-title">Nuevo Empleado</span>
+        <!-- Filtros de Empleado (sidebar style) -->
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <div class="lg:col-span-1">
+                <div class="glass-panel p-6">
+                    <h3 class="text-xl font-bold text-accent-gold mb-6">
+                        <i class="fas fa-filter mr-2"></i>Ficha de Empleado
                     </h3>
-                    <button onclick="closeEmployeeModal()" class="text-text-secondary hover:text-accent-gold">
-                        <i class="fas fa-times text-2xl"></i>
-                    </button>
+                    
+                    <div class="space-y-4">
+                        <!-- Filtro por Fecha -->
+                        <div>
+                            <label class="block text-sm font-medium text-accent-gold mb-2">📅 Fecha</label>
+                            <div class="flex gap-2">
+                                <input type="date" id="filter-date-from" class="flex-1 p-3 rounded-lg border border-glass-border bg-glass text-text-primary focus:border-accent-gold focus:outline-none text-sm">
+                                <input type="date" id="filter-date-to" class="flex-1 p-3 rounded-lg border border-glass-border bg-glass text-text-primary focus:border-accent-gold focus:outline-none text-sm">
+                            </div>
+                        </div>
+
+                        <!-- Filtro por Departamento -->
+                        <div>
+                            <label class="block text-sm font-medium text-accent-gold mb-2">💼 Departamento</label>
+                            <select id="departmentFilter" class="w-full p-3 rounded-lg border border-glass-border bg-glass text-text-primary focus:border-accent-gold focus:outline-none">
+                                <option value="">Todos los departamentos</option>
+                                <option value="it">💻 IT</option>
+                                <option value="sales">💰 Ventas</option>
+                                <option value="hr">👥 RRHH</option>
+                                <option value="finance">📊 Finanzas</option>
+                            </select>
+                        </div>
+
+                        <!-- Filtro por Estado -->
+                        <div>
+                            <label class="block text-sm font-medium text-accent-gold mb-2">📊 Estado</label>
+                            <select id="statusFilter" class="w-full p-3 rounded-lg border border-glass-border bg-glass text-text-primary focus:border-accent-gold focus:outline-none">
+                                <option value="">Todos los estados</option>
+                                <option value="active">✅ Activo</option>
+                                <option value="inactive">❌ Inactivo</option>
+                            </select>
+                        </div>
+
+                        <button onclick="showAddEmployeeModal()" class="w-full premium-button">
+                            <i class="fas fa-user-plus mr-2"></i>Nuevo Empleado
+                        </button>
+                        
+                        <button id="applyFilters" class="w-full premium-button">
+                            <i class="fas fa-search mr-2"></i>Aplicar Filtros
+                        </button>
+                        
+                        <button id="clearFilters" class="w-full premium-button" style="background: var(--gradient-accent);">
+                            <i class="fas fa-broom mr-2"></i>Limpiar Filtros
+                        </button>
+                    </div></div>
+            </div>
+
+            <div class="lg:col-span-3">
+                <div class="glass-panel p-6">
+                    <h3 class="text-xl font-bold text-accent-gold mb-4">
+                        <i class="fas fa-chart-pie mr-3"></i>Distribución de Empleados
+                    </h3>
+                    <div class="h-96 flex items-center justify-center">
+                        <canvas id="employeeChart" width="400" height="300"></canvas>
+                    </div>
                 </div>
-                
-                <form id="employeeForm" onsubmit="saveEmployee(event)">
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-                        <!-- Personal Info -->
-                        <div class="lg:col-span-3">
-                            <h4 class="text-lg font-semibold text-text-primary mb-4 pb-2 border-b border-border-primary">
-                                <i class="fas fa-user mr-2 text-accent-emerald"></i>
-                                Información Personal
-                            </h4>
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-text-primary mb-2">
-                                Nombre Completo *
-                            </label>
-                            <input 
-                                type="text" 
-                                id="employee-name" 
-                                required
-                                class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-emerald"
-                                placeholder="Nombre y apellidos"
-                            >
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-text-primary mb-2">
-                                Email Personal
-                            </label>
-                            <input 
-                                type="email" 
-                                id="employee-email" 
-                                class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-emerald"
-                                placeholder="email@personal.com"
-                            >
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-text-primary mb-2">
-                                Teléfono
-                            </label>
-                            <input 
-                                type="tel" 
-                                id="employee-phone" 
-                                class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-emerald"
-                                placeholder="+52 555 123 4567"
-                            >
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-text-primary mb-2">
-                                RFC/Identificación Fiscal
-                            </label>
-                            <input 
-                                type="text" 
-                                id="employee-rfc" 
-                                class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-emerald"
-                                placeholder="XAXX010101000"
-                            >
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-text-primary mb-2">
-                                Fecha de Nacimiento
-                            </label>
-                            <input 
-                                type="date" 
-                                id="employee-birthdate" 
-                                class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-emerald"
-                            >
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-text-primary mb-2">
-                                Dirección
-                            </label>
-                            <input 
-                                type="text" 
-                                id="employee-address" 
-                                class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-emerald"
-                                placeholder="Calle, número, colonia, ciudad"
-                            >
-                        </div>
-                        
-                        <!-- Work Info -->
-                        <div class="lg:col-span-3">
-                            <h4 class="text-lg font-semibold text-text-primary mb-4 pb-2 border-b border-border-primary mt-6">
-                                <i class="fas fa-briefcase mr-2 text-accent-emerald"></i>
-                                Información Laboral
-                            </h4>
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-text-primary mb-2">
-                                Empresa *
-                            </label>
-                            <select 
-                                id="employee-company" 
-                                required
-                                class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-emerald"
-                            >
-                                <option value="">Seleccionar Empresa...</option>
-                                <!-- Companies will be loaded here -->
-                            </select>
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-text-primary mb-2">
-                                Puesto de Trabajo *
-                            </label>
-                            <input 
-                                type="text" 
-                                id="employee-position" 
-                                required
-                                class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-emerald"
-                                placeholder="Ej: Gerente de Ventas, Developer Senior"
-                            >
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-text-primary mb-2">
-                                Departamento *
-                            </label>
-                            <select 
-                                id="employee-department" 
-                                required
-                                class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-emerald"
-                            >
-                                <option value="">Seleccionar Departamento...</option>
-                                <option value="it">💻 Tecnología</option>
-                                <option value="sales">💼 Ventas</option>
-                                <option value="hr">👥 Recursos Humanos</option>
-                                <option value="finance">💰 Finanzas</option>
-                                <option value="operations">⚙️ Operaciones</option>
-                                <option value="management">👔 Dirección</option>
-                            </select>
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-text-primary mb-2">
-                                Número de Empleado
-                            </label>
-                            <input 
-                                type="text" 
-                                id="employee-number" 
-                                class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-emerald"
-                                placeholder="ID interno de empleado"
-                            >
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-text-primary mb-2">
-                                Fecha de Ingreso
-                            </label>
-                            <input 
-                                type="date" 
-                                id="employee-hire-date" 
-                                class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-emerald"
-                            >
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-text-primary mb-2">
-                                Jefe Directo
-                            </label>
-                            <select 
-                                id="employee-manager" 
-                                class="w-full px-4 py-3 rounded-lg border border-border-primary bg-glass-input text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-emerald"
-                            >
-                                <option value="">Sin jefe directo...</option>
-                                <!-- Managers will be loaded here -->
-                            </select>
-                        </div>
+
+                <div class="glass-panel p-6 mt-8">
+                    <h3 class="text-xl font-bold text-accent-gold mb-4">
+                        <i class="fas fa-table mr-3"></i>Tabla de Empleados
+                    </h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full">
+                            <thead>
+                                <tr class="border-b border-glass-border">
+                                    <th class="text-left py-3 px-4 text-accent-gold">Empleado</th>
+                                    <th class="text-left py-3 px-4 text-accent-gold">Puesto</th>
+                                    <th class="text-left py-3 px-4 text-accent-gold">Departamento</th>
+                                    <th class="text-left py-3 px-4 text-accent-gold">Estado</th>
+                                    <th class="text-left py-3 px-4 text-accent-gold">Fecha Ingreso</th>
+                                </tr>
+                            </thead>
+                            <tbody id="employeesTable">
+                                <tr>
+                                    <td colspan="5" class="py-8 text-center text-text-secondary">
+                                        <i class="fas fa-spinner fa-spin mr-2"></i>Cargando empleados...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                     
-                    <!-- Status -->
-                    <div class="mb-6">
-                        <label class="flex items-center text-sm font-medium text-text-primary">
-                            <input 
-                                type="checkbox" 
-                                id="employee-active" 
-                                checked
-                                class="mr-3 w-4 h-4 text-accent-emerald bg-glass-input border-border-primary rounded focus:ring-accent-emerald focus:ring-2"
-                            >
-                            <i class="fas fa-check-circle mr-2 text-accent-emerald"></i>
-                            Empleado Activo (puede generar gastos)
-                        </label>
-                    </div>
-                    
-                    <div class="flex justify-end gap-4">
-                        <button type="button" onclick="closeEmployeeModal()" class="premium-button secondary">
-                            <i class="fas fa-times mr-2"></i>
-                            Cancelar
+                    <!-- Botones de Acción Dashboard -->
+                    <div class="mt-6 flex gap-4 justify-end">
+                        <button onclick="printEmployees()" class="premium-button" style="background: var(--gradient-accent);">
+                            <i class="fas fa-print mr-2"></i>Imprimir Lista
                         </button>
-                        <button type="submit" class="premium-button">
-                            <i class="fas fa-save mr-2"></i>
-                            Guardar Empleado
+                        <button onclick="generateEmployeesPDF()" class="premium-button">
+                            <i class="fas fa-file-pdf mr-2"></i>Generar PDF
                         </button>
                     </div>
-                </form>
+                </div>
             </div>
         </div>
-        
-        <script src="/static/permissions-ui.js"></script>
-        <script src="/static/employees.js"></script>
-    </body>
-    </html>`);
+    </div>
+    
+    <script src="/static/employees.js"></script>
+</body>
+</html>`);
 })
 
 export default app
