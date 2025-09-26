@@ -252,7 +252,7 @@ function displayExpenses() {
                 <!-- 1. FECHA -->
                 <td class="px-4 py-3 text-sm">${gusbitData.fecha || expense.expense_date || 'N/A'}</td>
                 <!-- 2. EMPRESA -->
-                <td class="px-4 py-3 text-sm font-semibold" style="background: rgba(255, 215, 0, 0.05); border-left: 3px solid #FFD700;">
+                <td class="px-4 py-3 text-sm font-semibold">
                     ${getCompanyName(expense.company_id)}
                 </td>
                 <!-- 3. USUARIO -->
