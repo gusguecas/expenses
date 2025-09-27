@@ -8559,7 +8559,7 @@ app.get('/users', (c) => {
                                     <th class="text-left py-3 px-4 text-accent-gold">Último Acceso</th>
                                 </tr>
                             </thead>
-                            <tbody id="usersTable">
+                            <tbody id="users-list">
                                 <tr>
                                     <td colspan="5" class="py-8 text-center text-text-secondary">
                                         <i class="fas fa-spinner fa-spin mr-2"></i>Cargando usuarios del sistema...
@@ -8582,6 +8582,111 @@ app.get('/users', (c) => {
             </div>
         </div>
     </div>    
+
+    <!-- Modal - Agregar/Editar Usuario -->
+    <div id="userModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div class="p-8">
+                <!-- Modal Header -->
+                <div class="flex justify-between items-center mb-8">
+                    <h2 id="modal-title" class="text-3xl font-bold text-accent-gold">
+                        <i class="fas fa-user-plus mr-3"></i>Nuevo Usuario del Sistema
+                    </h2>
+                    <button onclick="closeUserModal()" class="text-text-secondary hover:text-accent-gold transition-colors text-2xl">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+
+                <!-- User Form -->
+                <form id="userForm" onsubmit="saveUser(event)" class="space-y-8">
+                    
+                    <!-- Información Básica -->
+                    <div class="glass-panel p-6">
+                        <h3 class="text-xl font-bold text-accent-emerald mb-6 flex items-center">
+                            <i class="fas fa-user mr-3"></i>Información Básica del Usuario
+                        </h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-text-primary mb-2">
+                                    <i class="fas fa-signature mr-2"></i>Nombre Completo *
+                                </label>
+                                <input type="text" id="user-name" required
+                                    class="w-full p-3 bg-glass border border-glass-border rounded-lg text-text-primary focus:ring-2 focus:ring-accent-gold focus:border-transparent"
+                                    placeholder="Ej: Juan Pérez García">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-text-primary mb-2">
+                                    <i class="fas fa-envelope mr-2"></i>Email Corporativo *
+                                </label>
+                                <input type="email" id="user-email" required
+                                    class="w-full p-3 bg-glass border border-glass-border rounded-lg text-text-primary focus:ring-2 focus:ring-accent-gold focus:border-transparent"
+                                    placeholder="Ej: juan.perez@empresa.com">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                            <div>
+                                <label class="block text-sm font-medium text-text-primary mb-2">
+                                    <i class="fas fa-lock mr-2"></i>Contraseña Temporal *
+                                </label>
+                                <input type="password" id="user-password" required
+                                    class="w-full p-3 bg-glass border border-glass-border rounded-lg text-text-primary focus:ring-2 focus:ring-accent-gold focus:border-transparent"
+                                    placeholder="Contraseña inicial (min 6 caracteres)">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-text-primary mb-2">
+                                    <i class="fas fa-user-shield mr-2"></i>Rol del Sistema *
+                                </label>
+                                <select id="user-role" required
+                                    class="w-full p-3 bg-glass border border-glass-border rounded-lg text-text-primary focus:ring-2 focus:ring-accent-gold focus:border-transparent">
+                                    <option value="">Seleccionar rol...</option>
+                                    <option value="admin">👑 Administrador Total</option>
+                                    <option value="manager">🏢 Gerente de Empresa</option>
+                                    <option value="employee">👤 Empleado</option>
+                                    <option value="viewer">👀 Solo Visualización</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mt-6">
+                            <label class="flex items-center">
+                                <input type="checkbox" id="user-active" checked
+                                    class="w-4 h-4 text-accent-gold bg-glass border-glass-border rounded focus:ring-accent-gold focus:ring-2">
+                                <span class="ml-2 text-text-primary">✅ Usuario Activo (puede hacer login)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Permisos por Empresa -->
+                    <div class="glass-panel p-6">
+                        <h3 class="text-xl font-bold text-accent-emerald mb-6 flex items-center">
+                            <i class="fas fa-building mr-3"></i>Permisos por Empresa
+                        </h3>
+                        <div id="company-permissions" class="space-y-4">
+                            <!-- Se llena dinámicamente desde JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- Botones de Acción -->
+                    <div class="flex gap-4 justify-end">
+                        <button type="button" onclick="closeUserModal()" 
+                            class="px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors">
+                            <i class="fas fa-times mr-2"></i>Cancelar
+                        </button>
+                        <button type="submit" 
+                            class="premium-button">
+                            <i class="fas fa-save mr-2"></i>Guardar Usuario
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/static/users.js?v=2024092704"></script>
 </body>
 </html>`);
 })

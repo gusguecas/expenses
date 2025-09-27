@@ -121,7 +121,11 @@ async function loadExpenses() {
         // Cargar empresas PRIMERO para mostrar nombres
         await loadCompaniesCache();
         
-        const response = await fetch('/api/expenses');
+        // Obtener token de autenticación
+        const token = localStorage.getItem('auth_token');
+        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+        
+        const response = await fetch('/api/expenses', { headers });
         if (response.ok) {
             const data = await response.json();
             allExpenses = data.expenses || [];
@@ -154,7 +158,11 @@ async function loadCompaniesCache() {
     console.log('🏢 Cargando empresas en cache...');
     
     try {
-        const response = await fetch('/api/companies');
+        // Obtener token de autenticación
+        const token = localStorage.getItem('auth_token');
+        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+        
+        const response = await fetch('/api/companies', { headers });
         const result = await response.json();
         
         if (result.companies) {
